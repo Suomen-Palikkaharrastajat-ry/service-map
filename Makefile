@@ -1,0 +1,167 @@
+LOCAL_PB_URL = http://127.0.0.1:8090
+
+.PHONY: help
+help: ## Show available targets
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: develop
+develop: devenv.local.nix devenv.local.yaml ## Bootstrap opinionated development environment
+	devenv shell --profile=devcontainer -- code .
+
+devenv.local.nix:
+	cp devenv.local.nix.example devenv.local.nix
+
+devenv.local.yaml:
+	cp devenv.local.yaml.example devenv.local.yaml
+
+# ── Vendor / submodules ──────────────────────────────────────────────────────
+
+.PHONY: vendor
+vendor: ## Init and update all git submodules to their pinned commits
+	@# In CI environments (GitHub Actions) SSH access is unavailable;
+	@# rewrite git@github.com: to https://github.com/ so submodules clone via HTTPS.
+	@[ -z "$$CI" ] || git config --global url."https://github.com/".insteadOf "git@github.com:"
+	@if [ -d .git ]; then git submodule update --init; elif [ ! -d vendor/master-builder ]; then mkdir -p vendor && git clone https://github.com/Suomen-Palikkaharrastajat-ry/master-builder.git vendor/master-builder; fi
+	ln -sfn ../vendor/master-builder/packages elm-app/packages
+
+# ── Development environment ──────────────────────────────────────────────────
+
+.PHONY: shell
+shell: ## Enter devenv shell
+	devenv shell
+
+# ── Elm frontend ──────────────────────────────────────────────────────────────
+
+.PHONY: elm-dev
+elm-dev: basemap ## Start Elm + Vite dev server (hot reload)
+	cd elm-app && vite
+
+.PHONY: elm-dev-local
+elm-dev-local: basemap ## Start Elm + Vite dev server against local PocketBase
+	cd elm-app && VITE_POCKETBASE_URL=$(LOCAL_PB_URL) vite
+
+ELM_APP_SOURCES := $(shell find elm-app/src -name '*.elm')
+ELM_PACKAGE_SOURCES := $(shell find vendor/master-builder/packages -name '*.elm' -o -name '*.css' 2>/dev/null)
+
+.PHONY: elm-tailwind-gen
+elm-tailwind-gen: elm-app/.elm-tailwind/.stamp ## Generate typed Tailwind Elm modules into elm-app/.elm-tailwind/
+
+elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.js elm-app/main.css $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES)
+	cd elm-app && elm-tailwind-classes gen
+	mkdir -p elm-app/.elm-tailwind
+	touch $@
+
+build/.elm-stamp: elm-app/public/basemap.pmtiles elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.js elm-app/main.js elm-app/main.css
+	cd elm-app && vite build
+	touch $@
+
+.PHONY: elm-build
+elm-build: build/.elm-stamp ## Production build of Elm SPA → build/
+
+.PHONY: elm-build-local
+elm-build-local: ## Production build of Elm SPA targeting local PocketBase
+	cd elm-app && VITE_POCKETBASE_URL=$(LOCAL_PB_URL) vite build
+
+.PHONY: elm-test
+elm-test: elm-tailwind-gen ## Run Elm unit tests
+	cd elm-app && elm-test
+
+.PHONY: elm-check
+elm-check: ## Check Elm formatting (no changes)
+	cd elm-app && elm-format --validate src/ tests/
+
+.PHONY: elm-format
+elm-format: ## Auto-format Elm source files
+	cd elm-app && elm-format --yes src/ tests/
+
+# ── Haskell backend ───────────────────────────────────────────────────────────
+
+HS_SOURCES := $(shell find statics/src statics/app -name '*.hs') statics/statics.cabal $(wildcard cabal.project*)
+
+statics/statics: $(HS_SOURCES)
+	cabal build statics
+	cp $$(cabal list-bin statics) $@
+
+.PHONY: statics-build
+statics-build: statics/statics ## Build Haskell static generator
+
+build/.statics-stamp: statics/statics
+	mkdir -p build
+	./statics/statics
+	touch $@
+
+.PHONY: statics
+statics: build/.statics-stamp ## Generate static files (rss, atom, json, geojson, images)
+
+.PHONY: statics-local
+statics-local: ## Generate static files against local PocketBase
+	POCKETBASE_URL=$(LOCAL_PB_URL) ./statics/statics
+
+.PHONY: statics-test
+statics-test: ## Run Haskell tests
+	cabal test statics-test
+
+.PHONY: statics-check
+statics-check: ## Lint Haskell source (hlint)
+	hlint statics/src/ statics/app/
+
+.PHONY: statics-format
+statics-format: ## Auto-format Haskell source (fourmolu)
+	find statics/src statics/app -name '*.hs' | xargs fourmolu --mode inplace
+
+.PHONY: repl
+repl: ## Start the Haskell REPL
+	cabal repl statics
+
+.PHONY: cabal-check
+cabal-check: ## Check the package for common errors
+	cabal check
+
+# ── Combined targets ──────────────────────────────────────────────────────────
+
+.PHONY: basemap
+basemap: elm-app/public/basemap.pmtiles ## Generate basemap from official Finnish open data
+
+elm-app/public/basemap.pmtiles: scripts/generate-basemap.sh
+	bash scripts/generate-basemap.sh
+
+.PHONY: watch
+watch: elm-dev ## Start development server
+
+build/.statics-stamp-nix:
+	mkdir -p build
+	statics
+	touch build/.statics-stamp
+
+.PHONY: build
+build: elm-build ## Production build of Elm SPA
+
+.PHONY: dist-ci
+dist-ci: build/.elm-stamp build/.statics-stamp-nix ## CI build: Elm SPA + statics via nix-provided binary
+	cp -r static/. build/
+
+.PHONY: dist
+dist: build/.elm-stamp build/.statics-stamp ## Full production build: Elm SPA + static files
+	cp -r static/. build/
+
+.PHONY: dist-local
+dist-local: elm-build-local statics-local ## Full local build against local PocketBase
+	cp -r static/. build/
+
+# ── Test & quality ────────────────────────────────────────────────────────────
+
+.PHONY: check
+check: elm-check statics-check ## Run all linting/formatting checks
+
+.PHONY: test
+test: elm-test statics-test ## Run all tests (Elm + Haskell)
+
+.PHONY: format
+format: elm-format statics-format ## Auto-format all code
+	treefmt
+
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+
+.PHONY: clean
+clean: ## Clean build artifacts
+	rm -rf build elm-app/.elm-tailwind elm-app/elm-stuff statics/statics dist-newstyle

@@ -1,0 +1,110 @@
+name: Scheduled update
+
+on:
+  schedule:
+    - cron: '0 0,6,12,18 * * *' # Four times per day
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-scheduled
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: palikkaharrastajat
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          extraPullNames: devenv
+
+      - name: Install devenv
+        run: nix profile install "github:cachix/devenv/v2.0.6"
+
+      - name: Restore Elm cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.elm
+            elm-app/elm-stuff
+          key: elm-${{ runner.os }}-${{ hashFiles('elm-app/elm.json') }}
+          restore-keys: elm-${{ runner.os }}-
+
+      - name: Restore basemap cache
+        id: basemap-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            elm-app/public/basemap.pmtiles
+            elm-app/public/style.json
+          key: basemap-${{ hashFiles('scripts/generate-basemap.sh') }}
+
+      - name: Touch basemap cache (prevent make rebuild)
+        if: steps.basemap-cache-restore.outputs.cache-hit == 'true'
+        run: touch elm-app/public/basemap.pmtiles elm-app/public/style.json
+
+      - name: Restore Cabal index cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cabal/packages
+          key: cabal-index-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: cabal-index-
+
+      - name: Restore Cabal store cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cabal/store
+          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix') }}
+          restore-keys: cabal-store-${{ runner.os }}-
+
+      - name: Cabal update
+        run: devenv shell --profile ci -- cabal update
+
+      - name: Build
+        run: devenv shell --profile ci -- make dist-ci
+
+      - name: Save basemap cache
+        if: steps.basemap-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            elm-app/public/basemap.pmtiles
+            elm-app/public/style.json
+          key: ${{ steps.basemap-cache-restore.outputs.cache-primary-key }}
+
+      - name: Save Cabal store cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cabal/store
+          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix') }}
+
+      - name: Save Cabal index cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cabal/packages
+          key: cabal-index-${{ hashFiles('cabal.project.freeze') }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

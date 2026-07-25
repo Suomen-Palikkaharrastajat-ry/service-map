@@ -1,0 +1,52 @@
+# --- Environment / local ---
+.env
+.devcontainer.json
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+.direnv
+
+# --- Dependencies ---
+node_modules
+node_modules/
+elm-app/node_modules/
+elm-app/packages
+
+# --- Haskell build artifacts ---
+dist-newstyle/
+.cabal/
+statics/statics
+
+# --- Elm / frontend build artifacts ---
+/build/
+elm-app/elm-stuff/
+elm-app/.elm-tailwind/
+elm-app/.vite/
+elm-app/public/basemap.pmtiles*
+elm-app/public/style.json
+
+# --- Generated static files (statics output) ---
+static/kartta.json
+static/kartta.geo.json
+static/*.rss
+static/*.atom
+static/images/
+
+# --- Logs / local test artifacts ---
+*.log
+test.mbtiles
+.cache/
+
+
+
+# --- Editor & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# --- Misc / local ---
+.claude/
+TODO*
