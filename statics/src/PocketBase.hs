@@ -7,7 +7,16 @@ module PocketBase (
 ) where
 
 import qualified Config
-import Data.Aeson (FromJSON (..), eitherDecode, withObject, (.!=), (.:), (.:?))
+import Data.Aeson (
+    FromJSON (..),
+    Value (Null, String),
+    eitherDecode,
+    withObject,
+    (.!=),
+    (.:),
+    (.:?),
+ )
+import Data.Aeson.Types (Parser)
 import Data.Char (isAsciiLower, isAsciiUpper, isDigit)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -59,8 +68,8 @@ instance FromJSON Location where
             <$> o .: "id"
             <*> o .: "title"
             <*> (nullableText <$> o .:? "description")
-            <*> o .:? "start_date"
-            <*> o .:? "end_date"
+            <*> (o .:? "start_date" >>= parsePbDate)
+            <*> (o .:? "end_date" >>= parsePbDate)
             <*> (nullableText <$> o .:? "url")
             <*> (nullableText <$> o .:? "location")
             <*> o .: "state"
@@ -71,6 +80,12 @@ instance FromJSON Location where
             <*> (nullableText <$> o .:? "opening_hours")
             <*> o .: "created"
             <*> o .: "updated"
+
+parsePbDate :: Maybe Value -> Parser (Maybe UTCTime)
+parsePbDate Nothing = return Nothing
+parsePbDate (Just Null) = return Nothing
+parsePbDate (Just (String t)) | T.null t = return Nothing
+parsePbDate (Just v) = Just <$> parseJSON v
 
 nullableText :: Maybe Text -> Maybe Text
 nullableText (Just t)

@@ -114,7 +114,14 @@ buildRssItem ctx loc = do
                 ++ PB.locationId loc
                 ++ "</guid>"
             , "      " ++ xmlText "pubDate" (formatRfc822 (PB.locationUpdated loc))
-            , "      " ++ xmlEl "link" (maybe (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc) (xmlEscape . T.unpack) (PB.locationUrl loc))
+            , "      "
+                ++ xmlEl
+                    "link"
+                    ( maybe
+                        (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)
+                        (xmlEscape . T.unpack)
+                        (PB.locationUrl loc)
+                    )
             ]
                 ++ maybeToList imgEncl
                 ++ ["    </item>"]
@@ -177,7 +184,10 @@ buildAtomEntry ctx loc = do
             , "    " ++ xmlText "updated" (formatRfc3339 (PB.locationUpdated loc))
             , "    <author><name>Suomen Palikkaharrastajat ry</name></author>"
             , "    <link rel=\"alternate\" href=\""
-                ++ maybe (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc) (xmlEscape . T.unpack) (PB.locationUrl loc)
+                ++ maybe
+                    (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)
+                    (xmlEscape . T.unpack)
+                    (PB.locationUrl loc)
                 ++ "\"/>"
             ]
                 ++ maybeToList imgLink

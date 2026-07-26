@@ -60,8 +60,6 @@ allDayLocationJson =
             , "\"updated\":\"2026-01-02T00:00:00.000Z\"}"
             ]
 
-
-
 decodeLocation :: BLC.ByteString -> PB.Location
 decodeLocation bs = case eitherDecode bs of
     Left err -> error ("Test fixture decode failed: " ++ err)
@@ -72,8 +70,6 @@ timedLocation = decodeLocation timedLocationJson
 
 allDayLocation :: PB.Location
 allDayLocation = decodeLocation allDayLocationJson
-
-
 
 zeroPointLocationJson :: BLC.ByteString
 zeroPointLocationJson =
@@ -98,8 +94,6 @@ zeroPointLocationJson =
 
 zeroPointLocation :: PB.Location
 zeroPointLocation = decodeLocation zeroPointLocationJson
-
-
 
 winterTime :: UTCTime
 winterTime = UTCTime (fromGregorian 2026 1 15) (secondsToDiffTime (10 * 3600))
@@ -285,10 +279,18 @@ feedGenTests =
         assertBool "Brick Shop Helsinki in RSS" ("Brick Shop Helsinki" `isInfixOf` rss)
     , testCase "RSS item has guid element" $ do
         rss <- FeedGen.generateRss emptyCtx [timedLocation]
-        assertBool "guid isPermaLink" ("<guid isPermaLink=\"false\">https://kartta.palikkaharrastajat.fi/#/locations/abc123</guid>" `isInfixOf` rss)
+        assertBool
+            "guid isPermaLink"
+            ( "<guid isPermaLink=\"false\">https://kartta.palikkaharrastajat.fi/#/locations/abc123</guid>"
+                `isInfixOf` rss
+            )
     , testCase "RSS item has image enclosure" $ do
         rss <- FeedGen.generateRss emptyCtx [timedLocation]
-        assertBool "enclosure" ("<enclosure url=\"https://kartta.palikkaharrastajat.fi/images/abc123_shop.jpg\" length=\"0\" type=\"image/jpeg\"/>" `isInfixOf` rss)
+        assertBool
+            "enclosure"
+            ( "<enclosure url=\"https://kartta.palikkaharrastajat.fi/images/abc123_shop.jpg\" length=\"0\" type=\"image/jpeg\"/>"
+                `isInfixOf` rss
+            )
     , testCase "RSS guid contains location id" $ do
         rss <- FeedGen.generateRss emptyCtx [timedLocation]
         assertBool "abc123 in guid" ("abc123" `isInfixOf` rss)
@@ -310,7 +312,9 @@ feedGenTests =
         assertBool "<entry>" ("<entry>" `isInfixOf` atom)
     , testCase "Atom output contains <link rel=\"self\" ... kartta.atom>" $ do
         atom <- FeedGen.generateAtom emptyCtx [timedLocation]
-        assertBool "self link" ("<link href=\"https://kartta.palikkaharrastajat.fi/kartta.atom\" rel=\"self\"/>" `isInfixOf` atom)
+        assertBool
+            "self link"
+            ("<link href=\"https://kartta.palikkaharrastajat.fi/kartta.atom\" rel=\"self\"/>" `isInfixOf` atom)
     , testCase "Atom entry title contains location title" $ do
         atom <- FeedGen.generateAtom emptyCtx [timedLocation]
         assertBool "Brick Shop Helsinki" ("Brick Shop Helsinki" `isInfixOf` atom)
