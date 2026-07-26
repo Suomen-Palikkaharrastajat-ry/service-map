@@ -95,11 +95,19 @@ init flags url key =
       , toasts = []
       , nextToastId = 0
       }
-    , Cmd.batch
-        [ Api.fetchLocations flags.pbBaseUrl (getToken authState)
-        , Api.fetchEvents flags.pbBaseUrl (getToken authState)
-        , cmd
-        ]
+    , case authState of
+        Authenticated _ ->
+            Cmd.batch
+                [ Api.fetchLocations flags.pbBaseUrl (getToken authState)
+                , Api.fetchEvents flags.pbBaseUrl (getToken authState)
+                , cmd
+                ]
+
+        NotAuthenticated ->
+            Cmd.batch
+                [ Api.fetchGeoJson
+                , cmd
+                ]
     )
 
 
@@ -236,6 +244,16 @@ update msg model =
         NavigateTo route ->
             ( model, Nav.pushUrl model.key (Route.toHref route) )
 
+        GeoJsonLoaded (Ok data) ->
+            let
+                newModel =
+                    { model | locations = Success data.locations, events = Success data.events }
+            in
+            ( newModel, updateMarkers newModel )
+
+        GeoJsonLoaded (Err err) ->
+            ( { model | locations = Failure err, events = Failure err }, Cmd.none )
+
         LocationsLoaded (Ok locations) ->
             let
                 newModel =
@@ -310,7 +328,7 @@ update msg model =
             , Cmd.batch
                 [ Ports.clearAuthToken ()
                 , Nav.pushUrl model.key (Route.toHref RouteMap)
-                , Api.fetchLocations model.pbBaseUrl Nothing
+                , Api.fetchGeoJson
                 ]
             )
 

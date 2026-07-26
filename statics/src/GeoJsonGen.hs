@@ -39,6 +39,10 @@ locationToFeature loc = case PB.locationPoint loc of
                             , "url" .= maybe Null (toJSON . T.unpack) (PB.locationUrl loc)
                             , "tags" .= map T.unpack (PB.locationTags loc)
                             , "opening_hours" .= maybe Null (toJSON . T.unpack) (PB.locationOpeningHours loc)
+                            , "image" .= maybe Null (toJSON . T.unpack) (PB.locationImage loc)
+                            , "image_description" .= maybe Null (toJSON . T.unpack) (PB.locationImageDesc loc)
+                            , "state" .= T.unpack (PB.locationState loc)
+                            , "point" .= object [ "lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt ]
                             ]
                     ]
 
@@ -67,6 +71,11 @@ eventToFeature ev = case PB.eventPoint ev of
                             , "url" .= maybe Null (toJSON . T.unpack) (PB.eventUrl ev)
                             , "tags" .= map T.unpack (PB.eventTags ev)
                             , "type" .= ("event" :: String)
+                            , "all_day" .= PB.eventAllDay ev
+                            , "image" .= maybe Null (toJSON . T.unpack) (PB.eventImage ev)
+                            , "image_description" .= maybe Null (toJSON . T.unpack) (PB.eventImageDesc ev)
+                            , "state" .= T.unpack (PB.eventState ev)
+                            , "point" .= object [ "lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt ]
                             ]
                     ]
 

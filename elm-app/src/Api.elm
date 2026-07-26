@@ -1,4 +1,4 @@
-module Api exposing (createLocation, decodeLocation, fetchEvents, fetchLocation, fetchLocations, httpErrorToString, imageUrl, updateLocation, updateLocationState)
+module Api exposing (createLocation, decodeLocation, fetchEvents, fetchGeoJson, fetchLocation, fetchLocations, httpErrorToString, imageUrl, updateLocation, updateLocationState)
 
 import DateUtils exposing (formDateTimeToUtc)
 import File
@@ -52,6 +52,14 @@ fetchLocations pbBaseUrl maybeToken =
                 (Json.field "items" (Json.list decodeLocation))
         , timeout = Nothing
         , tracker = Nothing
+        }
+
+
+fetchGeoJson : Cmd Msg
+fetchGeoJson =
+    Http.get
+        { url = "kartta.geo.json"
+        , expect = Http.expectJson Types.GeoJsonLoaded decodeGeoJson
         }
 
 
@@ -237,6 +245,45 @@ decodeLocation =
                     (Json.maybe (Json.field "opening_hours" Json.string) |> Json.map emptyToNothing)
                     (Json.maybe (Json.field "state" Json.string) |> Json.map (Maybe.withDefault "draft"))
             )
+
+
+type FeatureProperty
+    = LocProperty Location
+    | EvtProperty Event
+
+decodeFeatureProperty : Decoder FeatureProperty
+decodeFeatureProperty =
+    Json.field "type" Json.string
+        |> Json.maybe
+        |> Json.andThen
+            (\maybeType ->
+                case maybeType of
+                    Just "event" ->
+                        Json.map EvtProperty decodeEvent
+
+                    _ ->
+                        Json.map LocProperty decodeLocation
+            )
+
+splitFeatures : List FeatureProperty -> { locations : List Location, events : List Event }
+splitFeatures features =
+    List.foldl
+        (\feat acc ->
+            case feat of
+                LocProperty loc ->
+                    { acc | locations = loc :: acc.locations }
+
+                EvtProperty evt ->
+                    { acc | events = evt :: acc.events }
+        )
+        { locations = [], events = [] }
+        features
+
+decodeGeoJson : Decoder { locations : List Location, events : List Event }
+decodeGeoJson =
+    Json.field "features"
+        (Json.list (Json.field "properties" decodeFeatureProperty))
+        |> Json.map splitFeatures
 
 
 emptyToNothing : Maybe String -> Maybe String

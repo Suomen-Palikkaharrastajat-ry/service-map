@@ -314,6 +314,7 @@ type Msg
     | NavigateTo Route
     | LocationsLoaded (Result Http.Error (List Location))
     | EventsLoaded (Result Http.Error (List Event))
+    | GeoJsonLoaded (Result Http.Error { locations : List Location, events : List Event })
     | MarkerClicked String
     | ClosePanel
       -- Auth
