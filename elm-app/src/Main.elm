@@ -3,6 +3,7 @@ module Main exposing (applyFormDate, applyFormField, main)
 import Api
 import Auth
 import Browser
+import Browser.Events
 import Browser.Navigation as Nav
 import Component.Spinner
 import Component.Toast
@@ -1218,15 +1219,39 @@ updateMarkers model =
     Ports.addMarkers (locMarkers ++ evtMarkers)
 
 
+escapeDecoder : Decode.Decoder Msg
+escapeDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed ClosePanel
+
+                else
+                    Decode.fail "Not Escape"
+            )
+
+
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ Ports.markerClicked MarkerClicked
-        , Ports.oauthPopupResult OAuthPopupResult
-        , Ports.mapMarkerMoved (\pos -> MapMarkerMoved pos.lat pos.lon)
-        , Ports.callbackParams (\params -> AuthCallbackReceived params.codeVerifier params.state)
-        , Ports.kmlParsed LocationKmlParsed
-        ]
+subscriptions model =
+    let
+        baseSubs =
+            [ Ports.markerClicked MarkerClicked
+            , Ports.oauthPopupResult OAuthPopupResult
+            , Ports.mapMarkerMoved (\pos -> MapMarkerMoved pos.lat pos.lon)
+            , Ports.callbackParams (\params -> AuthCallbackReceived params.codeVerifier params.state)
+            , Ports.kmlParsed LocationKmlParsed
+            ]
+
+        escSub =
+            case ( model.page, model.selectedMarker ) of
+                ( Types.PageMap, Just _ ) ->
+                    [ Browser.Events.onKeyDown escapeDecoder ]
+
+                _ ->
+                    []
+    in
+    Sub.batch (baseSubs ++ escSub)
 
 
 view : Model -> Browser.Document Msg
