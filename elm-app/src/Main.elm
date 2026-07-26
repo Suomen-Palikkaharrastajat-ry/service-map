@@ -629,6 +629,9 @@ update msg model =
                                         , lon = String.fromFloat location.point.lon
                                         , existingImageUrl = Maybe.map (\img -> Api.imageUrl model.pbBaseUrl location.id img) location.image
                                         , hasExistingImage = location.image /= Nothing
+                                        , state = location.state
+                                        , tag = Maybe.withDefault "store" (List.head location.tags)
+                                        , imageDescription = Maybe.withDefault "" location.imageDescription
                                     }
                             in
                             ( { model | page = PageLocationEdit id { editPage | location = Success location, form = form } }
