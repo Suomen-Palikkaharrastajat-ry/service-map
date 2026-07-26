@@ -108,7 +108,7 @@ cat << 'EOF' > elm-app/public/style.json
       "attribution": "&copy; Maanmittauslaitos"
     }
   },
-  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "glyphs": "/fonts/{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",
@@ -141,6 +141,7 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "fill",
       "source": "basemap",
       "source-layer": "hallinto",
+      "minzoom": 7,
       "paint": {
         "fill-color": "#d0d0d0"
       }
@@ -150,6 +151,7 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "fill",
       "source": "basemap",
       "source-layer": "taajama",
+      "minzoom": 7,
       "paint": {
         "fill-color": "#e0d8d0"
       }
@@ -159,6 +161,7 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "fill",
       "source": "basemap",
       "source-layer": "vesi",
+      "minzoom": 7,
       "paint": {
         "fill-color": "#a0c8f0"
       }
@@ -168,6 +171,7 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "line",
       "source": "basemap",
       "source-layer": "raja",
+      "minzoom": 7,
       "paint": {
         "line-color": "#a0a0a0",
         "line-dasharray": [4, 4],
@@ -179,6 +183,7 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "line",
       "source": "basemap",
       "source-layer": "tie",
+      "minzoom": 7,
       "paint": {
         "line-color": "#ffffff",
         "line-width": 1.5
@@ -215,7 +220,7 @@ cat << 'EOF' > elm-app/public/style.json
       "filter": ["all", [">=", ["get", "scalerelev"], 1000000], ["<", ["get", "scalerelev"], 4500000]],
       "layout": {
         "text-field": ["get", "text"],
-        "text-font": ["Open Sans Regular, Arial Unicode MS Regular"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"],
           6, 10,
           11, 14
@@ -237,7 +242,7 @@ cat << 'EOF' > elm-app/public/style.json
       "filter": ["<", ["get", "scalerelev"], 1000000],
       "layout": {
         "text-field": ["get", "text"],
-        "text-font": ["Open Sans Regular, Arial Unicode MS Regular"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"],
           9, 10,
           11, 12
