@@ -80,6 +80,21 @@ type alias Location =
     , point : GeoPoint
     , tags : List String
     , openingHours : Maybe String
+    , state : LocationState
+    }
+
+
+type alias Event =
+    { id : String
+    , title : String
+    , description : Maybe String
+    , startDate : String
+    , endDate : String
+    , location : Maybe String
+    , url : Maybe String
+    , image : Maybe String
+    , point : GeoPoint
+    , allDay : Bool
     }
 
 
@@ -230,6 +245,11 @@ type Page
     | PageLoading
 
 
+type SelectedMarker
+    = SelectedLocation Location
+    | SelectedEvent Event
+
+
 type alias Model =
     { pbBaseUrl : String
     , key : Nav.Key
@@ -238,7 +258,10 @@ type alias Model =
     , authState : AuthState
     , menuOpen : Bool
     , locations : RemoteData Http.Error (List Location)
-    , selectedLocation : Maybe Location
+    , events : RemoteData Http.Error (List Event)
+    , selectedMarker : Maybe SelectedMarker
+    , hiddenTags : List String
+    , eventsHidden : Bool
     , now : Time.Posix
     , toasts : List Toast
     , nextToastId : Int
@@ -290,6 +313,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | NavigateTo Route
     | LocationsLoaded (Result Http.Error (List Location))
+    | EventsLoaded (Result Http.Error (List Event))
     | MarkerClicked String
     | ClosePanel
       -- Auth
@@ -340,6 +364,8 @@ type Msg
     | DetailGotLocation (Result Http.Error Location)
       -- Maps (via ports)
     | MapMarkerMoved Float Float
+    | ToggleTagVisibility String Bool
+    | ToggleEventVisibility Bool
       -- KML Import
     | LocationKmlFileSelected File
     | LocationKmlGotContent String

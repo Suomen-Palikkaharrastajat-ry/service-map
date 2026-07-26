@@ -4,6 +4,11 @@ import elmTailwind from 'elm-tailwind-classes/vite'
 import elm from 'vite-plugin-elm'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'mapbox-gl': 'maplibre-gl'
+    }
+  },
   plugins: [
     elmTailwind(),
     elm(),

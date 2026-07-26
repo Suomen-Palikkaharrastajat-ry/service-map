@@ -2,6 +2,9 @@ import './main.css'
 import { Elm } from './src/Main.elm'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import MapboxglSpiderifier from 'mapboxgl-spiderifier'
+import 'mapboxgl-spiderifier/index.css'
+import Supercluster from 'supercluster'
 import * as pmtiles from 'pmtiles'
 import PocketBase from 'pocketbase'
 
@@ -141,34 +144,146 @@ const maps = {}
 
 function applyMarkers(mapObj, markerList) {
   if (!mapObj.pointMarkers) {
-    mapObj.pointMarkers = {}
+    mapObj.pointMarkers = {};
   }
   
-  // Clear existing point markers
-  Object.values(mapObj.pointMarkers).forEach(m => m.remove())
-  mapObj.pointMarkers = {}
+  if (mapObj.spiderifier) {
+    mapObj.spiderifier.unspiderfy();
+  } else {
+    mapObj.spiderifier = new MapboxglSpiderifier(mapObj.map, {
+      animate: true,
+      animationSpeed: 200,
+      customPin: true,
+      initializeLeg: function(spiderLeg) {
+        const m = spiderLeg.feature.properties;
+        let el = document.createElement('div');
+        if (m.isEvent) {
+          el.className = 'event-marker';
+          el.style.cursor = 'pointer';
+          el.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`;
+        } else {
+          const tmp = new maplibregl.Marker();
+          el = tmp.getElement();
+          el.style.cursor = 'pointer';
+        }
+        
+        spiderLeg.elements.pin.appendChild(el);
 
-  // Add new markers
-  markerList.forEach(({ id, lat, lon, title }) => {
-    const marker = new maplibregl.Marker()
-      .setLngLat([lon, lat])
-      .addTo(mapObj.map)
+        let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
+        if (m.date) {
+          popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
+        }
+        const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
+        
+        el.addEventListener('mouseenter', () => popup.setLngLat([m.lon, m.lat]).addTo(mapObj.map));
+        el.addEventListener('mouseleave', () => popup.remove());
+      },
+      onClick: function(e, spiderLeg) {
+        e.stopPropagation();
+        app.ports.markerClicked.send(spiderLeg.feature.properties.id);
+      }
+    });
 
-    const popup = new maplibregl.Popup({
-      offset: 25,
-      closeButton: false,
-      closeOnClick: false
-    }).setText(title)
+    mapObj.map.on('click', () => {
+      mapObj.spiderifier.unspiderfy();
+    });
 
-    marker.getElement().addEventListener('click', () => {
-      app.ports.markerClicked.send(id)
-    })
+    mapObj.map.on('move', () => {
+      if (mapObj.supercluster) {
+        renderClusters(mapObj);
+      }
+    });
+  }
 
-    marker.getElement().addEventListener('mouseenter', () => popup.setLngLat([lon, lat]).addTo(mapObj.map))
-    marker.getElement().addEventListener('mouseleave', () => popup.remove())
+  // Build supercluster index
+  mapObj.supercluster = new Supercluster({
+    radius: 40,
+    maxZoom: 16
+  });
 
-    mapObj.pointMarkers[id] = marker
-  })
+  const geoJsonFeatures = markerList.map(m => ({
+    type: 'Feature',
+    properties: m,
+    geometry: { type: 'Point', coordinates: [m.lon, m.lat] }
+  }));
+
+  mapObj.supercluster.load(geoJsonFeatures);
+  renderClusters(mapObj);
+}
+
+function renderClusters(mapObj) {
+  const bounds = mapObj.map.getBounds();
+  const zoom = Math.floor(mapObj.map.getZoom());
+  const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+  const clusters = mapObj.supercluster.getClusters(bbox, zoom);
+
+  // Keep track of which markers are currently visible to reuse them
+  const newPointMarkers = {};
+
+  clusters.forEach(cluster => {
+    const isCluster = cluster.properties.cluster;
+    const coords = cluster.geometry.coordinates;
+    const id = isCluster ? `cluster_${cluster.properties.cluster_id}` : `marker_${cluster.properties.id}`;
+
+    let marker = mapObj.pointMarkers[id];
+    if (!marker) {
+      if (isCluster) {
+        const count = cluster.properties.point_count;
+        const el = document.createElement('div');
+        el.style.cursor = 'pointer';
+        el.innerHTML = `<div style="background-color: #05131D; color: white; border: 2px solid white; border-radius: 50%; width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: inherit; font-size: 0.875rem;">${count}</div>`;
+        
+        marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat(coords);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const leaves = mapObj.supercluster.getLeaves(cluster.properties.cluster_id, Infinity);
+          mapObj.spiderifier.spiderfy(coords, leaves);
+        });
+      } else {
+        const m = cluster.properties;
+        let el;
+        if (m.isEvent) {
+          el = document.createElement('div');
+          el.className = 'event-marker';
+          el.style.cursor = 'pointer';
+          el.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`;
+          marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(coords);
+        } else {
+          marker = new maplibregl.Marker().setLngLat(coords);
+          el = marker.getElement();
+        }
+
+        let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
+        if (m.date) {
+          popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
+        }
+
+        const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          app.ports.markerClicked.send(m.id);
+        });
+
+        el.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));
+        el.addEventListener('mouseleave', () => popup.remove());
+      }
+    }
+
+    if (!marker.getElement().parentNode) {
+      marker.addTo(mapObj.map);
+    }
+    
+    newPointMarkers[id] = marker;
+    // Remove it from old pointMarkers so we know what's left over
+    delete mapObj.pointMarkers[id];
+  });
+
+  // Remove markers that are no longer visible
+  Object.values(mapObj.pointMarkers).forEach(m => m.remove());
+  mapObj.pointMarkers = newPointMarkers;
 }
 
 // ── Map ports (MapLibre) ───────────────────────────────────────────────────────

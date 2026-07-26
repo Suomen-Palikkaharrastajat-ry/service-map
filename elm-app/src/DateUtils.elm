@@ -5,6 +5,7 @@ module DateUtils exposing
     , finnishWeekdayAbbr
     , firstDayOfWeek
     , formDateTimeToUtc
+    , formatEventDateDisplay
     , formatFullDate
     , formatLocationDateDisplay
     , formatShortDate
@@ -432,6 +433,55 @@ formatLocationDateDisplay { startDate, endDate } =
                     in
                     if sameDay then
                         Just (startStr ++ "–" ++ formatTime endPosix)
+
+                    else
+                        Just (startStr ++ " – " ++ finnishWeekdayAbbr endParts.weekday ++ " " ++ formatShortDate endPosix ++ " klo " ++ formatTime endPosix)
+
+
+formatEventDateDisplay : { a | startDate : String, endDate : String, allDay : Bool } -> Maybe String
+formatEventDateDisplay ev =
+    case parseUtcString ev.startDate of
+        Nothing ->
+            Nothing
+
+        Just startPosix ->
+            let
+                startDay =
+                    formatShortDate startPosix
+
+                startParts =
+                    toHelsinkiParts startPosix
+
+                startStr =
+                    if ev.allDay then
+                        finnishWeekdayAbbr startParts.weekday ++ " " ++ startDay
+
+                    else
+                        finnishWeekdayAbbr startParts.weekday ++ " " ++ startDay ++ " klo " ++ formatTime startPosix
+            in
+            case parseUtcString ev.endDate of
+                Nothing ->
+                    Just startStr
+
+                Just endPosix ->
+                    let
+                        endParts =
+                            toHelsinkiParts endPosix
+
+                        sameDay =
+                            (startParts.year == endParts.year)
+                                && (startParts.month == endParts.month)
+                                && (startParts.day == endParts.day)
+                    in
+                    if sameDay then
+                        if ev.allDay then
+                            Just startStr
+
+                        else
+                            Just (startStr ++ "–" ++ formatTime endPosix)
+
+                    else if ev.allDay then
+                        Just (startStr ++ " – " ++ finnishWeekdayAbbr endParts.weekday ++ " " ++ formatShortDate endPosix)
 
                     else
                         Just (startStr ++ " – " ++ finnishWeekdayAbbr endParts.weekday ++ " " ++ formatShortDate endPosix ++ " klo " ++ formatTime endPosix)

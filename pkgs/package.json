@@ -18,8 +18,10 @@
     "vite-plugin-elm": "^3.0.0"
   },
   "dependencies": {
+    "mapboxgl-spiderifier": "^1.0.10",
     "maplibre-gl": "^5.1.0",
     "pmtiles": "^4.2.0",
-    "pocketbase": "^0.27.0"
+    "pocketbase": "^0.27.0",
+    "supercluster": "^8.0.1"
   }
 }

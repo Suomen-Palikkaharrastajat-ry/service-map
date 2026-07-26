@@ -18,6 +18,9 @@ import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import OpeningHours.Editor
+import OpeningHours.I18n as OHI18n
+import OpeningHours.Parser as OHParser
+import OpeningHours.Viewer as OHViewer
 import Page.LocationDetail
 import Page.LocationEdit
 import Page.LocationNew
@@ -83,13 +86,17 @@ init flags url key =
       , authState = authState
       , menuOpen = False
       , locations = RemoteData.Loading
-      , selectedLocation = Nothing
+      , events = RemoteData.Loading
+      , selectedMarker = Nothing
+      , hiddenTags = []
+      , eventsHidden = False
       , now = now
       , toasts = []
       , nextToastId = 0
       }
     , Cmd.batch
         [ Api.fetchLocations flags.pbBaseUrl (getToken authState)
+        , Api.fetchEvents flags.pbBaseUrl (getToken authState)
         , cmd
         ]
     )
@@ -201,9 +208,20 @@ update msg model =
 
                 ( page, cmd ) =
                     initPage model.pbBaseUrl model.key newRoute model.authState url model.now
+
+                newModel =
+                    { model | url = url, page = page, menuOpen = False }
+
+                extraCmd =
+                    case page of
+                        PageMap ->
+                            updateMarkers newModel
+
+                        _ ->
+                            Cmd.none
             in
-            ( { model | url = url, page = page, menuOpen = False }
-            , Cmd.batch [ mapCleanupCmd, cmd ]
+            ( newModel
+            , Cmd.batch [ mapCleanupCmd, cmd, extraCmd ]
             )
 
         LinkClicked urlRequest ->
@@ -219,32 +237,59 @@ update msg model =
 
         LocationsLoaded (Ok locations) ->
             let
-                markers =
-                    locations
-                        |> List.filter (\l -> Types.hasValidCoordinates l.point)
-                        |> List.map locationToMarker
+                newModel =
+                    { model | locations = Success locations }
             in
-            ( { model | locations = Success locations }
-            , Ports.addMarkers markers
-            )
+            ( newModel, updateMarkers newModel )
 
         LocationsLoaded (Err err) ->
             ( { model | locations = Failure err }, Cmd.none )
 
+        EventsLoaded (Ok events) ->
+            let
+                newModel =
+                    { model | events = Success events }
+            in
+            ( newModel, updateMarkers newModel )
+
+        EventsLoaded (Err err) ->
+            ( { model | events = Failure err }, Cmd.none )
+
         MarkerClicked locationId ->
             let
-                maybeLocation =
+                loc =
                     case model.locations of
-                        Success locations ->
-                            List.head (List.filter (\l -> l.id == locationId) locations)
+                        Success locs ->
+                            List.filter (\l -> l.id == locationId) locs |> List.head
 
                         _ ->
                             Nothing
+
+                evt =
+                    case model.events of
+                        Success evts ->
+                            List.filter (\e -> e.id == locationId) evts |> List.head
+
+                        _ ->
+                            Nothing
+
+                selected =
+                    case loc of
+                        Just l ->
+                            Just (Types.SelectedLocation l)
+
+                        Nothing ->
+                            case evt of
+                                Just e ->
+                                    Just (Types.SelectedEvent e)
+
+                                Nothing ->
+                                    Nothing
             in
-            ( { model | selectedLocation = maybeLocation }, Cmd.none )
+            ( { model | selectedMarker = selected }, Cmd.none )
 
         ClosePanel ->
-            ( { model | selectedLocation = Nothing }, Cmd.none )
+            ( { model | selectedMarker = Nothing }, Cmd.none )
 
         ToggleMenu ->
             if model.menuOpen then
@@ -850,7 +895,7 @@ update msg model =
                                     }
                             in
                             ( { model | page = PageLocations newLocPage }
-                            , Task.perform (\_ -> LocationKmlImportNext (Ok { id = "", title = "", description = Nothing, startDate = Nothing, endDate = Nothing, location = Nothing, url = Nothing, image = Nothing, imageDescription = Nothing, point = { lat = 0, lon = 0 }, tags = [], openingHours = Nothing })) (Task.succeed ())
+                            , Task.perform (\_ -> LocationKmlImportNext (Ok { id = "", title = "", description = Nothing, startDate = Nothing, endDate = Nothing, location = Nothing, url = Nothing, image = Nothing, imageDescription = Nothing, point = { lat = 0, lon = 0 }, tags = [], openingHours = Nothing, state = Types.Draft })) (Task.succeed ())
                             )
 
                         Err err ->
@@ -967,6 +1012,27 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        ToggleTagVisibility tag isHidden ->
+            let
+                newHiddenTags =
+                    if isHidden then
+                        tag :: List.filter (\t -> t /= tag) model.hiddenTags
+
+                    else
+                        List.filter (\t -> t /= tag) model.hiddenTags
+
+                newModel =
+                    { model | hiddenTags = newHiddenTags }
+            in
+            ( newModel, updateMarkers newModel )
+
+        ToggleEventVisibility isHidden ->
+            let
+                newModel =
+                    { model | eventsHidden = isHidden }
+            in
+            ( newModel, updateMarkers newModel )
+
 
 updateNewForm : Model -> (LocationFormData -> LocationFormData) -> ( Model, Cmd Msg )
 updateNewForm model transform =
@@ -1081,12 +1147,70 @@ urlBase url =
 
 locationToMarker : Location -> MarkerData
 locationToMarker loc =
+    let
+        formattedOh =
+            case loc.openingHours of
+                Just oh ->
+                    if String.trim oh == "" then
+                        ""
+                    else
+                        case OHParser.parse oh of
+                            Ok parsed ->
+                                OHViewer.formatToString OHI18n.finnish parsed
+                            Err _ ->
+                                ""
+                Nothing ->
+                    ""
+    in
     { id = loc.id
     , lat = loc.point.lat
     , lon = loc.point.lon
     , title = loc.title
-    , date = Maybe.withDefault "" loc.startDate
+    , date = formattedOh
+    , isEvent = False
     }
+
+
+eventToMarker : Types.Event -> MarkerData
+eventToMarker ev =
+    { id = ev.id
+    , lat = ev.point.lat
+    , lon = ev.point.lon
+    , title = ev.title
+    , date = Maybe.withDefault "" (DateUtils.formatEventDateDisplay ev)
+    , isEvent = True
+    }
+
+
+updateMarkers : Model -> Cmd Msg
+updateMarkers model =
+    let
+        locMarkers =
+            case model.locations of
+                Success locations ->
+                    locations
+                        |> List.filter (\l -> Types.hasValidCoordinates l.point)
+                        |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
+                        |> List.map locationToMarker
+
+                _ ->
+                    []
+
+        evtMarkers =
+            if model.eventsHidden then
+                []
+
+            else
+                case model.events of
+                    Success events ->
+                        events
+                            |> List.filter (\e -> Types.hasValidCoordinates e.point)
+                            |> List.map eventToMarker
+
+                    _ ->
+                        []
+    in
+    Ports.addMarkers (locMarkers ++ evtMarkers)
 
 
 subscriptions : Model -> Sub Msg
@@ -1102,9 +1226,25 @@ subscriptions _ =
 
 view : Model -> Browser.Document Msg
 view model =
+    let
+        isMapPage =
+            case model.page of
+                PageMap ->
+                    True
+
+                _ ->
+                    False
+
+        containerClass =
+            if isMapPage then
+                "flex flex-col h-[100dvh] font-sans overflow-hidden"
+
+            else
+                "flex flex-col min-h-[100dvh] font-sans"
+    in
     { title = t AppTitle
     , body =
-        [ div [ class "flex flex-col min-h-screen font-sans" ]
+        [ div [ class containerClass ]
             [ View.Layout.viewHeader model.authState model.menuOpen
             , View.Layout.viewMobileOverlay model.menuOpen
             , View.Layout.viewMobileDrawer model.menuOpen model.page model.authState
@@ -1139,8 +1279,16 @@ view model =
                     _ ->
                         div [] []
                 ]
-            , View.Layout.viewFooter
-            , View.Layout.viewBrandFooter
+            , if isMapPage then
+                Html.text ""
+
+              else
+                View.Layout.viewFooter
+            , if isMapPage then
+                Html.text ""
+
+              else
+                View.Layout.viewBrandFooter
             , viewToasts model
             ]
         ]

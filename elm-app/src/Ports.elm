@@ -40,6 +40,7 @@ type alias MarkerData =
     , lon : Float
     , title : String
     , date : String
+    , isEvent : Bool
     }
 
 
