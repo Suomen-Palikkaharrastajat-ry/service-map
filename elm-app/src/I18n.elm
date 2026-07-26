@@ -80,6 +80,7 @@ type MsgKey
     | MapLoadError
     | MapLocationsOnMap
     | PanelMoreInfo
+    | PanelClose
 
 
 t : MsgKey -> String
@@ -312,6 +313,9 @@ t key =
 
         PanelMoreInfo ->
             "Lisätietoja"
+
+        PanelClose ->
+            "Sulje"
 
 
 stateLabel : LocationState -> String

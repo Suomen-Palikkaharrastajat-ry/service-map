@@ -1,5 +1,6 @@
 module Page.Map exposing (view)
 
+import Component.Button as Button exposing (Size(..), Variant(..))
 import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
@@ -246,17 +247,30 @@ viewLocationPanel model loc =
 
                 Nothing ->
                     text ""
-            , case loc.url of
-                Just url ->
-                    a
-                        [ href url
-                        , target "_blank"
-                        , class "btn-primary mt-2 block text-center"
-                        ]
-                        [ text (t PanelMoreInfo) ]
+            , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
+                [ case loc.url of
+                    Just url ->
+                        Button.viewLink
+                            { label = t PanelMoreInfo
+                            , variant = Primary
+                            , size = Small
+                            , href = url
+                            }
 
-                Nothing ->
-                    text ""
+                    Nothing ->
+                        text ""
+                , div [ class "ml-auto" ]
+                    [ Button.view
+                        { label = t PanelClose
+                        , variant = Secondary
+                        , size = Small
+                        , onClick = ClosePanel
+                        , disabled = False
+                        , loading = False
+                        , ariaPressedState = Nothing
+                        }
+                    ]
+                ]
             ]
         ]
 
@@ -314,17 +328,30 @@ viewEventPanel model ev =
 
                 Nothing ->
                     text ""
-            , case ev.url of
-                Just url ->
-                    a
-                        [ href url
-                        , target "_blank"
-                        , class "btn-primary mt-2 block text-center"
-                        ]
-                        [ text (t PanelMoreInfo) ]
+            , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
+                [ case ev.url of
+                    Just url ->
+                        Button.viewLink
+                            { label = t PanelMoreInfo
+                            , variant = Primary
+                            , size = Small
+                            , href = url
+                            }
 
-                Nothing ->
-                    text ""
+                    Nothing ->
+                        text ""
+                , div [ class "ml-auto" ]
+                    [ Button.view
+                        { label = t PanelClose
+                        , variant = Secondary
+                        , size = Small
+                        , onClick = ClosePanel
+                        , disabled = False
+                        , loading = False
+                        , ariaPressedState = Nothing
+                        }
+                    ]
+                ]
             ]
         ]
 
@@ -357,6 +384,7 @@ translateTag tagStr =
 
         _ ->
             tagStr
+
 
 iconForTag : String -> FeatherIcons.Icon
 iconForTag tag =
