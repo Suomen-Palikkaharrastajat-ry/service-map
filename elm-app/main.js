@@ -37,6 +37,9 @@ function getMarkerIconHtml(tags) {
     case 'museum':
       inner = '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>';
       break;
+    case 'event':
+      inner = '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>';
+      break;
     default:
       inner = '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>';
       break;
@@ -183,13 +186,16 @@ function applyMarkers(mapObj, markerList) {
 
   // Setup click to unspiderfy
   if (!mapObj.unspiderfyHandler) {
-    mapObj.unspiderfyHandler = () => {
+    mapObj.unspiderfyHandler = (restoreFocus = false) => {
       if (mapObj.spiderMarkers) {
         mapObj.spiderMarkers.forEach(m => m.remove());
         mapObj.spiderMarkers = null;
       }
       if (mapObj.hiddenCluster) {
         mapObj.hiddenCluster.style.display = '';
+        if (restoreFocus === true) {
+          mapObj.hiddenCluster.focus();
+        }
         mapObj.hiddenCluster = null;
       }
     };
@@ -238,6 +244,13 @@ function renderClusters(mapObj) {
         const count = cluster.properties.point_count;
         const el = document.createElement('div');
         el.style.cursor = 'pointer';
+        el.tabIndex = 0;
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.stopPropagation();
+            el.click();
+          }
+        });
         el.innerHTML = `<div style="background-color: #05131D; color: white; border: 2px solid white; border-radius: 50%; width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: inherit; font-size: 0.875rem;">${count}</div>`;
         
         marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -257,6 +270,7 @@ function renderClusters(mapObj) {
           const angleStep = (Math.PI * 2) / leaves.length;
           const radius = Math.min(40 + (leaves.length * 3), 100);
           
+          let firstLeafEl = null;
           leaves.forEach((leaf, idx) => {
             const angle = idx * angleStep;
             const offsetX = Math.cos(angle) * radius;
@@ -270,9 +284,10 @@ function renderClusters(mapObj) {
               leafEl.style.cursor = 'pointer';
               leafEl.style.marginLeft = `${offsetX}px`;
               leafEl.style.marginTop = `${offsetY}px`;
-              leafEl.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; position: relative;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              leafEl.innerHTML = `
+                ${getMarkerIconHtml(['event'])}
                 <div style="position: absolute; left: 50%; top: 50%; width: ${radius}px; height: 2px; background: #05131D; transform-origin: 0 50%; transform: rotate(${angle + Math.PI}rad); z-index: -1; opacity: 0.3;"></div>
-              </div>`;
+              `;
             } else {
               leafEl = document.createElement('div');
               leafEl.style.cursor = 'pointer';
@@ -295,16 +310,32 @@ function renderClusters(mapObj) {
 
             const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: false, closeOnClick: false }).setHTML(popupHtml);
 
+            leafEl.tabIndex = 0;
             leafEl.addEventListener('click', (e) => {
               e.stopPropagation();
               app.ports.markerClicked.send(m.id);
+            });
+            leafEl.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.stopPropagation();
+                app.ports.markerClicked.send(m.id);
+              }
             });
 
             leafEl.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));
             leafEl.addEventListener('mouseleave', () => popup.remove());
             
+            if (idx === 0) {
+              firstLeafEl = leafEl;
+            }
             mapObj.spiderMarkers.push(leafMarker);
           });
+          
+          if (firstLeafEl) {
+            setTimeout(() => {
+              firstLeafEl.focus();
+            }, 10);
+          }
         });
       } else {
         const m = cluster.properties;
@@ -313,8 +344,8 @@ function renderClusters(mapObj) {
           el = document.createElement('div');
           el.className = 'event-marker';
           el.style.cursor = 'pointer';
-          el.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`;
-          marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(coords);
+          el.innerHTML = getMarkerIconHtml(['event']);
+          marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         } else {
           el = document.createElement('div');
           el.style.cursor = 'pointer';
@@ -329,9 +360,16 @@ function renderClusters(mapObj) {
 
         const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
 
+        el.tabIndex = 0;
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           app.ports.markerClicked.send(m.id);
+        });
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.stopPropagation();
+            app.ports.markerClicked.send(m.id);
+          }
         });
 
         el.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));

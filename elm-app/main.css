@@ -284,3 +284,8 @@ button:not([disabled]) {
 .elm-datepicker--other-month {
   color: var(--color-text-subtle);
 }
+
+.maplibregl-marker:focus, [tabindex="0"]:focus {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
