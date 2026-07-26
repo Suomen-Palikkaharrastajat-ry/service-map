@@ -76,6 +76,7 @@ fi
 rm -f .cache/basemap/world_countries.geojson
 ogr2ogr -f GeoJSON .cache/basemap/world_countries.geojson .cache/basemap/ne/ne_50m_admin_0_countries.shp
 
+# Invalidate cache to include world_countries.geojson
 echo "Copying world countries GeoJSON to public directory..."
 cp .cache/basemap/world_countries.geojson elm-app/public/world_countries.geojson
 
