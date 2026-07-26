@@ -15,9 +15,9 @@ port module Ports exposing
     , oauthPopupResult
     , parseKml
     , saveAuthToken
+    , saveFilterState
     , setMapMarker
     , setMapStyle
-    , saveFilterState
     )
 
 import Json.Decode as Json

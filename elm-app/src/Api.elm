@@ -251,6 +251,7 @@ type FeatureProperty
     = LocProperty Location
     | EvtProperty Event
 
+
 decodeFeatureProperty : Decoder FeatureProperty
 decodeFeatureProperty =
     Json.field "type" Json.string
@@ -265,6 +266,7 @@ decodeFeatureProperty =
                         Json.map LocProperty decodeLocation
             )
 
+
 splitFeatures : List FeatureProperty -> { locations : List Location, events : List Event }
 splitFeatures features =
     List.foldl
@@ -278,6 +280,7 @@ splitFeatures features =
         )
         { locations = [], events = [] }
         features
+
 
 decodeGeoJson : Decoder { locations : List Location, events : List Event }
 decodeGeoJson =
