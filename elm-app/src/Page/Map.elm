@@ -123,6 +123,7 @@ viewToggles model =
                                 , onCheck (\chk -> ToggleTagVisibility tag (not chk))
                                 ]
                                 []
+                            , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
                             , text (localizeTag tag)
                             ]
                     )
@@ -134,6 +135,7 @@ viewToggles model =
                             , onCheck (\chk -> ToggleEventVisibility (not chk))
                             ]
                             []
+                        , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
                         , text "Tapahtuma"
                         ]
                    ]
@@ -225,8 +227,8 @@ viewLocationPanel model loc =
                     in
                     div [ class "flex items-start gap-2 type-caption text-text-muted" ]
                         [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ] 
-                            [ text address 
+                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                            [ text address
                             , featherIcon FeatherIcons.externalLink 12
                             ]
                         ]
@@ -298,8 +300,8 @@ viewEventPanel model ev =
                     in
                     div [ class "flex items-start gap-2 type-caption text-text-muted" ]
                         [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ] 
-                            [ text address 
+                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                            [ text address
                             , featherIcon FeatherIcons.externalLink 12
                             ]
                         ]
@@ -355,3 +357,21 @@ translateTag tagStr =
 
         _ ->
             tagStr
+
+iconForTag : String -> FeatherIcons.Icon
+iconForTag tag =
+    case tag of
+        "exhibition" ->
+            FeatherIcons.image
+
+        "store" ->
+            FeatherIcons.shoppingBag
+
+        "fleamarket" ->
+            FeatherIcons.tag
+
+        "museum" ->
+            FeatherIcons.bookOpen
+
+        _ ->
+            FeatherIcons.mapPin
