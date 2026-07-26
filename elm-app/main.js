@@ -691,6 +691,7 @@ function setupPullToRefresh() {
   document.addEventListener('touchstart', function (e) {
     if (isReloading) return
     if (e.touches.length !== 1) { clearPullState(); return }
+    if (!e.target.closest('header')) return
 
     const isAtTop = window.scrollY === 0
     const isWithinRearmWindow = performance.now() <= allowPullUntil
