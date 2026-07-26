@@ -41,10 +41,10 @@ function getMarkerIconHtml(tags) {
       inner = '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>';
       break;
   }
-  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#05131D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
   return `<div style="position: relative; width: 28px; height: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
     <svg width="28" height="40" viewBox="0 0 28 40" style="position: absolute; left: 0; top: 0;">
-      <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0z" fill="#05131D"/>
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0z" fill="#FAC80A"/>
     </svg>
     <div style="position: absolute; left: 0; top: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
       ${svgIcon}

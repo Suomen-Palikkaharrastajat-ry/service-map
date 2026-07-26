@@ -51,7 +51,10 @@ view pbBaseUrl authState _ detPage =
                 div []
                     [ backButton RouteLocations
                     , div [ class "flex justify-between items-start mb-2" ]
-                        [ h1 [ class "type-h1" ] [ text loc.title ]
+                        [ h1 [ class "type-h1 flex items-center gap-2" ]
+                            [ span [ class "text-brand shrink-0" ] [ featherIcon (getMarkerIcon loc) 24 ]
+                            , text loc.title
+                            ]
                         , if isAuthenticated authState then
                             div [ class "flex gap-2 ml-4 shrink-0" ]
                                 [ Button.view
@@ -193,3 +196,31 @@ backButton route =
         , class "flex items-center gap-1 type-caption text-brand hover:underline mb-4"
         ]
         [ featherIcon FeatherIcons.arrowLeft 14, text (t I18n.DetailBack) ]
+
+
+getMarkerIcon : Types.Location -> FeatherIcons.Icon
+getMarkerIcon loc =
+    case ( loc.startDate, loc.endDate ) of
+        ( Just _, Just _ ) ->
+            FeatherIcons.calendar
+
+        _ ->
+            let
+                firstTag =
+                    List.head loc.tags |> Maybe.withDefault "other"
+            in
+            case firstTag of
+                "exhibition" ->
+                    FeatherIcons.image
+
+                "store" ->
+                    FeatherIcons.shoppingBag
+
+                "fleamarket" ->
+                    FeatherIcons.tag
+
+                "museum" ->
+                    FeatherIcons.bookOpen
+
+                _ ->
+                    FeatherIcons.mapPin
