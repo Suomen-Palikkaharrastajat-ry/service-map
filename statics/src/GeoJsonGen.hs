@@ -42,9 +42,39 @@ locationToFeature loc = case PB.locationPoint loc of
                             ]
                     ]
 
-generateGeoJson :: [PB.Location] -> IO String
-generateGeoJson locs = do
-    let features = [f | loc <- locs, Just f <- [locationToFeature loc]]
+eventToFeature :: PB.Event -> Maybe Value
+eventToFeature ev = case PB.eventPoint ev of
+    Nothing -> Nothing
+    Just pt
+        | PB.geoLat pt == 0 && PB.geoLon pt == 0 -> Nothing
+        | otherwise ->
+            Just $
+                object
+                    [ "type" .= ("Feature" :: String)
+                    , "geometry"
+                        .= object
+                            [ "type" .= ("Point" :: String)
+                            , "coordinates" .= toJSON [PB.geoLon pt, PB.geoLat pt]
+                            ]
+                    , "properties"
+                        .= object
+                            [ "id" .= PB.eventId ev
+                            , "title" .= T.unpack (PB.eventTitle ev)
+                            , "description" .= maybe Null (toJSON . T.unpack) (PB.eventDescription ev)
+                            , "start_date" .= toRfc3339 (Just (PB.eventStartDate ev))
+                            , "end_date" .= toRfc3339 (PB.eventEndDate ev)
+                            , "location" .= maybe Null (toJSON . T.unpack) (PB.eventLocation ev)
+                            , "url" .= maybe Null (toJSON . T.unpack) (PB.eventUrl ev)
+                            , "tags" .= map T.unpack (PB.eventTags ev)
+                            , "type" .= ("event" :: String)
+                            ]
+                    ]
+
+generateGeoJson :: [PB.Location] -> [PB.Event] -> IO String
+generateGeoJson locs evs = do
+    let locFeatures = [f | loc <- locs, Just f <- [locationToFeature loc]]
+    let evFeatures = [f | ev <- evs, Just f <- [eventToFeature ev]]
+    let features = locFeatures ++ evFeatures
     return $
         TL.unpack $
             TLE.decodeUtf8 $

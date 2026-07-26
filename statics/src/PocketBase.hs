@@ -3,6 +3,8 @@ module PocketBase (
     GeoPoint (..),
     PbList (..),
     fetchPublishedLocations,
+    Event (..),
+    fetchPublishedEvents,
     imageUrl,
 ) where
 
@@ -93,6 +95,44 @@ nullableText (Just t)
     | otherwise = Just t
 nullableText Nothing = Nothing
 
+data Event = Event
+    { eventId :: String
+    , eventTitle :: Text
+    , eventDescription :: Maybe Text
+    , eventStartDate :: UTCTime
+    , eventEndDate :: Maybe UTCTime
+    , eventAllDay :: Bool
+    , eventUrl :: Maybe Text
+    , eventLocation :: Maybe Text
+    , eventState :: Text
+    , eventImage :: Maybe Text
+    , eventImageDesc :: Maybe Text
+    , eventPoint :: Maybe GeoPoint
+    , eventTags :: [Text]
+    , eventCreated :: UTCTime
+    , eventUpdated :: UTCTime
+    }
+    deriving (Show)
+
+instance FromJSON Event where
+    parseJSON = withObject "Event" $ \o ->
+        Event
+            <$> o .: "id"
+            <*> o .: "title"
+            <*> (nullableText <$> o .:? "description")
+            <*> o .: "start_date"
+            <*> (o .:? "end_date" >>= parsePbDate)
+            <*> o .: "all_day"
+            <*> (nullableText <$> o .:? "url")
+            <*> (nullableText <$> o .:? "location")
+            <*> o .: "state"
+            <*> (nullableText <$> o .:? "image")
+            <*> (nullableText <$> o .:? "image_description")
+            <*> o .:? "point"
+            <*> o .:? "tags" .!= []
+            <*> o .: "created"
+            <*> o .: "updated"
+
 data PbList a = PbList
     { pbItems :: [a]
     , pbTotalItems :: Int
@@ -153,6 +193,43 @@ imageUrl loc filename =
         ++ locationId loc
         ++ "/"
         ++ T.unpack filename
+
+fetchPublishedEvents :: IO [Event]
+fetchPublishedEvents = do
+    baseUrl <- getPbBaseUrl
+    putStrLn $ "Using PocketBase URL: " ++ baseUrl
+    fetchPage baseUrl (1 :: Int) []
+  where
+    fetchPage baseUrl page acc = do
+        let url =
+                baseUrl
+                    ++ "/api/collections/events/records"
+                    ++ "?filter="
+                    ++ urlEncode "(state=\"published\")"
+                    ++ "&sort=-created"
+                    ++ "&perPage=500"
+                    ++ "&page="
+                    ++ show page
+        req <- parseRequest ("GET " ++ url)
+        resp <- httpLBS req
+        let status = getResponseStatusCode resp
+        if status /= 200
+            then do
+                putStrLn $ "Warning: PocketBase returned status " ++ show status
+                return acc
+            else do
+                let body = getResponseBody resp
+                case eitherDecode body :: Either String (PbList Event) of
+                    Left err -> do
+                        putStrLn $ "Warning: Failed to decode events: " ++ err
+                        return acc
+                    Right pbList -> do
+                        let evs = acc ++ pbItems pbList
+                        let total = pbTotalItems pbList
+                        let fetched = length evs
+                        if fetched < total
+                            then fetchPage baseUrl (page + 1) evs
+                            else return evs
 
 urlEncode :: String -> String
 urlEncode = concatMap encodeChar

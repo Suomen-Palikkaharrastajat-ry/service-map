@@ -88,6 +88,7 @@ viewLocationCard authState loc =
         opacityClass =
             if loc.state == Types.Published then
                 ""
+
             else
                 " opacity-50"
     in
