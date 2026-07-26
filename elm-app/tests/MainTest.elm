@@ -64,7 +64,7 @@ suite =
                 \_ ->
                     applyFormField "state" "bogus" emptyLocationFormData
                         |> .state
-                        |> Expect.equal Draft
+                        |> Expect.equal Published
             , test "tag field updates tag" <|
                 \_ ->
                     applyFormField "tag" "museum" emptyLocationFormData

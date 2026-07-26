@@ -1253,6 +1253,34 @@ escapeDecoder =
             )
 
 
+escapeToLocationsDecoder : Decode.Decoder Msg
+escapeToLocationsDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed (NavigateTo RouteLocations)
+
+                else
+                    Decode.fail "Not Escape"
+            )
+
+
+ctrlEnterDecoder : Msg -> Decode.Decoder Msg
+ctrlEnterDecoder msg =
+    Decode.map2 (\key ctrl -> { key = key, ctrl = ctrl })
+        (Decode.field "key" Decode.string)
+        (Decode.field "ctrlKey" Decode.bool)
+        |> Decode.andThen
+            (\event ->
+                if (event.key == "Enter") && event.ctrl then
+                    Decode.succeed msg
+
+                else
+                    Decode.fail "Not Ctrl+Enter"
+            )
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -1268,6 +1296,16 @@ subscriptions model =
             case ( model.page, model.selectedMarker ) of
                 ( Types.PageMap, Just _ ) ->
                     [ Browser.Events.onKeyDown escapeDecoder ]
+
+                ( Types.PageLocationNew _, _ ) ->
+                    [ Browser.Events.onKeyDown escapeToLocationsDecoder
+                    , Browser.Events.onKeyDown (ctrlEnterDecoder NewFormSubmit)
+                    ]
+
+                ( Types.PageLocationEdit _ _, _ ) ->
+                    [ Browser.Events.onKeyDown escapeToLocationsDecoder
+                    , Browser.Events.onKeyDown (ctrlEnterDecoder EditFormSubmit)
+                    ]
 
                 _ ->
                     []
