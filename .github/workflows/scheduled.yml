@@ -15,9 +15,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,27 +25,12 @@ jobs:
       - name: Setup vendor
         run: make vendor
 
-      - uses: cachix/install-nix-action@v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: cachix/cachix-action@v16
-        with:
-          name: palikkaharrastajat
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-          extraPullNames: devenv
-
-      - name: Install devenv
-        run: nix profile install "github:cachix/devenv/v2.0.6"
-
-      - name: Restore Elm cache
+      - name: Restore Native Binary
         uses: actions/cache/restore@v4
         with:
-          path: |
-            ~/.elm
-            elm-app/elm-stuff
-          key: elm-${{ runner.os }}-${{ hashFiles('elm-app/elm.json') }}
-          restore-keys: elm-${{ runner.os }}-
+          path: .bin
+          key: statics-native-bin-${{ github.sha }}
+          restore-keys: statics-native-bin-
 
       - name: Restore basemap cache
         id: basemap-cache-restore
@@ -61,46 +45,60 @@ jobs:
         if: steps.basemap-cache-restore.outputs.cache-hit == 'true'
         run: touch elm-app/public/basemap.pmtiles elm-app/public/style.json
 
-      - name: Restore Cabal index cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.cabal/packages
-          key: cabal-index-${{ hashFiles('cabal.project.freeze') }}
-          restore-keys: cabal-index-
-
-      - name: Restore Cabal store cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.cabal/store
-          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix') }}
-          restore-keys: cabal-store-${{ runner.os }}-
-
-      - name: Cabal update
-        run: devenv shell --profile ci -- cabal update
-
-      - name: Build
-        run: devenv shell --profile ci -- make dist-ci
-
-      - name: Save basemap cache
+      - name: Require basemap cache
         if: steps.basemap-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        run: |
+          echo "Basemap cache missed in scheduled workflow. Run full deploy to regenerate."
+          exit 1
+
+      - name: Restore Elm cache
+        uses: actions/cache/restore@v4
         with:
           path: |
-            elm-app/public/basemap.pmtiles
-            elm-app/public/style.json
-          key: ${{ steps.basemap-cache-restore.outputs.cache-primary-key }}
+            ~/.elm
+            elm-app/elm-stuff
+          key: elm-${{ runner.os }}-${{ hashFiles('elm-app/elm.json') }}
+          restore-keys: elm-${{ runner.os }}-
 
-      - name: Save Cabal store cache
-        uses: actions/cache/save@v4
+      - name: Setup Node (Native)
+        uses: actions/setup-node@v4
         with:
-          path: ~/.cabal/store
-          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix') }}
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: pkgs/package-lock.json
 
-      - name: Save Cabal index cache
-        uses: actions/cache/save@v4
+      - name: Node Modules Cache
+        id: node-cache
+        uses: actions/cache@v4
         with:
-          path: ~/.cabal/packages
-          key: cabal-index-${{ hashFiles('cabal.project.freeze') }}
+          path: pkgs/node_modules
+          key: node-${{ runner.os }}-${{ hashFiles('pkgs/package-lock.json') }}
+
+      - name: Install Frontend Dependencies
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: |
+          cd pkgs
+          npm ci
+          npm install --no-save elm@0.19.1 elm-review
+
+      - name: Link Node Modules
+        run: |
+          cd elm-app
+          ln -sfn ../pkgs/node_modules node_modules
+
+      - name: Build Frontend
+        run: |
+          export PATH=$PWD/pkgs/node_modules/.bin:$PATH
+          cd elm-app
+          elm-tailwind-classes gen
+          mkdir -p .elm-tailwind
+          touch .elm-tailwind/.stamp
+          vite build
+
+      - name: Prepare Output
+        run: |
+          ./.bin/statics
+          cp -r static/. build/
 
       - uses: actions/configure-pages@v5
 
@@ -108,6 +106,16 @@ jobs:
         with:
           path: ./build
 
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
