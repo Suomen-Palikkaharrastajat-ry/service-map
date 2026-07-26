@@ -41,6 +41,7 @@ type alias MarkerData =
     , title : String
     , date : String
     , isEvent : Bool
+    , tags : List String
     }
 
 

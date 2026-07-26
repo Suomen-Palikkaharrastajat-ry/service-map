@@ -1153,12 +1153,15 @@ locationToMarker loc =
                 Just oh ->
                     if String.trim oh == "" then
                         ""
+
                     else
                         case OHParser.parse oh of
                             Ok parsed ->
                                 OHViewer.formatToString OHI18n.finnish parsed
+
                             Err _ ->
                                 ""
+
                 Nothing ->
                     ""
     in
@@ -1168,6 +1171,7 @@ locationToMarker loc =
     , title = loc.title
     , date = formattedOh
     , isEvent = False
+    , tags = loc.tags
     }
 
 
@@ -1179,6 +1183,7 @@ eventToMarker ev =
     , title = ev.title
     , date = Maybe.withDefault "" (DateUtils.formatEventDateDisplay ev)
     , isEvent = True
+    , tags = []
     }
 
 

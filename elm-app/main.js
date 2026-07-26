@@ -21,6 +21,37 @@ function readStoredAuth() {
   }
 }
 
+function getMarkerIconHtml(tags) {
+  const tag = (tags && tags.length > 0) ? tags[0] : 'other';
+  let inner = '';
+  switch (tag) {
+    case 'exhibition':
+      inner = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>';
+      break;
+    case 'store':
+      inner = '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path>';
+      break;
+    case 'fleamarket':
+      inner = '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line>';
+      break;
+    case 'museum':
+      inner = '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>';
+      break;
+    default:
+      inner = '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>';
+      break;
+  }
+  const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  return `<div style="position: relative; width: 28px; height: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+    <svg width="28" height="40" viewBox="0 0 28 40" style="position: absolute; left: 0; top: 0;">
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0z" fill="#05131D"/>
+    </svg>
+    <div style="position: absolute; left: 0; top: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+      ${svgIcon}
+    </div>
+  </div>`;
+}
+
 function clearStoredAuth() {
   localStorage.removeItem('pb_auth_token')
   localStorage.removeItem('pb_auth_model')
@@ -247,12 +278,10 @@ function renderClusters(mapObj) {
               leafEl.style.cursor = 'pointer';
               leafEl.style.marginLeft = `${offsetX}px`;
               leafEl.style.marginTop = `${offsetY}px`;
-              leafEl.innerHTML = `<div style="position: relative;">
-                <svg width="28" height="40" viewBox="0 0 28 40" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-                  <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0zm0 21a7 7 0 110-14 7 7 0 010 14z" fill="#05131D"/>
-                </svg>
+              leafEl.innerHTML = `
+                ${getMarkerIconHtml(m.tags)}
                 <div style="position: absolute; left: 50%; top: 50%; width: ${radius}px; height: 2px; background: #05131D; transform-origin: 0 50%; transform: rotate(${angle + Math.PI}rad); z-index: -1; opacity: 0.3;"></div>
-              </div>`;
+              `;
             }
             
             const leafMarker = new maplibregl.Marker({ element: leafEl })
@@ -287,8 +316,10 @@ function renderClusters(mapObj) {
           el.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`;
           marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(coords);
         } else {
-          marker = new maplibregl.Marker().setLngLat(coords);
-          el = marker.getElement();
+          el = document.createElement('div');
+          el.style.cursor = 'pointer';
+          el.innerHTML = getMarkerIconHtml(m.tags);
+          marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         }
 
         let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
