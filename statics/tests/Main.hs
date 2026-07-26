@@ -207,21 +207,21 @@ dateUtilsTests =
 geoJsonTests :: [TestTree]
 geoJsonTests =
     [ testCase "location with coordinates included" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         assertBool "abc123 in output" ("abc123" `isInfixOf` geo)
     , testCase "location without coordinates excluded" $ do
-        geo <- GeoJsonGen.generateGeoJson [allDayLocation]
+        geo <- GeoJsonGen.generateGeoJson [allDayLocation] []
         assertBool
             "no def456 in output"
             (not ("def456" `isInfixOf` geo))
     , testCase "type is FeatureCollection" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         assertBool "FeatureCollection" ("FeatureCollection" `isInfixOf` geo)
     , testCase "feature has type Feature" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         assertBool "Feature" ("Feature" `isInfixOf` geo)
     , testCase "coordinates in [lon, lat] order (GeoJSON spec)" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         let lonIdx =
                 length $
                     takeWhile
@@ -234,17 +234,17 @@ geoJsonTests =
                         [take i geo | i <- [0 .. length geo]]
         assertBool "lon before lat" (lonIdx < latIdx)
     , testCase "title property present" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         assertBool "Brick Shop Helsinki" ("Brick Shop Helsinki" `isInfixOf` geo)
     , testCase "properties contain opening_hours and tags" $ do
-        geo <- GeoJsonGen.generateGeoJson [timedLocation]
+        geo <- GeoJsonGen.generateGeoJson [timedLocation] []
         assertBool "opening_hours" ("\"opening_hours\":\"Mo-Fr 10:00-18:00\"" `isInfixOf` geo)
         assertBool "tags" ("\"tags\":[\"store\",\"helsinki\"]" `isInfixOf` geo)
     , testCase "empty features when no geolocated locations" $ do
-        geo <- GeoJsonGen.generateGeoJson [allDayLocation]
+        geo <- GeoJsonGen.generateGeoJson [allDayLocation] []
         assertBool "empty features" ("\"features\":[]" `isInfixOf` geo)
     , testCase "location with zero coordinates excluded" $ do
-        geo <- GeoJsonGen.generateGeoJson [zeroPointLocation]
+        geo <- GeoJsonGen.generateGeoJson [zeroPointLocation] []
         assertBool
             "no zero001 in output"
             (not ("zero001" `isInfixOf` geo))
