@@ -68,6 +68,7 @@ let
         haskell.packages.ghc96.hlint
         haskell.packages.ghc96.fourmolu
         pocketbase
+        python3
       ];
 
       enterShell = ''

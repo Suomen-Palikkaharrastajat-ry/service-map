@@ -136,6 +136,8 @@ type alias Flags =
     , authToken : Maybe String
     , authModel : Maybe String
     , now : Int
+    , hiddenTags : List String
+    , eventsHidden : Bool
     }
 
 

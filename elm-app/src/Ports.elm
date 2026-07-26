@@ -17,6 +17,7 @@ port module Ports exposing
     , saveAuthToken
     , setMapMarker
     , setMapStyle
+    , saveFilterState
     )
 
 import Json.Decode as Json
@@ -70,6 +71,9 @@ port saveAuthToken : { token : String, model : String } -> Cmd msg
 
 
 port clearAuthToken : () -> Cmd msg
+
+
+port saveFilterState : { hiddenTags : List String, eventsHidden : Bool } -> Cmd msg
 
 
 port setMapMarker : { lat : Float, lon : Float } -> Cmd msg

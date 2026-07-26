@@ -89,8 +89,8 @@ init flags url key =
       , locations = RemoteData.Loading
       , events = RemoteData.Loading
       , selectedMarker = Nothing
-      , hiddenTags = []
-      , eventsHidden = False
+      , hiddenTags = flags.hiddenTags
+      , eventsHidden = flags.eventsHidden
       , now = now
       , toasts = []
       , nextToastId = 0
@@ -1043,14 +1043,14 @@ update msg model =
                 newModel =
                     { model | hiddenTags = newHiddenTags }
             in
-            ( newModel, updateMarkers newModel )
+            ( newModel, Cmd.batch [ updateMarkers newModel, Ports.saveFilterState { hiddenTags = newModel.hiddenTags, eventsHidden = newModel.eventsHidden } ] )
 
         ToggleEventVisibility isHidden ->
             let
                 newModel =
                     { model | eventsHidden = isHidden }
             in
-            ( newModel, updateMarkers newModel )
+            ( newModel, Cmd.batch [ updateMarkers newModel, Ports.saveFilterState { hiddenTags = newModel.hiddenTags, eventsHidden = newModel.eventsHidden } ] )
 
 
 updateNewForm : Model -> (LocationFormData -> LocationFormData) -> ( Model, Cmd Msg )
