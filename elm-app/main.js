@@ -1,14 +1,6 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
-import Supercluster from 'supercluster'
-import * as pmtiles from 'pmtiles'
-import PocketBase from 'pocketbase'
-
-// Register PMTiles protocol
-const protocol = new pmtiles.Protocol()
-maplibregl.addProtocol('pmtiles', protocol.tile)
+// Register PMTiles protocol will happen dynamically
 
 // ── App init ──────────────────────────────────────────────────────────────────
 
@@ -69,37 +61,15 @@ function isInvalidAuthError(err) {
   return err?.status === 401 || err?.status === 403
 }
 
-async function resolveInitAuth(pbUrl) {
+function getInitAuth() {
   const stored = readStoredAuth()
   if (!stored.authToken || !stored.authModel) {
     return { authToken: null, authModel: null }
   }
-
-  const pb = new PocketBase(pbUrl)
-  pb.authStore.save(stored.authToken, null)
-
-  try {
-    const authData = await pb.collection('users').authRefresh()
-    const refreshedModel = JSON.stringify({
-      id: authData.record.id,
-      name: authData.record.name || '',
-      email: authData.record.email || '',
-    })
-
-    saveStoredAuth(authData.token, refreshedModel)
-    return { authToken: authData.token, authModel: refreshedModel }
-  } catch (err) {
-    if (isInvalidAuthError(err)) {
-      clearStoredAuth()
-      return { authToken: null, authModel: null }
-    }
-
-    console.warn('Auth refresh failed during app init, keeping stored auth:', err)
-    return stored
-  }
+  return stored
 }
 
-const initAuth = await resolveInitAuth(pbBaseUrl)
+const initAuth = getInitAuth()
 
 let initialFilters = { hiddenTags: [], eventsHidden: false }
 try {
@@ -125,6 +95,50 @@ const app = Elm.Main.init({
   flags,
 })
 
+// Trigger background auth refresh
+if (initAuth.authToken) {
+  setTimeout(async () => {
+    try {
+      // Dynamically import PocketBase for background refresh to keep initial bundle small
+      const { default: PB } = await import('pocketbase')
+      const pb = new PB(pbBaseUrl)
+      pb.authStore.save(initAuth.authToken, null)
+      const authData = await pb.collection('users').authRefresh()
+      const refreshedModel = JSON.stringify({
+        id: authData.record.id,
+        name: authData.record.name || '',
+        email: authData.record.email || '',
+      })
+      saveStoredAuth(authData.token, refreshedModel)
+    } catch (err) {
+      if (isInvalidAuthError(err)) {
+        clearStoredAuth()
+        window.location.reload()
+      } else {
+        console.warn('Auth refresh failed during background check:', err)
+      }
+    }
+  }, 0)
+}
+
+// ── Map Libraries Dynamic Loader ──────────────────────────────────────────────
+let maplibregl, Supercluster, pmtiles;
+async function ensureMapLibs() {
+  if (maplibregl) return;
+  const [ml, pm, sc] = await Promise.all([
+    import('maplibre-gl'),
+    import('pmtiles'),
+    import('supercluster'),
+    import('maplibre-gl/dist/maplibre-gl.css')
+  ]);
+  maplibregl = ml.default;
+  pmtiles = pm;
+  Supercluster = sc.default;
+  
+  const protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile);
+}
+
 // ── Nav ports ─────────────────────────────────────────────────────────────────
 
 app.ports.focusMobileNav.subscribe(function () {
@@ -138,7 +152,8 @@ app.ports.focusMobileNav.subscribe(function () {
 
 app.ports.initiateOAuth.subscribe(async (pbBaseUrl) => {
   try {
-    const pb = new PocketBase(pbBaseUrl)
+    const { default: PB } = await import('pocketbase')
+    const pb = new PB(pbBaseUrl)
     
     const authMethods = await pb.collection('users').listAuthMethods()
     const provider = authMethods.oauth2.providers.find(p => p.name === 'oidc')
@@ -331,7 +346,16 @@ function renderClusters(mapObj) {
             leafEl.tabIndex = 0;
             leafEl.addEventListener('click', (e) => {
               e.stopPropagation();
-              app.ports.markerClicked.send(m.id);
+              if (window.matchMedia('(hover: none)').matches) {
+                if (!popup.isOpen()) {
+                  document.querySelectorAll('.mapboxgl-popup, .maplibregl-popup').forEach(p => p.remove());
+                  popup.setLngLat(coords).addTo(mapObj.map);
+                } else {
+                  app.ports.markerClicked.send(m.id);
+                }
+              } else {
+                app.ports.markerClicked.send(m.id);
+              }
             });
             leafEl.addEventListener('keydown', (e) => {
               if (e.key === 'Enter') {
@@ -381,7 +405,16 @@ function renderClusters(mapObj) {
         el.tabIndex = 0;
         el.addEventListener('click', (e) => {
           e.stopPropagation();
-          app.ports.markerClicked.send(m.id);
+          if (window.matchMedia('(hover: none)').matches) {
+            if (!popup.isOpen()) {
+              document.querySelectorAll('.mapboxgl-popup, .maplibregl-popup').forEach(p => p.remove());
+              popup.setLngLat(coords).addTo(mapObj.map);
+            } else {
+              app.ports.markerClicked.send(m.id);
+            }
+          } else {
+            app.ports.markerClicked.send(m.id);
+          }
         });
         el.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
@@ -427,7 +460,8 @@ function getStyleJSON(styleString) {
   return styleString === 'osm' ? osmStyle : '/style.json'
 }
 
-app.ports.initMap.subscribe(({ containerId, lat, lon, zoom, markerLat, markerLon, draggable, mapStyle }) => {
+app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, markerLon, draggable, mapStyle }) => {
+  await ensureMapLibs()
   requestAnimationFrame(() => {
     const container = document.getElementById(containerId)
     if (!container) return
@@ -443,6 +477,13 @@ app.ports.initMap.subscribe(({ containerId, lat, lon, zoom, markerLat, markerLon
       center: [lon, lat],
       zoom: zoom,
       style: styleJson,
+      locale: {
+        'NavigationControl.ZoomIn': 'Lähennä',
+        'NavigationControl.ZoomOut': 'Loitonna',
+        'NavigationControl.ResetBearing': 'Palauta suunta pohjoiseen',
+        'GeolocateControl.FindMyLocation': 'Näytä sijaintini',
+        'GeolocateControl.LocationNotAvailable': 'Sijainti ei ole saatavilla'
+      }
     }
     if (mapStyle !== 'osm') {
       mapOpts.maxZoom = 11
@@ -483,7 +524,8 @@ if (app.ports.setMapStyle) {
   })
 }
 
-app.ports.addMarkers.subscribe((markerList) => {
+app.ports.addMarkers.subscribe(async (markerList) => {
+  await ensureMapLibs()
   const mapObj = maps['map']
   if (!mapObj || !mapObj.map) {
     setTimeout(() => {
@@ -512,7 +554,8 @@ function fitMapToBounds(map, markerList) {
   })
 }
 
-app.ports.setMapMarker.subscribe(({ lat, lon }) => {
+app.ports.setMapMarker.subscribe(async ({ lat, lon }) => {
+  await ensureMapLibs()
   Object.values(maps).forEach(entry => {
     if (entry.marker) {
       entry.marker.setLngLat([lon, lat])
