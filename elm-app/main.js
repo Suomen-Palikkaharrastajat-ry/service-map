@@ -237,12 +237,16 @@ function renderClusters(mapObj) {
               leafEl = document.createElement('div');
               leafEl.className = 'event-marker';
               leafEl.style.cursor = 'pointer';
+              leafEl.style.marginLeft = `${offsetX}px`;
+              leafEl.style.marginTop = `${offsetY}px`;
               leafEl.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; position: relative;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                 <div style="position: absolute; left: 50%; top: 50%; width: ${radius}px; height: 2px; background: #05131D; transform-origin: 0 50%; transform: rotate(${angle + Math.PI}rad); z-index: -1; opacity: 0.3;"></div>
               </div>`;
             } else {
               leafEl = document.createElement('div');
               leafEl.style.cursor = 'pointer';
+              leafEl.style.marginLeft = `${offsetX}px`;
+              leafEl.style.marginTop = `${offsetY}px`;
               leafEl.innerHTML = `<div style="position: relative;">
                 <svg width="28" height="40" viewBox="0 0 28 40" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
                   <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0zm0 21a7 7 0 110-14 7 7 0 010 14z" fill="#05131D"/>
@@ -251,7 +255,7 @@ function renderClusters(mapObj) {
               </div>`;
             }
             
-            const leafMarker = new maplibregl.Marker({ element: leafEl, offset: [offsetX, offsetY] })
+            const leafMarker = new maplibregl.Marker({ element: leafEl })
               .setLngLat(coords)
               .addTo(mapObj.map);
               
