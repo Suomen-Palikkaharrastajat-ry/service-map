@@ -2,8 +2,6 @@ import './main.css'
 import { Elm } from './src/Main.elm'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import MapboxglSpiderifier from 'mapboxgl-spiderifier'
-import 'mapboxgl-spiderifier/index.css'
 import Supercluster from 'supercluster'
 import * as pmtiles from 'pmtiles'
 import PocketBase from 'pocketbase'
@@ -147,50 +145,28 @@ function applyMarkers(mapObj, markerList) {
     mapObj.pointMarkers = {};
   }
   
-  if (mapObj.spiderifier) {
-    mapObj.spiderifier.unspiderfy();
-  } else {
-    mapObj.spiderifier = new MapboxglSpiderifier(mapObj.map, {
-      animate: true,
-      animationSpeed: 200,
-      customPin: true,
-      initializeLeg: function(spiderLeg) {
-        const m = spiderLeg.feature.properties;
-        let el = document.createElement('div');
-        if (m.isEvent) {
-          el.className = 'event-marker';
-          el.style.cursor = 'pointer';
-          el.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></div>`;
-        } else {
-          const tmp = new maplibregl.Marker();
-          el = tmp.getElement();
-          el.style.cursor = 'pointer';
-        }
-        
-        spiderLeg.elements.pin.appendChild(el);
+  if (mapObj.spiderMarkers) {
+    mapObj.spiderMarkers.forEach(m => m.remove());
+    mapObj.spiderMarkers = null;
+  }
 
-        let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
-        if (m.date) {
-          popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
-        }
-        const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
-        
-        el.addEventListener('mouseenter', () => popup.setLngLat([m.lon, m.lat]).addTo(mapObj.map));
-        el.addEventListener('mouseleave', () => popup.remove());
-      },
-      onClick: function(e, spiderLeg) {
-        e.stopPropagation();
-        app.ports.markerClicked.send(spiderLeg.feature.properties.id);
+  // Setup click to unspiderfy
+  if (!mapObj.unspiderfyHandler) {
+    mapObj.unspiderfyHandler = () => {
+      if (mapObj.spiderMarkers) {
+        mapObj.spiderMarkers.forEach(m => m.remove());
+        mapObj.spiderMarkers = null;
       }
-    });
-
-    mapObj.map.on('click', () => {
-      mapObj.spiderifier.unspiderfy();
-    });
-
+      if (mapObj.hiddenCluster) {
+        mapObj.hiddenCluster.style.display = '';
+        mapObj.hiddenCluster = null;
+      }
+    };
+    mapObj.map.on('click', mapObj.unspiderfyHandler);
     mapObj.map.on('move', () => {
       if (mapObj.supercluster) {
         renderClusters(mapObj);
+        mapObj.unspiderfyHandler();
       }
     });
   }
@@ -238,8 +214,64 @@ function renderClusters(mapObj) {
 
         el.addEventListener('click', (e) => {
           e.stopPropagation();
+          mapObj.unspiderfyHandler();
+          
           const leaves = mapObj.supercluster.getLeaves(cluster.properties.cluster_id, Infinity);
-          mapObj.spiderifier.spiderfy(coords, leaves);
+          mapObj.spiderMarkers = [];
+          
+          // Hide this cluster
+          el.style.display = 'none';
+          mapObj.hiddenCluster = el;
+          
+          const angleStep = (Math.PI * 2) / leaves.length;
+          const radius = Math.min(40 + (leaves.length * 3), 100);
+          
+          leaves.forEach((leaf, idx) => {
+            const angle = idx * angleStep;
+            const offsetX = Math.cos(angle) * radius;
+            const offsetY = Math.sin(angle) * radius;
+            
+            const m = leaf.properties;
+            let leafEl;
+            if (m.isEvent) {
+              leafEl = document.createElement('div');
+              leafEl.className = 'event-marker';
+              leafEl.style.cursor = 'pointer';
+              leafEl.innerHTML = `<div style="background-color: white; border: 2px solid #05131D; border-radius: 50%; width: 28px; height: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; position: relative;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C91A09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <div style="position: absolute; left: 50%; top: 50%; width: ${radius}px; height: 2px; background: #05131D; transform-origin: 0 50%; transform: rotate(${angle + Math.PI}rad); z-index: -1; opacity: 0.3;"></div>
+              </div>`;
+            } else {
+              leafEl = document.createElement('div');
+              leafEl.style.cursor = 'pointer';
+              leafEl.innerHTML = `<div style="position: relative;">
+                <svg width="28" height="40" viewBox="0 0 28 40" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+                  <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 26 14 26s14-15.5 14-26C28 6.268 21.732 0 14 0zm0 21a7 7 0 110-14 7 7 0 010 14z" fill="#05131D"/>
+                </svg>
+                <div style="position: absolute; left: 50%; top: 50%; width: ${radius}px; height: 2px; background: #05131D; transform-origin: 0 50%; transform: rotate(${angle + Math.PI}rad); z-index: -1; opacity: 0.3;"></div>
+              </div>`;
+            }
+            
+            const leafMarker = new maplibregl.Marker({ element: leafEl, offset: [offsetX, offsetY] })
+              .setLngLat(coords)
+              .addTo(mapObj.map);
+              
+            let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
+            if (m.date) {
+              popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
+            }
+
+            const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: false, closeOnClick: false }).setHTML(popupHtml);
+
+            leafEl.addEventListener('click', (e) => {
+              e.stopPropagation();
+              app.ports.markerClicked.send(m.id);
+            });
+
+            leafEl.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));
+            leafEl.addEventListener('mouseleave', () => popup.remove());
+            
+            mapObj.spiderMarkers.push(leafMarker);
+          });
         });
       } else {
         const m = cluster.properties;
@@ -277,11 +309,9 @@ function renderClusters(mapObj) {
     }
     
     newPointMarkers[id] = marker;
-    // Remove it from old pointMarkers so we know what's left over
     delete mapObj.pointMarkers[id];
   });
 
-  // Remove markers that are no longer visible
   Object.values(mapObj.pointMarkers).forEach(m => m.remove());
   mapObj.pointMarkers = newPointMarkers;
 }

@@ -19,7 +19,7 @@ let
   npmDeps = pkgs.fetchNpmDeps {
     name = "service-map-npm-deps";
     src = patchedSrc;
-    hash = "sha256-h+oqquqgKRYwT20GIektPLSgpPKXs/m+QLv80naQHF0=";
+    hash = "sha256-ay8W8T4NZVkwbtJRln6BgxdSZOnHj4FybZvHwyCRWsY=";
   };
 in
 pkgs.stdenv.mkDerivation {
