@@ -5,6 +5,7 @@
 devenv.local.nix
 devenv.local.yaml
 .direnv
+event-calendar/
 
 # --- Dependencies ---
 node_modules
