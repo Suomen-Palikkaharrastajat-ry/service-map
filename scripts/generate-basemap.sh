@@ -76,10 +76,13 @@ fi
 rm -f .cache/basemap/world_countries.geojson
 ogr2ogr -f GeoJSON .cache/basemap/world_countries.geojson .cache/basemap/ne/ne_50m_admin_0_countries.shp
 
+echo "Copying world countries GeoJSON to public directory..."
+cp .cache/basemap/world_countries.geojson elm-app/public/world_countries.geojson
+
 echo "Generating PMTiles with tippecanoe..."
 # Find which files successfully generated (some layers might be empty or missing)
 GEOJSONS=""
-for f in hallinto vesi tie taajama raja nimisto world_countries; do
+for f in hallinto vesi tie taajama raja nimisto; do
   if [ -f ".cache/basemap/${f}.geojson" ]; then
     GEOJSONS="$GEOJSONS .cache/basemap/${f}.geojson"
   fi
@@ -106,6 +109,10 @@ cat << 'EOF' > elm-app/public/style.json
       "type": "vector",
       "url": "pmtiles:///basemap.pmtiles",
       "attribution": "&copy; Maanmittauslaitos"
+    },
+    "world_countries": {
+      "type": "geojson",
+      "data": "/world_countries.geojson"
     }
   },
   "glyphs": "/fonts/{fontstack}/{range}.pbf",
@@ -120,8 +127,7 @@ cat << 'EOF' > elm-app/public/style.json
     {
       "id": "world_countries_fill",
       "type": "fill",
-      "source": "basemap",
-      "source-layer": "world_countries",
+      "source": "world_countries",
       "paint": {
         "fill-color": "#f0f0f0"
       }
@@ -129,8 +135,7 @@ cat << 'EOF' > elm-app/public/style.json
     {
       "id": "world_countries_borders",
       "type": "line",
-      "source": "basemap",
-      "source-layer": "world_countries",
+      "source": "world_countries",
       "paint": {
         "line-color": "#c0c0c0",
         "line-width": 1.5

@@ -5,7 +5,8 @@
 devenv.local.nix
 devenv.local.yaml
 .direnv
-event-calendar/
+/event-calendar/
+/planet/
 
 # --- Dependencies ---
 node_modules
@@ -51,3 +52,4 @@ Thumbs.db
 # --- Misc / local ---
 .claude/
 TODO*
+elm-app/public/world_countries.geojson
