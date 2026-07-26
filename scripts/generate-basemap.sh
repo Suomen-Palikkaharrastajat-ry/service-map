@@ -67,10 +67,19 @@ print(f'Added minzoom to {len(data[\"features\"])} features')
 "
 fi
 
+echo "Fetching Natural Earth Admin 0 for world countries..."
+mkdir -p .cache/basemap/ne
+if [ ! -f .cache/basemap/ne/ne_50m_admin_0_countries.shp ]; then
+  curl -sL "https://naciscdn.org/naturalearth/50m/cultural/ne_50m_admin_0_countries.zip" > .cache/basemap/ne/ne_50m_admin_0_countries.zip
+  unzip -o -q .cache/basemap/ne/ne_50m_admin_0_countries.zip -d .cache/basemap/ne/
+fi
+rm -f .cache/basemap/world_countries.geojson
+ogr2ogr -f GeoJSON .cache/basemap/world_countries.geojson .cache/basemap/ne/ne_50m_admin_0_countries.shp
+
 echo "Generating PMTiles with tippecanoe..."
 # Find which files successfully generated (some layers might be empty or missing)
 GEOJSONS=""
-for f in hallinto vesi tie taajama raja nimisto; do
+for f in hallinto vesi tie taajama raja nimisto world_countries; do
   if [ -f ".cache/basemap/${f}.geojson" ]; then
     GEOJSONS="$GEOJSONS .cache/basemap/${f}.geojson"
   fi
@@ -105,7 +114,26 @@ cat << 'EOF' > elm-app/public/style.json
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#f0f0f0"
+        "background-color": "#a0c8f0"
+      }
+    },
+    {
+      "id": "world_countries_fill",
+      "type": "fill",
+      "source": "basemap",
+      "source-layer": "world_countries",
+      "paint": {
+        "fill-color": "#f0f0f0"
+      }
+    },
+    {
+      "id": "world_countries_borders",
+      "type": "line",
+      "source": "basemap",
+      "source-layer": "world_countries",
+      "paint": {
+        "line-color": "#c0c0c0",
+        "line-width": 1.5
       }
     },
     {
