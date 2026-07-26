@@ -52,7 +52,7 @@ view model locPage =
                                 span [ class "type-caption text-brand-red flex items-center gap-1" ]
                                     [ featherIcon FeatherIcons.alertCircle 14, text (t I18n.KmlError) ]
                         , Button.viewLink
-                            { label = t I18n.LocationListNew
+                            { label = "+ " ++ t I18n.LocationListNew
                             , variant = Button.Primary
                             , size = Button.Small
                             , href = toHref RouteLocationNew
@@ -84,7 +84,14 @@ view model locPage =
 
 viewLocationCard : AuthState -> Location -> Html Msg
 viewLocationCard authState loc =
-    div [ class "border rounded p-3 hover:bg-bg-subtle" ]
+    let
+        opacityClass =
+            if loc.state == Types.Published then
+                ""
+            else
+                " opacity-50"
+    in
+    div [ class ("border rounded p-3 hover:bg-bg-subtle" ++ opacityClass) ]
         [ div [ class "flex items-start justify-between gap-4" ]
             [ div []
                 [ h3 [ class "type-h4" ]
