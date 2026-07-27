@@ -56,6 +56,7 @@ view model locPage =
                             , variant = Button.Primary
                             , size = Button.Small
                             , href = toHref RouteLocationNew
+                            , target = Nothing
                             }
                         ]
 

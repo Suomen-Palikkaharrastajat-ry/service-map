@@ -255,6 +255,14 @@ viewLocationPanel model loc =
                             , variant = Primary
                             , size = Small
                             , href = url
+                            , target =
+                                Just
+                                    (if model.isEmbed then
+                                        "_top"
+
+                                     else
+                                        "_blank"
+                                    )
                             }
 
                     Nothing ->
@@ -336,6 +344,14 @@ viewEventPanel model ev =
                             , variant = Primary
                             , size = Small
                             , href = url
+                            , target =
+                                Just
+                                    (if model.isEmbed then
+                                        "_top"
+
+                                     else
+                                        "_blank"
+                                    )
                             }
 
                     Nothing ->
