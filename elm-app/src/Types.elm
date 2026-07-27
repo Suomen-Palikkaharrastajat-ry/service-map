@@ -138,6 +138,7 @@ type alias Flags =
     , now : Int
     , hiddenTags : List String
     , eventsHidden : Bool
+    , isEmbed : Bool
     }
 
 
@@ -264,6 +265,7 @@ type alias Model =
     , selectedMarker : Maybe SelectedMarker
     , hiddenTags : List String
     , eventsHidden : Bool
+    , isEmbed : Bool
     , now : Time.Posix
     , toasts : List Toast
     , nextToastId : Int

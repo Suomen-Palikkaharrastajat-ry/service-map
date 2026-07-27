@@ -88,6 +88,7 @@ const flags = {
   pbBaseUrl,
   hiddenTags: initialFilters.hiddenTags || [],
   eventsHidden: initialFilters.eventsHidden || false,
+  isEmbed: window.location.pathname.endsWith('embed.html'),
 }
 
 const app = Elm.Main.init({

@@ -91,6 +91,7 @@ init flags url key =
       , selectedMarker = Nothing
       , hiddenTags = flags.hiddenTags
       , eventsHidden = flags.eventsHidden
+      , isEmbed = flags.isEmbed
       , now = now
       , toasts = []
       , nextToastId = 0
@@ -1334,9 +1335,21 @@ view model =
     { title = t AppTitle
     , body =
         [ div [ class containerClass ]
-            [ View.Layout.viewHeader model.authState model.menuOpen
-            , View.Layout.viewMobileOverlay model.menuOpen
-            , View.Layout.viewMobileDrawer model.menuOpen model.page model.authState
+            [ if model.isEmbed then
+                Html.text ""
+
+              else
+                View.Layout.viewHeader model.authState model.menuOpen
+            , if model.isEmbed then
+                Html.text ""
+
+              else
+                View.Layout.viewMobileOverlay model.menuOpen
+            , if model.isEmbed then
+                Html.text ""
+
+              else
+                View.Layout.viewMobileDrawer model.menuOpen model.page model.authState
             , Html.main_ [ class "flex-1 flex flex-col items-stretch relative w-full overflow-hidden" ]
                 [ case model.page of
                     PageMap ->

@@ -18,6 +18,12 @@ export default defineConfig({
   build: {
     outDir: '../build',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        embed: 'embed.html',
+      }
+    }
   },
   base: '/',
   cacheDir: '.vite',
