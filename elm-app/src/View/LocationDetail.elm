@@ -16,8 +16,8 @@ import Types exposing (AuthState(..), LocationDetailPage, Msg(..), isAuthenticat
 import View.Icons exposing (featherIcon)
 
 
-view : String -> AuthState -> String -> LocationDetailPage -> Html Msg
-view pbBaseUrl authState _ detPage =
+view : String -> Bool -> AuthState -> String -> LocationDetailPage -> Html Msg
+view pbBaseUrl isEmbed authState _ detPage =
     div [ class "max-w-2xl mx-auto p-4 w-full" ]
         [ case detPage.location of
             RemoteData.NotAsked ->
@@ -144,7 +144,13 @@ view pbBaseUrl authState _ detPage =
                                                 ++ String.fromFloat loc.point.lon
                                                 ++ "&zoom=15"
                                             )
-                                        , target "_blank"
+                                        , target
+                                            (if isEmbed then
+                                                "_top"
+
+                                             else
+                                                "_blank"
+                                            )
                                         , class "text-brand hover:underline inline-flex items-center gap-1"
                                         ]
                                         [ text address
@@ -177,7 +183,13 @@ view pbBaseUrl authState _ detPage =
                             div [ class "mb-4" ]
                                 [ a
                                     [ href url
-                                    , target "_blank"
+                                    , target
+                                        (if isEmbed then
+                                            "_top"
+
+                                         else
+                                            "_blank"
+                                        )
                                     , class "text-brand hover:underline inline-flex items-center gap-1 type-caption"
                                     ]
                                     [ text (t I18n.DetailMoreInfo)

@@ -1365,7 +1365,7 @@ view model =
 
                     PageLocationDetail id detPage ->
                         div [ class "flex-1 overflow-y-auto w-full" ]
-                            [ Page.LocationDetail.view model.pbBaseUrl model.authState id detPage ]
+                            [ Page.LocationDetail.view model.pbBaseUrl model.isEmbed model.authState id detPage ]
 
                     PageLocationEdit id editPage ->
                         div [ class "flex-1 overflow-y-auto w-full" ]

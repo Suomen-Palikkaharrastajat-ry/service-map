@@ -16,6 +16,6 @@ init pbBaseUrl maybeToken id =
     )
 
 
-view : String -> AuthState -> String -> LocationDetailPage -> Html Msg
+view : String -> Bool -> AuthState -> String -> LocationDetailPage -> Html Msg
 view =
     View.LocationDetail.view
