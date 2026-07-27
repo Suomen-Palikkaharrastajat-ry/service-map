@@ -1,0 +1,78 @@
+name: Basemap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: basemap-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: scripts
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: palikkaharrastajat
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          extraPullNames: devenv
+
+      - name: Install devenv
+        run: nix profile install "github:cachix/devenv/v2.0.6"
+
+      - name: Restore source data cache
+        id: sources-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/basemap
+          key: basemap-sources-${{ hashFiles('scripts/generate-basemap.sh') }}
+
+      - name: Generate basemap
+        run: devenv shell -- make basemap
+
+      - name: Save source data cache
+        if: steps.sources-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/basemap
+          key: ${{ steps.sources-cache-restore.outputs.cache-primary-key }}
+
+      - name: Upload basemap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: basemap
+          path: |
+            dist/basemap.pmtiles
+            dist/style.json
+            dist/world_countries.geojson
+
+      - name: Publish latest release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest basemap
+          body: Automatically generated PMTiles basemap from MML and Natural Earth open data.
+          files: |
+            dist/basemap.pmtiles
+            dist/style.json
+            dist/world_countries.geojson
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

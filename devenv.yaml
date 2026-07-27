@@ -1,4 +1,3 @@
 inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/master
-profile: shell

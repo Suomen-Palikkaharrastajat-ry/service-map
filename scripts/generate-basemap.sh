@@ -2,6 +2,7 @@
 set -e
 
 mkdir -p .cache/basemap/mml_shape_250k
+mkdir -p dist
 
 echo "Fetching MML Maastokartta 1:250k (ETRS89) from kapsi.fi..."
 GRIDS="K2 K3 K4 L2 L3 L4 L5 M3 M4 M5 N3 N4 N5 N6 P3 P4 P5 P6 Q3 Q4 Q5 R3 R4 R5 S4 S5 T4 T5 U4 U5 V3 V4 V5 W3 W4 W5 X4 X5"
@@ -77,8 +78,8 @@ rm -f .cache/basemap/world_countries.geojson
 ogr2ogr -f GeoJSON .cache/basemap/world_countries.geojson .cache/basemap/ne/ne_50m_admin_0_countries.shp
 
 # Invalidate cache to include world_countries.geojson
-echo "Copying world countries GeoJSON to public directory..."
-cp .cache/basemap/world_countries.geojson elm-app/public/world_countries.geojson
+echo "Copying world countries GeoJSON to dist/..."
+cp .cache/basemap/world_countries.geojson dist/world_countries.geojson
 
 echo "Generating PMTiles with tippecanoe..."
 # Find which files successfully generated (some layers might be empty or missing)
@@ -99,10 +100,10 @@ if [ ! -f .cache/basemap/pmtiles ]; then
 fi
 
 echo "Converting to PMTiles format..."
-.cache/basemap/pmtiles convert .cache/basemap/basemap.mbtiles elm-app/public/basemap.pmtiles --force
+.cache/basemap/pmtiles convert .cache/basemap/basemap.mbtiles dist/basemap.pmtiles --force
 
 echo "Generating style.json..."
-cat << 'EOF' > elm-app/public/style.json
+cat << 'EOF' > dist/style.json
 {
   "version": 8,
   "sources": {
