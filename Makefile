@@ -33,12 +33,12 @@ shell: ## Enter devenv shell
 # ── Elm frontend ──────────────────────────────────────────────────────────────
 
 .PHONY: elm-dev
-elm-dev: ## Start Elm + Vite dev server (hot reload)
-	cd elm-app && vite
+elm-dev: vendor ## Start Elm + Vite dev server (hot reload)
+	cd elm-app && vite $(VITE_FLAGS)
 
 .PHONY: elm-dev-local
-elm-dev-local: ## Start Elm + Vite dev server against local PocketBase
-	cd elm-app && VITE_POCKETBASE_URL=$(LOCAL_PB_URL) vite
+elm-dev-local: vendor ## Start Elm + Vite dev server against local PocketBase
+	cd elm-app && VITE_POCKETBASE_URL=$(LOCAL_PB_URL) vite $(VITE_FLAGS)
 
 ELM_APP_SOURCES := $(shell find elm-app/src -name '*.elm')
 ELM_PACKAGE_SOURCES := $(shell find vendor/master-builder/packages -name '*.elm' -o -name '*.css' 2>/dev/null)

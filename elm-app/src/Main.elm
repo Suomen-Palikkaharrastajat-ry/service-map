@@ -1267,6 +1267,19 @@ escapeToLocationsDecoder =
             )
 
 
+escapeToCloseMenuDecoder : Decode.Decoder Msg
+escapeToCloseMenuDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed CloseMenu
+
+                else
+                    Decode.fail "Not Escape"
+            )
+
+
 ctrlEnterDecoder : Msg -> Decode.Decoder Msg
 ctrlEnterDecoder msg =
     Decode.map2 (\key ctrl -> { key = key, ctrl = ctrl })
@@ -1310,8 +1323,15 @@ subscriptions model =
 
                 _ ->
                     []
+
+        menuEscSub =
+            if model.menuOpen then
+                [ Browser.Events.onKeyDown escapeToCloseMenuDecoder ]
+
+            else
+                []
     in
-    Sub.batch (baseSubs ++ escSub)
+    Sub.batch (baseSubs ++ escSub ++ menuEscSub)
 
 
 view : Model -> Browser.Document Msg
