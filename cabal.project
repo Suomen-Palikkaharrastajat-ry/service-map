@@ -1,1 +1,3 @@
-packages: statics/
+packages:
+  statics/
+  vendor/master-builder/packages-hs/statics-common/

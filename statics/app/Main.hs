@@ -31,6 +31,16 @@ main = do
             exitWith (ExitFailure 1)
         Right () -> putStrLn "Done."
 
+-- | Adapt PocketBase locations to the shared image fetcher.
+locationImageSource :: ImageFetcher.ImageSource PocketBase.Location
+locationImageSource =
+    ImageFetcher.ImageSource
+        { ImageFetcher.sourceId = PocketBase.locationId
+        , ImageFetcher.sourceImage = PocketBase.locationImage
+        , ImageFetcher.sourceImageUrl = PocketBase.imageUrl
+        , ImageFetcher.destDir = "assets/images"
+        }
+
 run :: IO ()
 run = do
     putStrLn "Fetching locations from PocketBase..."
@@ -46,11 +56,11 @@ run = do
         todayHki = localDay (zonedTimeToLocalTime (DU.toHelsinki now))
         upcomingEvents = filter (isUpcoming todayHki todayUtc) events
 
-    createDirectoryIfMissing True "static"
-    createDirectoryIfMissing True "static/images"
+    createDirectoryIfMissing True "assets"
+    createDirectoryIfMissing True "assets/images"
 
     putStrLn "Downloading images..."
-    imageMap <- ImageFetcher.downloadAllImages locs
+    imageMap <- ImageFetcher.downloadAllImages locationImageSource locs
 
     let genCtx =
             FeedGen.GeneratorContext
@@ -61,13 +71,13 @@ run = do
     rss <- FeedGen.generateRss genCtx locs
     atom <- FeedGen.generateAtom genCtx locs
     json <- FeedGen.generateJsonFeed locs
-    writeStaticFile "static/kartta.rss" rss
-    writeStaticFile "static/kartta.atom" atom
-    writeStaticFile "static/kartta.json" json
+    writeStaticFile "assets/kartta.rss" rss
+    writeStaticFile "assets/kartta.atom" atom
+    writeStaticFile "assets/kartta.json" json
 
     putStrLn "Generating GeoJSON..."
     geo <- GeoJsonGen.generateGeoJson locs upcomingEvents
-    writeStaticFile "static/kartta.geo.json" geo
+    writeStaticFile "assets/kartta.geo.json" geo
 
 writeStaticFile :: FilePath -> String -> IO ()
 writeStaticFile path content = do

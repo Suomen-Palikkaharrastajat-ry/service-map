@@ -4,16 +4,6 @@ LOCAL_PB_URL = http://127.0.0.1:8090
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: develop
-develop: devenv.local.nix devenv.local.yaml ## Bootstrap opinionated development environment
-	devenv shell --profile=devcontainer -- code .
-
-devenv.local.nix:
-	cp devenv.local.nix.example devenv.local.nix
-
-devenv.local.yaml:
-	cp devenv.local.yaml.example devenv.local.yaml
-
 # ── Vendor / submodules ──────────────────────────────────────────────────────
 
 .PHONY: vendor
@@ -46,17 +36,17 @@ ELM_PACKAGE_SOURCES := $(shell find vendor/master-builder/packages -name '*.elm'
 .PHONY: elm-tailwind-gen
 elm-tailwind-gen: elm-app/.elm-tailwind/.stamp ## Generate typed Tailwind Elm modules into elm-app/.elm-tailwind/
 
-elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.js elm-app/main.css $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES)
+elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.mjs elm-app/main.css $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES)
 	cd elm-app && elm-tailwind-classes gen
 	mkdir -p elm-app/.elm-tailwind
 	touch $@
 
-build/.elm-stamp: elm-app/public/basemap.pmtiles elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.js elm-app/main.js elm-app/main.css
+dist/.elm-stamp: elm-app/public/basemap.pmtiles elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css
 	cd elm-app && vite build
 	touch $@
 
 .PHONY: elm-build
-elm-build: build/.elm-stamp ## Production build of Elm SPA → build/
+elm-build: dist/.elm-stamp ## Production build of Elm SPA → dist/
 
 .PHONY: elm-build-local
 elm-build-local: ## Production build of Elm SPA targeting local PocketBase
@@ -67,8 +57,13 @@ elm-test: elm-tailwind-gen ## Run Elm unit tests
 	cd elm-app && elm-test
 
 .PHONY: elm-check
-elm-check: ## Check Elm formatting (no changes)
+elm-check: ## Check Elm formatting + elm-review (no changes)
 	cd elm-app && elm-format --validate src/ tests/
+	$(MAKE) elm-review
+
+.PHONY: elm-review
+elm-review: elm-tailwind-gen ## Run elm-review with the shared LlmAgent rules from vendor/master-builder
+	cd elm-app && elm-review --config ../review
 
 .PHONY: elm-format
 elm-format: ## Auto-format Elm source files
@@ -85,13 +80,13 @@ statics/statics: $(HS_SOURCES)
 .PHONY: statics-build
 statics-build: statics/statics ## Build Haskell static generator
 
-build/.statics-stamp: statics/statics
-	mkdir -p build
+dist/.statics-stamp: statics/statics
+	mkdir -p dist
 	./statics/statics
 	touch $@
 
 .PHONY: statics
-statics: build/.statics-stamp ## Generate static files (rss, atom, json, geojson, images)
+statics: dist/.statics-stamp ## Generate static files (rss, atom, json, geojson, images)
 
 .PHONY: statics-local
 statics-local: ## Generate static files against local PocketBase
@@ -128,25 +123,25 @@ elm-app/public/basemap.pmtiles: scripts/generate-basemap.sh
 .PHONY: watch
 watch: elm-dev ## Start development server
 
-build/.statics-stamp-nix:
-	mkdir -p build
+dist/.statics-stamp-nix:
+	mkdir -p dist
 	statics
-	touch build/.statics-stamp
+	touch dist/.statics-stamp
 
 .PHONY: build
 build: elm-build ## Production build of Elm SPA
 
 .PHONY: dist-ci
-dist-ci: build/.elm-stamp build/.statics-stamp-nix ## CI build: Elm SPA + statics via nix-provided binary
-	cp -r static/. build/
+dist-ci: dist/.elm-stamp dist/.statics-stamp-nix ## CI build: Elm SPA + statics via nix-provided binary
+	cp -r assets/. dist/
 
 .PHONY: dist
-dist: build/.elm-stamp build/.statics-stamp ## Full production build: Elm SPA + static files
-	cp -r static/. build/
+dist: dist/.elm-stamp dist/.statics-stamp ## Full production build: Elm SPA + static files
+	cp -r assets/. dist/
 
 .PHONY: dist-local
 dist-local: elm-build-local statics-local ## Full local build against local PocketBase
-	cp -r static/. build/
+	cp -r assets/. dist/
 
 # ── Test & quality ────────────────────────────────────────────────────────────
 
@@ -164,4 +159,4 @@ format: elm-format statics-format ## Auto-format all code
 
 .PHONY: clean
 clean: ## Clean build artifacts
-	rm -rf build elm-app/.elm-tailwind elm-app/elm-stuff statics/statics dist-newstyle
+	rm -rf dist elm-app/.elm-tailwind elm-app/elm-stuff statics/statics dist-newstyle

@@ -5,6 +5,7 @@
         "src",
         "packages/design-tokens/src",
         "packages/ui-components/src",
+        "packages/app-toolkit/src",
         "packages/osm-opening-hours/src"
     ],
     "elm-version": "0.19.1",

@@ -20,7 +20,7 @@ dist-newstyle/
 statics/statics
 
 # --- Elm / frontend build artifacts ---
-/build/
+/dist/
 elm-app/elm-stuff/
 elm-app/.elm-tailwind/
 elm-app/.vite/
@@ -28,11 +28,11 @@ elm-app/public/basemap.pmtiles*
 elm-app/public/style.json
 
 # --- Generated static files (statics output) ---
-static/kartta.json
-static/kartta.geo.json
-static/*.rss
-static/*.atom
-static/images/
+assets/kartta.json
+assets/kartta.geo.json
+assets/*.rss
+assets/*.atom
+assets/images/
 
 # --- Logs / local test artifacts ---
 *.log
@@ -53,3 +53,4 @@ Thumbs.db
 .claude/
 TODO*
 elm-app/public/world_countries.geojson
+review/elm-stuff/

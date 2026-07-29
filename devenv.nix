@@ -3,7 +3,14 @@ let
     { pkgs, ... }:
     let
       npmTools = pkgs.callPackage ./pkgs/npm-tools.nix { };
-      hpkgs = pkgs.haskell.packages.ghc96;
+      hpkgs = pkgs.haskell.packages.ghc96.override {
+        overrides = hself: hsuper: {
+          statics-common =
+            hself.callCabal2nix "statics-common"
+              ./vendor/master-builder/packages-hs/statics-common
+              { };
+        };
+      };
       staticsPackage = hpkgs.callCabal2nix "statics" ./statics { };
     in
     {
@@ -26,15 +33,7 @@ let
 
       enterShell = ''
         ln -sfn "${npmTools}/lib/node_modules" node_modules
-        mkdir -p elm-app/node_modules
-        for pkg in "${npmTools}/lib/node_modules"/.*; do
-          if [ "$(basename "$pkg")" != "." ] && [ "$(basename "$pkg")" != ".." ]; then
-            ln -sfn "$pkg" "elm-app/node_modules/$(basename "$pkg")"
-          fi
-        done
-        for pkg in "${npmTools}/lib/node_modules"/*; do
-          ln -sfn "$pkg" "elm-app/node_modules/$(basename "$pkg")"
-        done
+        ln -sfn "${npmTools}/lib/node_modules" elm-app/node_modules
       '';
     };
 
@@ -73,15 +72,7 @@ let
 
       enterShell = ''
         ln -sfn "${npmTools}/lib/node_modules" node_modules
-        mkdir -p elm-app/node_modules
-        for pkg in "${npmTools}/lib/node_modules"/.*; do
-          if [ "$(basename "$pkg")" != "." ] && [ "$(basename "$pkg")" != ".." ]; then
-            ln -sfn "$pkg" "elm-app/node_modules/$(basename "$pkg")"
-          fi
-        done
-        for pkg in "${npmTools}/lib/node_modules"/*; do
-          ln -sfn "$pkg" "elm-app/node_modules/$(basename "$pkg")"
-        done
+        ln -sfn "${npmTools}/lib/node_modules" elm-app/node_modules
 
         echo ""
         echo "── service-map dev environment ──────────────────────"
