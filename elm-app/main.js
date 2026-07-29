@@ -1,10 +1,16 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
-// Register PMTiles protocol will happen dynamically
 
 // ── App init ──────────────────────────────────────────────────────────────────
 
 const pbBaseUrl = import.meta.env.VITE_POCKETBASE_URL || 'https://data.palikkaharrastajat.fi'
+
+// Vector basemap style, built and served by the service-map-tiles project at
+// tiles.palikkaharrastajat.fi. The style references its PMTiles archives and
+// glyphs with absolute URLs, so the app only needs to point MapLibre at it —
+// nothing tile-related is hosted here anymore. Override with
+// VITE_BASEMAP_STYLE_URL for a staging tiles deployment or a locally served copy.
+const basemapStyleUrl = import.meta.env.VITE_BASEMAP_STYLE_URL || 'https://tiles.palikkaharrastajat.fi/style.json'
 
 function readStoredAuth() {
   return {
@@ -458,7 +464,7 @@ const osmStyle = {
 }
 
 function getStyleJSON(styleString) {
-  return styleString === 'osm' ? osmStyle : '/style.json'
+  return styleString === 'osm' ? osmStyle : basemapStyleUrl
 }
 
 app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, markerLon, draggable, mapStyle }) => {
@@ -478,6 +484,11 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
       center: [lon, lat],
       zoom: zoom,
       style: styleJson,
+      // Compact so it collapses to an ⓘ button on small (375px) viewports.
+      // Credits come from each style source's `attribution` field: the vector
+      // basemap's baked-in © Maanmittauslaitos / © OpenMapTiles © OpenStreetMap
+      // contributors / Natural Earth, and the raster `osm` picker style's own.
+      attributionControl: { compact: true },
       locale: {
         'NavigationControl.ZoomIn': 'Lähennä',
         'NavigationControl.ZoomOut': 'Loitonna',

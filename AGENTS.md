@@ -26,7 +26,7 @@ review/           elm-review config (shared LlmAgent rules via vendor/master-bui
 assets/           Files copied verbatim into dist/
 fixtures/         Test data fixtures
 pkgs/             Nix-managed npm packages (npm-tools.nix wraps vendor/master-builder/pkgs/mk-npm-tools.nix)
-scripts/          Scripts (e.g., generate-basemap.sh)
+scripts/          Scripts
 vendor/master-builder  Submodule for shared Elm + Haskell packages
 dist/             Generated production output (not committed)
 .github/workflows CI/CD
@@ -85,7 +85,6 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 | `make format` | Auto-format all source files |
 | `make check` | Validate all formatting without changes |
 | `make clean` | Remove `dist/` |
-| `make basemap` | Run MapLibre/PMTiles basemap generator |
 | `make elm-tailwind-gen` | Run Tailwind generation for Elm |
 | `make watch` | Run watch mode for development |
 
@@ -95,7 +94,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 
 ### Elm SPA
 - `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`, `/#/callback`
-- MapLibre GL + PMTiles basemap generated from MML open data (`scripts/generate-basemap.sh`, cached artifacts, `elm-app/public/style.json`).
+- MapLibre GL vector basemap loaded from the external [`service-map-tiles`](https://github.com/Suomen-Palikkaharrastajat-ry/service-map-tiles) service, served from `https://tiles.palikkaharrastajat.fi/`. `main.js` registers the `pmtiles://` protocol and points MapLibre at the published `style.json` (override via `VITE_BASEMAP_STYLE_URL`); no tiles, glyphs, or GeoJSON are hosted here. The form location-picker uses an inline OSM raster style for street-level zoom.
 - Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`, `getCallbackParams`/`callbackParams`.
 - OAuth popup + redirect-callback flow.
 - Uses `RemoteData` for async state.
@@ -110,7 +109,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 - **Submodule gitlink required** (refer to TODO-01 history).
 - **`mapMarkerMoved` must stay subscribed**.
 - **(0,0) coordinates must be filtered** out.
-- **Basemap caching in CI** is important for build performance.
+- **Basemap is external** — served by the `service-map-tiles` project, not built here. If the map is blank, check `VITE_BASEMAP_STYLE_URL` and that `https://tiles.palikkaharrastajat.fi/style.json` is reachable.
 - **node_modules symlinks are read-only Nix store** — never `npm install` inside `elm-app/`.
 - **GHC pinned to 9.6**.
 - Run `cabal update` before the first `cabal build`.

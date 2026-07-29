@@ -42,20 +42,6 @@ jobs:
           key: elm-${{ runner.os }}-${{ hashFiles('elm-app/elm.json') }}
           restore-keys: elm-${{ runner.os }}-
 
-      - name: Restore basemap cache
-        id: basemap-cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            elm-app/public/basemap.pmtiles
-            elm-app/public/style.json
-            elm-app/public/world_countries.geojson
-          key: basemap-${{ hashFiles('scripts/generate-basemap.sh') }}
-
-      - name: Touch basemap cache (prevent make rebuild)
-        if: steps.basemap-cache-restore.outputs.cache-hit == 'true'
-        run: touch elm-app/public/basemap.pmtiles elm-app/public/style.json elm-app/public/world_countries.geojson
-
       - name: Restore Cabal index cache
         id: cabal-index-restore
         uses: actions/cache/restore@v4
@@ -83,16 +69,6 @@ jobs:
 
       - name: Build
         run: devenv shell --profile ci -- make dist-ci
-
-      - name: Save basemap cache
-        if: steps.basemap-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            elm-app/public/basemap.pmtiles
-            elm-app/public/style.json
-            elm-app/public/world_countries.geojson
-          key: ${{ steps.basemap-cache-restore.outputs.cache-primary-key }}
 
       - name: Save Cabal store cache
         uses: actions/cache/save@v4

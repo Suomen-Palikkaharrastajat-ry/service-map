@@ -9,7 +9,7 @@ The project combines:
 - an Elm frontend in [`elm-app/`](elm-app) for the public map, locations views, and authenticated editing
 - a Haskell static generator in [`statics/`](statics) for feeds, GeoJSON, and exported assets
 
-Features include an interactive MapLibre map with a PMTiles basemap, location lists, authenticated CRUD, KML import, and static exports such as RSS, Atom, JSON Feed, and GeoJSON.
+Features include an interactive MapLibre map, location lists, authenticated CRUD, KML import, and static exports such as RSS, Atom, JSON Feed, and GeoJSON. The vector basemap is built and hosted by the separate [`service-map-tiles`](https://github.com/Suomen-Palikkaharrastajat-ry/service-map-tiles) project and served from <https://tiles.palikkaharrastajat.fi/>; this app loads its published MapLibre style (configurable via `VITE_BASEMAP_STYLE_URL`).
 
 ## Development Environment
 
@@ -22,7 +22,7 @@ make shell
 
 On a fresh environment, run `cabal update` before the first `cabal build statics`.
 
-The default PocketBase URL is `https://data.palikkaharrastajat.fi`. For local development, set `VITE_POCKETBASE_URL` and `POCKETBASE_URL` via `.env` or use the `*-local` Makefile targets. Local PocketBase and Keycloak services are available through `devenv up`.
+The default PocketBase URL is `https://data.palikkaharrastajat.fi`. For local development, set `VITE_POCKETBASE_URL` and `POCKETBASE_URL` via `.env` or use the `*-local` Makefile targets. The basemap style defaults to `https://tiles.palikkaharrastajat.fi/style.json`; override it with `VITE_BASEMAP_STYLE_URL` (see [`.env.example`](.env.example)). Local PocketBase and Keycloak services are available through `devenv up`.
 
 ## Common Commands
 
@@ -37,7 +37,6 @@ The default PocketBase URL is `https://data.palikkaharrastajat.fi`. For local de
 | `make test` | Run Elm and Haskell tests |
 | `make check` | Run formatting and lint checks |
 | `make format` | Auto-format Elm and Haskell code |
-| `make basemap` | Generate the PMTiles basemap via scripts |
 | `make elm-tailwind-gen` | Run Tailwind generation for Elm |
 | `make watch` | Run watch mode |
 | `make clean` | Remove build output |
@@ -55,7 +54,7 @@ statics/          Haskell static generator
   app/            Haskell executable entry point
 assets/           Files copied verbatim into dist/
 pkgs/             Nix-managed Node/Vite/Elm tooling manifest + lockfile
-scripts/          Scripts like generate-basemap.sh
+scripts/          Deployment helper scripts (e.g. smoke-test.sh)
 vendor/master-builder  Shared Elm design tokens and UI components
 .github/workflows CI/CD workflows
 ```

@@ -32,27 +32,6 @@ jobs:
           key: statics-native-bin-${{ github.sha }}
           restore-keys: statics-native-bin-
 
-      # App-specific: the basemap is expensive to generate and is not rebuilt on
-      # the schedule. A miss means the full deploy workflow must run first.
-      - name: Restore basemap cache
-        id: basemap-cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            elm-app/public/basemap.pmtiles
-            elm-app/public/style.json
-            elm-app/public/world_countries.geojson
-          key: basemap-${{ hashFiles('scripts/generate-basemap.sh') }}
-
-      - name: Touch basemap cache (prevent make rebuild)
-        if: steps.basemap-cache-restore.outputs.cache-hit == 'true'
-        run: touch elm-app/public/basemap.pmtiles elm-app/public/style.json elm-app/public/world_countries.geojson
-
-      - name: Require basemap cache
-        if: steps.basemap-cache-restore.outputs.cache-hit != 'true'
-        run: |
-          echo "Basemap cache missed in scheduled workflow. Run full deploy to regenerate."
-          exit 1
 
       - name: Restore Elm cache
         uses: actions/cache/restore@v4

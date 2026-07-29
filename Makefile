@@ -33,11 +33,11 @@ shell: ## Enter devenv shell
 # ── Elm frontend ──────────────────────────────────────────────────────────────
 
 .PHONY: elm-dev
-elm-dev: basemap ## Start Elm + Vite dev server (hot reload)
+elm-dev: ## Start Elm + Vite dev server (hot reload)
 	cd elm-app && vite
 
 .PHONY: elm-dev-local
-elm-dev-local: basemap ## Start Elm + Vite dev server against local PocketBase
+elm-dev-local: ## Start Elm + Vite dev server against local PocketBase
 	cd elm-app && VITE_POCKETBASE_URL=$(LOCAL_PB_URL) vite
 
 ELM_APP_SOURCES := $(shell find elm-app/src -name '*.elm')
@@ -51,7 +51,7 @@ elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.mjs elm-app/m
 	mkdir -p elm-app/.elm-tailwind
 	touch $@
 
-dist/.elm-stamp: elm-app/public/basemap.pmtiles elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css
+dist/.elm-stamp: elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css
 	cd elm-app && vite build $(VITE_FLAGS)
 	touch $@
 
@@ -123,12 +123,6 @@ cabal-check: ## Check the package for common errors
 	cd statics && cabal check
 
 # ── Combined targets ──────────────────────────────────────────────────────────
-
-.PHONY: basemap
-basemap: elm-app/public/basemap.pmtiles ## Generate basemap from official Finnish open data
-
-elm-app/public/basemap.pmtiles: scripts/generate-basemap.sh
-	bash scripts/generate-basemap.sh
 
 .PHONY: watch
 watch: elm-dev ## Start development server

@@ -36,8 +36,6 @@ let
         hpkgs.fourmolu
         pkgs.elmPackages.elm-review
         pkgs.elmPackages.elm-json
-        pkgs.tippecanoe
-        pkgs.gdal
       ];
 
       enterShell = ''
@@ -70,8 +68,6 @@ let
         elmPackages.elm-review
         elmPackages.elm-json
         npmTools
-        tippecanoe
-        gdal
         cabal-install
         haskell.packages.ghc96.hlint
         haskell.packages.ghc96.fourmolu

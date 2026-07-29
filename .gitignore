@@ -23,8 +23,6 @@ statics/statics
 elm-app/elm-stuff/
 elm-app/.elm-tailwind/
 elm-app/.vite/
-elm-app/public/basemap.pmtiles*
-elm-app/public/style.json
 
 # --- Generated static files (statics output) ---
 assets/kartta.json
@@ -35,10 +33,6 @@ assets/images/
 
 # --- Logs / local test artifacts ---
 *.log
-test.mbtiles
-.cache/
-
-
 
 # --- Editor & OS ---
 .vscode/
@@ -51,5 +45,4 @@ Thumbs.db
 # --- Misc / local ---
 .claude/
 TODO*
-elm-app/public/world_countries.geojson
 review/elm-stuff/
