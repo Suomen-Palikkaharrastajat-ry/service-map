@@ -57,22 +57,27 @@ jobs:
         run: touch elm-app/public/basemap.pmtiles elm-app/public/style.json elm-app/public/world_countries.geojson
 
       - name: Restore Cabal index cache
+        id: cabal-index-restore
         uses: actions/cache/restore@v4
         with:
           path: ~/.cabal/packages
-          key: cabal-index-${{ hashFiles('cabal.project.freeze') }}
-          restore-keys: cabal-index-
+          key: cabal-index-${{ runner.os }}-${{ hashFiles('cabal.project.freeze') }}
+          restore-keys: cabal-index-${{ runner.os }}-
 
       - name: Restore Cabal store cache
+        id: cabal-store-restore
         uses: actions/cache/restore@v4
         with:
           path: ~/.cabal/store
-          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix') }}
+          key: cabal-store-${{ runner.os }}-${{ hashFiles('cabal.project.freeze', 'statics/statics.cabal', 'devenv.lock', 'devenv.nix', 'overrides.nix') }}
           restore-keys: cabal-store-${{ runner.os }}-
 
-      - name: Cabal update
+      - name: Update Cabal package index
         run: devenv shell --profile ci -- cabal update
 
+      # TODO: add `make check` here once the pre-existing elm-review violations
+      # are cleared (29 errors in 28 files, mostly RequireModuleDoc on tests/).
+      # planet already runs this step; see docs/conventions.md.
       - name: Run tests
         run: devenv shell --profile ci -- make test
 
@@ -143,6 +148,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Setup Native Haskell
         uses: haskell-actions/setup@v2

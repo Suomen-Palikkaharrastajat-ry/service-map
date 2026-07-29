@@ -1,18 +1,17 @@
 # --- Environment / local ---
 .env
+.env.*
+!.env.example
+.devcontainer/
 .devcontainer.json
 .devenv*
+.direnv
 devenv.local.nix
 devenv.local.yaml
-.direnv
-/event-calendar/
-/planet/
 
 # --- Dependencies ---
 node_modules
-node_modules/
-elm-app/node_modules/
-elm-app/packages
+elm-app/node_modules
 
 # --- Haskell build artifacts ---
 dist-newstyle/

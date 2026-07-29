@@ -4,6 +4,11 @@ LOCAL_PB_URL = http://127.0.0.1:8090
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+# vite bundles vite.config.mjs into node_modules/.vite-temp before loading it,
+# but node_modules is a symlink into the read-only Nix store. --configLoader
+# runner loads the config directly and never writes that temp file.
+VITE_FLAGS ?= --configLoader runner
+
 # ── Vendor / submodules ──────────────────────────────────────────────────────
 
 .PHONY: vendor
@@ -11,8 +16,13 @@ vendor: ## Init and update all git submodules to their pinned commits
 	@# In CI environments (GitHub Actions) SSH access is unavailable;
 	@# rewrite git@github.com: to https://github.com/ so submodules clone via HTTPS.
 	@[ -z "$$CI" ] || git config --global url."https://github.com/".insteadOf "git@github.com:"
-	@if [ -d .git ]; then git submodule update --init; elif [ ! -d vendor/master-builder ]; then mkdir -p vendor && git clone https://github.com/Suomen-Palikkaharrastajat-ry/master-builder.git vendor/master-builder; fi
-	ln -sfn ../vendor/master-builder/packages elm-app/packages
+	@# Fall back to a plain clone when this tree is not a git checkout (source
+	@# tarball, vendored copy). The submodule directory itself always exists, so
+	@# probe for a file inside it rather than for the directory.
+	@if [ -d .git ]; then git submodule update --init; \
+	elif [ ! -e vendor/master-builder/AGENTS.md ]; then \
+		mkdir -p vendor && git clone https://github.com/Suomen-Palikkaharrastajat-ry/master-builder.git vendor/master-builder; \
+	fi
 
 # ── Development environment ──────────────────────────────────────────────────
 
@@ -42,7 +52,7 @@ elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.mjs elm-app/m
 	touch $@
 
 dist/.elm-stamp: elm-app/public/basemap.pmtiles elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css
-	cd elm-app && vite build
+	cd elm-app && vite build $(VITE_FLAGS)
 	touch $@
 
 .PHONY: elm-build
@@ -110,7 +120,7 @@ repl: ## Start the Haskell REPL
 
 .PHONY: cabal-check
 cabal-check: ## Check the package for common errors
-	cabal check
+	cd statics && cabal check
 
 # ── Combined targets ──────────────────────────────────────────────────────────
 
@@ -126,7 +136,7 @@ watch: elm-dev ## Start development server
 dist/.statics-stamp-nix:
 	mkdir -p dist
 	statics
-	touch dist/.statics-stamp
+	touch $@
 
 .PHONY: build
 build: elm-build ## Production build of Elm SPA

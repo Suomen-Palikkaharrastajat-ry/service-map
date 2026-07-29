@@ -1,16 +1,23 @@
 let
+  mkTools = pkgs: pkgs.callPackage ./pkgs/npm-tools.nix { };
+
+  # Haskell package set: the shared statics-common package from master-builder,
+  # composed with this repo's local overrides (see overrides.nix).
+  #
+  # Keep the `ci` profile free of ./overlays.nix — an overlay re-instantiates the
+  # whole package set, so every derivation hash changes and CI can no longer pull
+  # from the shared cachix cache. The overlay is a dev-shell concern only.
+  hpkgsFor =
+    pkgs:
+    pkgs.haskell.packages.ghc96.override {
+      overrides = import ./overrides.nix { inherit pkgs; };
+    };
+
   ci =
     { pkgs, ... }:
     let
-      npmTools = pkgs.callPackage ./pkgs/npm-tools.nix { };
-      hpkgs = pkgs.haskell.packages.ghc96.override {
-        overrides = hself: hsuper: {
-          statics-common =
-            hself.callCabal2nix "statics-common"
-              ./vendor/master-builder/packages-hs/statics-common
-              { };
-        };
-      };
+      npmTools = mkTools pkgs;
+      hpkgs = hpkgsFor pkgs;
       staticsPackage = hpkgs.callCabal2nix "statics" ./statics { };
     in
     {
@@ -27,6 +34,8 @@ let
         pkgs.nodejs_22
         hpkgs.hlint
         hpkgs.fourmolu
+        pkgs.elmPackages.elm-review
+        pkgs.elmPackages.elm-json
         pkgs.tippecanoe
         pkgs.gdal
       ];
@@ -40,7 +49,7 @@ let
   shell =
     { pkgs, ... }:
     let
-      npmTools = pkgs.callPackage ./pkgs/npm-tools.nix { };
+      npmTools = mkTools pkgs;
     in
     {
       overlays = [ (import ./overlays.nix) ];
