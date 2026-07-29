@@ -8,7 +8,7 @@ import qualified PocketBase
 import Control.Exception (SomeException, try)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
-import Data.Time (Day, UTCTime (..), getCurrentTime, utctDay, zonedTimeToLocalTime, localDay)
+import Data.Time (Day, UTCTime (..), getCurrentTime, localDay, utctDay, zonedTimeToLocalTime)
 import qualified DateUtils as DU
 import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import System.Directory (createDirectoryIfMissing)

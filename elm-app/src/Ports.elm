@@ -5,6 +5,7 @@ port module Ports exposing
     , callbackParams
     , clearAuthToken
     , destroyMap
+    , focusMapOnMarker
     , focusMobileNav
     , getCallbackParams
     , initMap
@@ -14,12 +15,11 @@ port module Ports exposing
     , markerClicked
     , oauthPopupResult
     , parseKml
+    , restoreMapView
     , saveAuthToken
     , saveFilterState
     , setMapMarker
     , setMapStyle
-    , focusMapOnMarker
-    , restoreMapView
     )
 
 import Json.Decode as Json

@@ -10,9 +10,11 @@ import I18n exposing (MsgKey(..), t)
 import OpeningHours.I18n as OHI18n
 import OpeningHours.Parser as OHParser
 import OpeningHours.Viewer as OHViewer
+import QRCode
 import RemoteData exposing (RemoteData(..))
 import Route
 import Set
+import Svg.Attributes as SvgA
 import Types exposing (Location, Model, Msg(..))
 import View.Icons exposing (featherIcon)
 
@@ -283,6 +285,22 @@ viewLocationPanel model loc =
                     , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
+            , if model.presentationMode then
+                case loc.url of
+                    Just url ->
+                        case QRCode.fromString url of
+                            Ok qrCode ->
+                                div [ class "mt-6 flex justify-center pb-4" ]
+                                    [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
+
+                            Err _ ->
+                                text ""
+
+                    Nothing ->
+                        text ""
+
+              else
+                text ""
             ]
         ]
 
@@ -376,6 +394,22 @@ viewEventPanel model ev =
                     , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
+            , if model.presentationMode then
+                case ev.url of
+                    Just url ->
+                        case QRCode.fromString url of
+                            Ok qrCode ->
+                                div [ class "mt-6 flex justify-center pb-4" ]
+                                    [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
+
+                            Err _ ->
+                                text ""
+
+                    Nothing ->
+                        text ""
+
+              else
+                text ""
             ]
         ]
 

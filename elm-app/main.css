@@ -289,3 +289,8 @@ button:not([disabled]) {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
+
+@keyframes progress-reverse {
+  from { width: 100%; }
+  to { width: 0%; }
+}

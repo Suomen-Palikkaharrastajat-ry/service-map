@@ -266,6 +266,7 @@ type alias Model =
     , hiddenTags : List String
     , eventsHidden : Bool
     , isEmbed : Bool
+    , presentationMode : Bool
     , now : Time.Posix
     , toasts : List Toast
     , nextToastId : Int
@@ -322,6 +323,8 @@ type Msg
     | MarkerClicked String
     | SelectPrevMarker
     | SelectNextMarker
+    | TogglePresentationMode
+    | PresentationTick Time.Posix
     | KeyDown String
     | ClosePanel
       -- Auth

@@ -15,6 +15,7 @@ import File
 import Geocoding
 import Html exposing (Html, div, main_)
 import Html.Attributes exposing (class, style)
+import Html.Keyed
 import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -92,6 +93,7 @@ init flags url key =
       , hiddenTags = flags.hiddenTags
       , eventsHidden = flags.eventsHidden
       , isEmbed = flags.isEmbed
+      , presentationMode = False
       , now = now
       , toasts = []
       , nextToastId = 0
@@ -310,13 +312,15 @@ update msg model =
                     case selected of
                         Just (Types.SelectedLocation l) ->
                             let
-                                dateStr = Maybe.withDefault "" (DateUtils.formatLocationDateDisplay { startDate = l.startDate, endDate = l.endDate })
+                                dateStr =
+                                    Maybe.withDefault "" (DateUtils.formatLocationDateDisplay { startDate = l.startDate, endDate = l.endDate })
                             in
                             Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = dateStr }
 
                         Just (Types.SelectedEvent e) ->
                             let
-                                dateStr = Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
+                                dateStr =
+                                    Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
                             in
                             Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr }
 
@@ -327,114 +331,219 @@ update msg model =
 
         SelectPrevMarker ->
             let
-                allIds =
+                allItems =
                     (case model.locations of
                         Success locs ->
                             List.filter (\l -> Types.hasValidCoordinates l.point) locs
                                 |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                                |> List.map .id
+                                |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
+
                         _ ->
                             []
-                    ) ++ (if model.eventsHidden then [] else
-                            case model.events of
-                                Success evts ->
-                                    List.filter (\e -> Types.hasValidCoordinates e.point) evts
-                                        |> List.map .id
-                                _ ->
-                                    []
                     )
-                
+                        ++ (if model.eventsHidden then
+                                []
+
+                            else
+                                case model.events of
+                                    Success evts ->
+                                        List.filter (\e -> Types.hasValidCoordinates e.point) evts
+                                            |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
+
+                                    _ ->
+                                        []
+                           )
+
+                allIds =
+                    allItems
+                        |> List.sortWith
+                            (\( latA, lonA, _ ) ( latB, lonB, _ ) ->
+                                case compare latB latA of
+                                    EQ ->
+                                        compare lonB lonA
+
+                                    other ->
+                                        other
+                            )
+                        |> List.map (\( _, _, id ) -> id)
+
                 currId =
                     case model.selectedMarker of
-                        Just (Types.SelectedLocation l) -> l.id
-                        Just (Types.SelectedEvent e) -> e.id
-                        Nothing -> ""
+                        Just (Types.SelectedLocation l) ->
+                            l.id
+
+                        Just (Types.SelectedEvent e) ->
+                            e.id
+
+                        Nothing ->
+                            ""
 
                 prevId =
                     let
                         findNext curr lst =
                             case lst of
-                                [] -> ""
-                                [x] -> ""
+                                [] ->
+                                    ""
+
+                                [ x ] ->
+                                    ""
+
                                 x :: y :: rest ->
-                                    if x == curr then y
-                                    else findNext curr (y :: rest)
-                        
-                        reversed = List.reverse allIds
-                        found = findNext currId reversed
+                                    if x == curr then
+                                        y
+
+                                    else
+                                        findNext curr (y :: rest)
+
+                        reversed =
+                            List.reverse allIds
+
+                        found =
+                            findNext currId reversed
                     in
                     if found == "" then
                         Maybe.withDefault "" (List.head reversed)
+
                     else
                         found
             in
             if prevId /= "" then
                 let
-                    (m, c) = update (MarkerClicked prevId) model
+                    ( m, c ) =
+                        update (MarkerClicked prevId) model
                 in
-                (m, c)
+                ( m, c )
+
             else
-                (model, Cmd.none)
+                ( model, Cmd.none )
 
         SelectNextMarker ->
             let
-                allIds =
+                allItems =
                     (case model.locations of
                         Success locs ->
                             List.filter (\l -> Types.hasValidCoordinates l.point) locs
                                 |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                                |> List.map .id
+                                |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
+
                         _ ->
                             []
-                    ) ++ (if model.eventsHidden then [] else
-                            case model.events of
-                                Success evts ->
-                                    List.filter (\e -> Types.hasValidCoordinates e.point) evts
-                                        |> List.map .id
-                                _ ->
-                                    []
                     )
-                
+                        ++ (if model.eventsHidden then
+                                []
+
+                            else
+                                case model.events of
+                                    Success evts ->
+                                        List.filter (\e -> Types.hasValidCoordinates e.point) evts
+                                            |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
+
+                                    _ ->
+                                        []
+                           )
+
+                allIds =
+                    allItems
+                        |> List.sortWith
+                            (\( latA, lonA, _ ) ( latB, lonB, _ ) ->
+                                case compare latB latA of
+                                    EQ ->
+                                        compare lonB lonA
+
+                                    other ->
+                                        other
+                            )
+                        |> List.map (\( _, _, id ) -> id)
+
                 currId =
                     case model.selectedMarker of
-                        Just (Types.SelectedLocation l) -> l.id
-                        Just (Types.SelectedEvent e) -> e.id
-                        Nothing -> ""
+                        Just (Types.SelectedLocation l) ->
+                            l.id
+
+                        Just (Types.SelectedEvent e) ->
+                            e.id
+
+                        Nothing ->
+                            ""
 
                 nextId =
                     let
                         findNext curr lst =
                             case lst of
-                                [] -> ""
-                                [x] -> ""
+                                [] ->
+                                    ""
+
+                                [ x ] ->
+                                    ""
+
                                 x :: y :: rest ->
-                                    if x == curr then y
-                                    else findNext curr (y :: rest)
-                        
-                        found = findNext currId allIds
+                                    if x == curr then
+                                        y
+
+                                    else
+                                        findNext curr (y :: rest)
+
+                        found =
+                            findNext currId allIds
                     in
                     if found == "" then
                         Maybe.withDefault "" (List.head allIds)
+
                     else
                         found
             in
             if nextId /= "" then
                 let
-                    (m, c) = update (MarkerClicked nextId) model
+                    ( m, c ) =
+                        update (MarkerClicked nextId) model
                 in
-                (m, c)
+                ( m, c )
+
             else
-                (model, Cmd.none)
+                ( model, Cmd.none )
+
+        TogglePresentationMode ->
+            let
+                newMode =
+                    not model.presentationMode
+
+                ( m1, c1 ) =
+                    if newMode && model.selectedMarker == Nothing then
+                        update SelectNextMarker model
+
+                    else
+                        ( model, Cmd.none )
+            in
+            ( { m1 | presentationMode = newMode }, c1 )
+
+        PresentationTick _ ->
+            if model.presentationMode then
+                let
+                    ( m, c ) =
+                        update SelectNextMarker model
+                in
+                ( m, c )
+
+            else
+                ( model, Cmd.none )
 
         KeyDown key ->
             if key == "ArrowLeft" then
-                let (m, c) = update SelectPrevMarker model in
-                (m, c)
+                let
+                    ( m, c ) =
+                        update SelectPrevMarker model
+                in
+                ( m, c )
+
             else if key == "ArrowRight" then
-                let (m, c) = update SelectNextMarker model in
-                (m, c)
+                let
+                    ( m, c ) =
+                        update SelectNextMarker model
+                in
+                ( m, c )
+
             else
-                (model, Cmd.none)
+                ( model, Cmd.none )
 
         ClosePanel ->
             ( { model | selectedMarker = Nothing }, Ports.restoreMapView () )
@@ -1460,8 +1569,15 @@ subscriptions model =
 
             else
                 []
+
+        presentationSub =
+            if model.presentationMode then
+                [ Time.every 30000 PresentationTick ]
+
+            else
+                []
     in
-    Sub.batch (baseSubs ++ escSub ++ menuEscSub)
+    Sub.batch (baseSubs ++ escSub ++ menuEscSub ++ presentationSub)
 
 
 view : Model -> Browser.Document Msg
@@ -1489,7 +1605,7 @@ view model =
                 Html.text ""
 
               else
-                View.Layout.viewHeader model.authState model.menuOpen
+                View.Layout.viewHeader model.authState model.menuOpen model.presentationMode
             , if model.isEmbed then
                 Html.text ""
 
@@ -1542,6 +1658,32 @@ view model =
               else
                 View.Layout.viewBrandFooter
             , viewToasts model
+            , if model.presentationMode then
+                let
+                    markerId =
+                        case model.selectedMarker of
+                            Just (Types.SelectedLocation l) ->
+                                l.id
+
+                            Just (Types.SelectedEvent e) ->
+                                e.id
+
+                            Nothing ->
+                                "none"
+                in
+                Html.Keyed.node "div"
+                    [ class "fixed bottom-0 left-0 right-0 h-2 z-[9999]" ]
+                    [ ( markerId
+                      , div
+                            [ class "h-full bg-brand opacity-50"
+                            , style "animation" "progress-reverse 30s linear"
+                            ]
+                            []
+                      )
+                    ]
+
+              else
+                Html.text ""
             ]
         ]
     }

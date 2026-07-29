@@ -42,7 +42,7 @@ locationToFeature loc = case PB.locationPoint loc of
                             , "image" .= maybe Null (toJSON . T.unpack) (PB.locationImage loc)
                             , "image_description" .= maybe Null (toJSON . T.unpack) (PB.locationImageDesc loc)
                             , "state" .= T.unpack (PB.locationState loc)
-                            , "point" .= object [ "lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt ]
+                            , "point" .= object ["lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt]
                             ]
                     ]
 
@@ -75,7 +75,7 @@ eventToFeature ev = case PB.eventPoint ev of
                             , "image" .= maybe Null (toJSON . T.unpack) (PB.eventImage ev)
                             , "image_description" .= maybe Null (toJSON . T.unpack) (PB.eventImageDesc ev)
                             , "state" .= T.unpack (PB.eventState ev)
-                            , "point" .= object [ "lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt ]
+                            , "point" .= object ["lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt]
                             ]
                     ]
 

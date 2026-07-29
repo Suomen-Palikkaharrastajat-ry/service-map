@@ -12,8 +12,8 @@ import Types exposing (AuthState(..), AuthUser, Msg(..), Page(..))
 import View.Icons exposing (featherIcon)
 
 
-viewHeader : AuthState -> Bool -> Html Msg
-viewHeader authState menuOpen =
+viewHeader : AuthState -> Bool -> Bool -> Html Msg
+viewHeader authState menuOpen presentationMode =
     header [ class "bg-brand border-b border-brand sticky md:static top-0 z-50" ]
         [ div [ class "flex items-center justify-between px-4 h-14" ]
             [ -- Square logo + site name
@@ -27,44 +27,75 @@ viewHeader authState menuOpen =
                     []
                 , span [ class "type-h4 text-white" ] [ text (t NavbarTitle) ]
                 ]
-            , -- Desktop nav + auth (hidden on mobile)
-              div [ class "hidden md:flex items-center gap-6" ]
-                [ nav [ class "flex gap-4" ]
-                    [ a [ href (toHref RouteMap), class "type-caption text-white/80 hover:text-white hover:underline" ]
-                        [ text (t NavHome) ]
-                    , a [ href (toHref RouteLocations), class "type-caption text-white/80 hover:text-white hover:underline" ]
-                        [ text (t NavLocations) ]
+            , div [ class "flex items-center gap-4" ]
+                [ button
+                    [ onClick TogglePresentationMode
+                    , class "p-2 rounded-lg text-white hover:bg-white/10"
+                    , style "cursor" "pointer"
+                    , attribute "aria-label"
+                        (if presentationMode then
+                            "Stop presentation"
+
+                         else
+                            "Start presentation"
+                        )
                     ]
-                , viewDesktopAuthControls authState
-                ]
-            , -- Hamburger button (mobile only)
-              button
-                [ onClick ToggleMenu
-                , class "md:hidden p-2 rounded-lg text-white"
-                , style "cursor" "pointer"
-                , attribute "aria-label"
-                    (if menuOpen then
-                        "Sulje valikko"
+                    [ featherIcon
+                        (if presentationMode then
+                            FeatherIcons.pause
 
-                     else
-                        "Avaa valikko"
-                    )
-                , attribute "aria-expanded"
-                    (if menuOpen then
-                        "true"
+                         else
+                            FeatherIcons.play
+                        )
+                        24
+                    ]
+                , if presentationMode then
+                    text ""
 
-                     else
-                        "false"
-                    )
-                ]
-                [ featherIcon
-                    (if menuOpen then
-                        FeatherIcons.x
+                  else
+                    -- Desktop nav + auth (hidden on mobile)
+                    div [ class "hidden md:flex items-center gap-6" ]
+                        [ nav [ class "flex gap-4" ]
+                            [ a [ href (toHref RouteMap), class "type-caption text-white/80 hover:text-white hover:underline" ]
+                                [ text (t NavHome) ]
+                            , a [ href (toHref RouteLocations), class "type-caption text-white/80 hover:text-white hover:underline" ]
+                                [ text (t NavLocations) ]
+                            ]
+                        , viewDesktopAuthControls authState
+                        ]
+                , if presentationMode then
+                    text ""
 
-                     else
-                        FeatherIcons.menu
-                    )
-                    24
+                  else
+                    -- Hamburger button (mobile only)
+                    button
+                        [ onClick ToggleMenu
+                        , class "md:hidden p-2 rounded-lg text-white"
+                        , style "cursor" "pointer"
+                        , attribute "aria-label"
+                            (if menuOpen then
+                                "Sulje valikko"
+
+                             else
+                                "Avaa valikko"
+                            )
+                        , attribute "aria-expanded"
+                            (if menuOpen then
+                                "true"
+
+                             else
+                                "false"
+                            )
+                        ]
+                        [ featherIcon
+                            (if menuOpen then
+                                FeatherIcons.x
+
+                             else
+                                FeatherIcons.menu
+                            )
+                            24
+                        ]
                 ]
             ]
         ]
