@@ -1,4 +1,4 @@
-module Main exposing (applyFormDate, applyFormField, main)
+module Main exposing (applyFormDate, applyFormField, main, refreshLocationsOnMutationResult)
 
 import Api
 import Auth
@@ -16,6 +16,7 @@ import Geocoding
 import Html exposing (Html, div, main_)
 import Html.Attributes exposing (class, style)
 import Html.Keyed
+import Http
 import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -825,10 +826,11 @@ update msg model =
                                 ( m, c ) =
                                     addToast model Types.ToastSuccess "Kohde tallennettu"
                             in
-                            ( m
+                            ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                             , Cmd.batch
                                 [ c
                                 , Nav.pushUrl model.key (Route.toHref RouteLocations)
+                                , Api.fetchLocations model.pbBaseUrl (getToken model.authState)
                                 ]
                             )
 
@@ -1043,10 +1045,11 @@ update msg model =
                                 ( m, c ) =
                                     addToast model Types.ToastSuccess "Kohde tallennettu"
                             in
-                            ( m
+                            ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                             , Cmd.batch
                                 [ c
                                 , Nav.pushUrl model.key (Route.toHref RouteLocations)
+                                , Api.fetchLocations model.pbBaseUrl (getToken model.authState)
                                 ]
                             )
 
@@ -1118,10 +1121,11 @@ update msg model =
                         ( m, c ) =
                             addToast model Types.ToastSuccess "Kohde poistettu"
                     in
-                    ( m
+                    ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                     , Cmd.batch
                         [ c
                         , Nav.pushUrl model.key (Route.toHref RouteLocations)
+                        , Api.fetchLocations model.pbBaseUrl (getToken model.authState)
                         ]
                     )
 
@@ -1371,6 +1375,16 @@ applyFormDate field val form =
 
         _ ->
             form
+
+
+refreshLocationsOnMutationResult : Result Http.Error Location -> RemoteData Http.Error (List Location) -> RemoteData Http.Error (List Location)
+refreshLocationsOnMutationResult result locations =
+    case result of
+        Ok _ ->
+            RemoteData.Loading
+
+        Err _ ->
+            locations
 
 
 addToast : Model -> Types.ToastKind -> String -> ( Model, Cmd Msg )
