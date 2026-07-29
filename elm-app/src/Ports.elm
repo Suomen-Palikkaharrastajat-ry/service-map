@@ -18,6 +18,8 @@ port module Ports exposing
     , saveFilterState
     , setMapMarker
     , setMapStyle
+    , focusMapOnMarker
+    , restoreMapView
     )
 
 import Json.Decode as Json
@@ -95,3 +97,9 @@ port parseKml : String -> Cmd msg
 
 
 port kmlParsed : (Json.Value -> msg) -> Sub msg
+
+
+port focusMapOnMarker : { lat : Float, lon : Float, id : String, title : String, date : String } -> Cmd msg
+
+
+port restoreMapView : () -> Cmd msg

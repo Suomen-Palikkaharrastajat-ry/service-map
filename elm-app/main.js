@@ -594,6 +594,68 @@ app.ports.destroyMap.subscribe((containerId) => {
   }
 })
 
+let savedMapState = null;
+
+if (app.ports.focusMapOnMarker) {
+  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date }) => {
+    await ensureMapLibs();
+    const mapObj = maps['map'];
+    if (mapObj && mapObj.map) {
+      if (!savedMapState) {
+        savedMapState = {
+          zoom: mapObj.map.getZoom(),
+          center: mapObj.map.getCenter()
+        };
+      }
+      
+      const maxZ = mapObj.map.getMaxZoom();
+      const targetZ = maxZ ? Math.min(14, maxZ) : 14;
+      const paddingRight = window.innerWidth > 500 ? 352 : 0;
+      
+      mapObj.map.flyTo({
+        center: [lon, lat],
+        zoom: Math.max(targetZ, mapObj.map.getZoom()), // zoom in if we are further out, but don't zoom out if we are already zoomed in
+        speed: 1.2,
+        padding: { right: paddingRight }
+      });
+      
+      if (mapObj.activePopup) {
+        mapObj.activePopup.remove();
+      }
+      
+      let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${title}</div>`;
+      if (date) {
+        popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${date}</div>`;
+      }
+      
+      mapObj.activePopup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false })
+        .setHTML(popupHtml)
+        .setLngLat([lon, lat])
+        .addTo(mapObj.map);
+    }
+  });
+}
+
+if (app.ports.restoreMapView) {
+  app.ports.restoreMapView.subscribe(async () => {
+    await ensureMapLibs();
+    const mapObj = maps['map'];
+    if (mapObj && mapObj.map && savedMapState) {
+      mapObj.map.flyTo({
+        center: savedMapState.center,
+        zoom: savedMapState.zoom,
+        speed: 1.2,
+        padding: { right: 0 }
+      });
+      if (mapObj.activePopup) {
+        mapObj.activePopup.remove();
+        mapObj.activePopup = null;
+      }
+      savedMapState = null;
+    }
+  });
+}
+
 // ── KML Import ────────────────────────────────────────────────────────────────
 
 if (app.ports.parseKml) {

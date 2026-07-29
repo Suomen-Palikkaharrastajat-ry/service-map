@@ -248,26 +248,29 @@ viewLocationPanel model loc =
                 Nothing ->
                     text ""
             , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
-                [ case loc.url of
-                    Just url ->
-                        Button.viewLink
-                            { label = t PanelMoreInfo
-                            , variant = Primary
-                            , size = Small
-                            , href = url
-                            , target =
-                                Just
-                                    (if model.isEmbed then
-                                        "_top"
+                [ div [ class "flex items-center gap-2" ]
+                    [ button [ onClick SelectPrevMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                    , case loc.url of
+                        Just url ->
+                            Button.viewLink
+                                { label = t PanelMoreInfo
+                                , variant = Primary
+                                , size = Small
+                                , href = url
+                                , target =
+                                    Just
+                                        (if model.isEmbed then
+                                            "_top"
 
-                                     else
-                                        "_blank"
-                                    )
-                            }
+                                         else
+                                            "_blank"
+                                        )
+                                }
 
-                    Nothing ->
-                        text ""
-                , div [ class "ml-auto" ]
+                        Nothing ->
+                            text ""
+                    ]
+                , div [ class "ml-auto flex items-center gap-2" ]
                     [ Button.view
                         { label = t PanelClose
                         , variant = Secondary
@@ -277,6 +280,7 @@ viewLocationPanel model loc =
                         , loading = False
                         , ariaPressedState = Nothing
                         }
+                    , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
             ]
@@ -337,26 +341,29 @@ viewEventPanel model ev =
                 Nothing ->
                     text ""
             , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
-                [ case ev.url of
-                    Just url ->
-                        Button.viewLink
-                            { label = t PanelMoreInfo
-                            , variant = Primary
-                            , size = Small
-                            , href = url
-                            , target =
-                                Just
-                                    (if model.isEmbed then
-                                        "_top"
+                [ div [ class "flex items-center gap-2" ]
+                    [ button [ onClick SelectPrevMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                    , case ev.url of
+                        Just url ->
+                            Button.viewLink
+                                { label = t PanelMoreInfo
+                                , variant = Primary
+                                , size = Small
+                                , href = url
+                                , target =
+                                    Just
+                                        (if model.isEmbed then
+                                            "_top"
 
-                                     else
-                                        "_blank"
-                                    )
-                            }
+                                         else
+                                            "_blank"
+                                        )
+                                }
 
-                    Nothing ->
-                        text ""
-                , div [ class "ml-auto" ]
+                        Nothing ->
+                            text ""
+                    ]
+                , div [ class "ml-auto flex items-center gap-2" ]
                     [ Button.view
                         { label = t PanelClose
                         , variant = Secondary
@@ -366,6 +373,7 @@ viewEventPanel model ev =
                         , loading = False
                         , ariaPressedState = Nothing
                         }
+                    , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
             ]

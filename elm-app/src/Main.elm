@@ -305,11 +305,139 @@ update msg model =
 
                                 Nothing ->
                                     Nothing
+
+                cmd =
+                    case selected of
+                        Just (Types.SelectedLocation l) ->
+                            let
+                                dateStr = Maybe.withDefault "" (DateUtils.formatLocationDateDisplay { startDate = l.startDate, endDate = l.endDate })
+                            in
+                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = dateStr }
+
+                        Just (Types.SelectedEvent e) ->
+                            let
+                                dateStr = Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
+                            in
+                            Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr }
+
+                        Nothing ->
+                            Cmd.none
             in
-            ( { model | selectedMarker = selected }, Cmd.none )
+            ( { model | selectedMarker = selected }, cmd )
+
+        SelectPrevMarker ->
+            let
+                allIds =
+                    (case model.locations of
+                        Success locs ->
+                            List.filter (\l -> Types.hasValidCoordinates l.point) locs
+                                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
+                                |> List.map .id
+                        _ ->
+                            []
+                    ) ++ (if model.eventsHidden then [] else
+                            case model.events of
+                                Success evts ->
+                                    List.filter (\e -> Types.hasValidCoordinates e.point) evts
+                                        |> List.map .id
+                                _ ->
+                                    []
+                    )
+                
+                currId =
+                    case model.selectedMarker of
+                        Just (Types.SelectedLocation l) -> l.id
+                        Just (Types.SelectedEvent e) -> e.id
+                        Nothing -> ""
+
+                prevId =
+                    let
+                        findNext curr lst =
+                            case lst of
+                                [] -> ""
+                                [x] -> ""
+                                x :: y :: rest ->
+                                    if x == curr then y
+                                    else findNext curr (y :: rest)
+                        
+                        reversed = List.reverse allIds
+                        found = findNext currId reversed
+                    in
+                    if found == "" then
+                        Maybe.withDefault "" (List.head reversed)
+                    else
+                        found
+            in
+            if prevId /= "" then
+                let
+                    (m, c) = update (MarkerClicked prevId) model
+                in
+                (m, c)
+            else
+                (model, Cmd.none)
+
+        SelectNextMarker ->
+            let
+                allIds =
+                    (case model.locations of
+                        Success locs ->
+                            List.filter (\l -> Types.hasValidCoordinates l.point) locs
+                                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
+                                |> List.map .id
+                        _ ->
+                            []
+                    ) ++ (if model.eventsHidden then [] else
+                            case model.events of
+                                Success evts ->
+                                    List.filter (\e -> Types.hasValidCoordinates e.point) evts
+                                        |> List.map .id
+                                _ ->
+                                    []
+                    )
+                
+                currId =
+                    case model.selectedMarker of
+                        Just (Types.SelectedLocation l) -> l.id
+                        Just (Types.SelectedEvent e) -> e.id
+                        Nothing -> ""
+
+                nextId =
+                    let
+                        findNext curr lst =
+                            case lst of
+                                [] -> ""
+                                [x] -> ""
+                                x :: y :: rest ->
+                                    if x == curr then y
+                                    else findNext curr (y :: rest)
+                        
+                        found = findNext currId allIds
+                    in
+                    if found == "" then
+                        Maybe.withDefault "" (List.head allIds)
+                    else
+                        found
+            in
+            if nextId /= "" then
+                let
+                    (m, c) = update (MarkerClicked nextId) model
+                in
+                (m, c)
+            else
+                (model, Cmd.none)
+
+        KeyDown key ->
+            if key == "ArrowLeft" then
+                let (m, c) = update SelectPrevMarker model in
+                (m, c)
+            else if key == "ArrowRight" then
+                let (m, c) = update SelectNextMarker model in
+                (m, c)
+            else
+                (model, Cmd.none)
 
         ClosePanel ->
-            ( { model | selectedMarker = Nothing }, Cmd.none )
+            ( { model | selectedMarker = Nothing }, Ports.restoreMapView () )
 
         ToggleMenu ->
             if model.menuOpen then
@@ -1309,7 +1437,9 @@ subscriptions model =
         escSub =
             case ( model.page, model.selectedMarker ) of
                 ( Types.PageMap, Just _ ) ->
-                    [ Browser.Events.onKeyDown escapeDecoder ]
+                    [ Browser.Events.onKeyDown escapeDecoder
+                    , Browser.Events.onKeyDown (Decode.map KeyDown (Decode.field "key" Decode.string))
+                    ]
 
                 ( Types.PageLocationNew _, _ ) ->
                     [ Browser.Events.onKeyDown escapeToLocationsDecoder

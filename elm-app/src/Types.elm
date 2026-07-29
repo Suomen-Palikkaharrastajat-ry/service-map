@@ -320,6 +320,9 @@ type Msg
     | EventsLoaded (Result Http.Error (List Event))
     | GeoJsonLoaded (Result Http.Error { locations : List Location, events : List Event })
     | MarkerClicked String
+    | SelectPrevMarker
+    | SelectNextMarker
+    | KeyDown String
     | ClosePanel
       -- Auth
     | LoginClicked
