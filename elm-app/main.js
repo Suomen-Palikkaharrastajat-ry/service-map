@@ -285,19 +285,31 @@ function closeOtherMarkerPopups(mapObj, exceptKey) {
 function syncAutoPopups(mapObj) {
   if (!mapObj.dismissedPopups) mapObj.dismissedPopups = new Set()
   const active = autoPopupsActive(mapObj)
-  if (!active) mapObj.dismissedPopups.clear()
+  // Zooming back out offers the dismissed ones again — except the marker the
+  // info pane is pinned to, which stays as the user left it.
+  if (!active) {
+    const forced = mapObj.forcedPopupKey
+    const keepForced = forced && mapObj.dismissedPopups.has(forced)
+    mapObj.dismissedPopups.clear()
+    if (keepForced) mapObj.dismissedPopups.add(forced)
+  }
 
   Object.values(mapObj.pointMarkers || {}).forEach(marker => {
     const popup = marker.__popup
     if (!popup) return
     const key = marker.__popupKey
-    // The info pane keeps its own popup for the focused marker; a second one on
-    // the same spot would just draw on top of it.
-    const shouldOpen =
-      active && !mapObj.dismissedPopups.has(key) && key !== mapObj.focusedPopupKey
+    // The marker the info pane points at keeps its tooltip open at any zoom.
+    const forced = key === mapObj.forcedPopupKey
+    const shouldOpen = (active || forced) && !mapObj.dismissedPopups.has(key)
 
     if (shouldOpen) {
       if (!popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(mapObj.map)
+      // The marker now carries the tooltip itself, so drop the stand-in that
+      // focusMapOnMarker put up while the marker was still clustered.
+      if (forced && mapObj.activePopup) {
+        closePopupSilently(mapObj.activePopup)
+        mapObj.activePopup = null
+      }
     } else if (popup.isOpen() && !mapObj.dismissedPopups.has(key)) {
       closePopupSilently(popup)
     }
@@ -309,6 +321,22 @@ function popupTitleHtml(title, cancelled) {
   const inner = cancelled ? `<s>${title}</s>` : title;
   const prefix = cancelled ? `${cancelledLabel} ` : '';
   return `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${prefix}${inner}</div>`;
+}
+
+/**
+ * The marker tooltip. One builder for every route to it — hover, tap, auto-open
+ * at high zoom, and the info pane — so a marker cannot end up with two tooltips
+ * that say different things.
+ *
+ * `subtitle` is whatever Elm decided belongs under the title: a location's
+ * opening hours, or an event's date.
+ */
+function markerPopupHtml(title, subtitle, cancelled) {
+  let html = popupTitleHtml(title, cancelled);
+  if (subtitle) {
+    html += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${subtitle}</div>`;
+  }
+  return html;
 }
 
 /**
@@ -476,10 +504,7 @@ function renderClusters(mapObj) {
               .setLngLat(coords)
               .addTo(mapObj.map);
               
-            let popupHtml = popupTitleHtml(m.title, m.cancelled);
-            if (m.date) {
-              popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
-            }
+            const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled);
 
             // Spiderfied leaves are transient, so they are never auto-opened —
             // but a tap-opened one still needs a way out on touch devices.
@@ -535,10 +560,7 @@ function renderClusters(mapObj) {
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         }
 
-        let popupHtml = popupTitleHtml(m.title, m.cancelled);
-        if (m.date) {
-          popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
-        }
+        const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled);
 
         // closeButton: these tooltips can open by themselves from AUTO_POPUP_ZOOM
         // up, so there has to be a way to get rid of one without moving the map.
@@ -547,7 +569,11 @@ function renderClusters(mapObj) {
         marker.__popup = popup;
         marker.__popupKey = popupKey;
         popup.on('close', () => {
-          if (!popup.__silentClose) mapObj.dismissedPopups.add(popupKey);
+          if (popup.__silentClose) return;
+          mapObj.dismissedPopups.add(popupKey);
+          // Closing the tooltip the info pane pinned open unpins it, rather
+          // than leaving it to reopen on the next render.
+          if (mapObj.forcedPopupKey === popupKey) mapObj.forcedPopupKey = null;
         });
 
         makeMarkerButton(el, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
@@ -772,27 +798,40 @@ if (app.ports.focusMapOnMarker) {
       });
       
       if (mapObj.activePopup) {
-        mapObj.activePopup.remove();
+        closePopupSilently(mapObj.activePopup);
+        mapObj.activePopup = null;
       }
-      
-      let popupHtml = popupTitleHtml(title, cancelled);
-      if (date) {
-        popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${date}</div>`;
+
+      // Opening the info pane must show the marker's own tooltip, not a second
+      // one beside it. `forcedPopupKey` keeps that tooltip open below the
+      // auto-open zoom too, and syncAutoPopups hands over to it as soon as the
+      // marker is rendered individually.
+      const popupKey = String(id);
+      mapObj.dismissedPopups = mapObj.dismissedPopups || new Set();
+      mapObj.dismissedPopups.delete(popupKey);
+      mapObj.forcedPopupKey = popupKey;
+
+      const marker = (mapObj.pointMarkers || {})[`marker_${id}`];
+      if (marker && marker.__popup) {
+        if (!marker.__popup.isOpen()) {
+          marker.__popup.setLngLat(marker.getLngLat()).addTo(mapObj.map);
+        }
+      } else {
+        // The marker is inside a cluster or not rendered yet, so there is no
+        // tooltip to reuse. Stand in with an identical one until there is.
+        const standIn = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
+          .setHTML(markerPopupHtml(title, date, cancelled))
+          .setLngLat([lon, lat])
+          .addTo(mapObj.map);
+        standIn.on('close', () => {
+          if (standIn.__silentClose) return;
+          // Dismissing it should not make the marker's own tooltip take its
+          // place once the marker appears.
+          mapObj.dismissedPopups.add(popupKey);
+          mapObj.forcedPopupKey = null;
+        });
+        mapObj.activePopup = standIn;
       }
-      
-      // Held open for as long as the info pane is, so it needs its own ✕ — the
-      // marker's tooltip is suppressed while this one is up (see syncAutoPopups),
-      // and the marker may not even be rendered separately if it is clustered.
-      mapObj.focusedPopupKey = String(id);
-      mapObj.activePopup = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
-        .setHTML(popupHtml)
-        .setLngLat([lon, lat])
-        .addTo(mapObj.map);
-      mapObj.activePopup.on('close', () => {
-        // Dismissing it should not make the marker's own tooltip pop up in its
-        // place at high zoom.
-        if (mapObj.dismissedPopups) mapObj.dismissedPopups.add(String(id));
-      });
     }
   });
 }
@@ -812,7 +851,7 @@ if (app.ports.restoreMapView) {
         mapObj.activePopup.remove();
         mapObj.activePopup = null;
       }
-      mapObj.focusedPopupKey = null;
+      mapObj.forcedPopupKey = null;
       savedMapState = null;
     }
   });

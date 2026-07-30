@@ -314,11 +314,7 @@ update msg model =
                 cmd =
                     case selected of
                         Just (Types.SelectedLocation l) ->
-                            let
-                                dateStr =
-                                    Maybe.withDefault "" (DateUtils.formatLocationDateDisplay { startDate = l.startDate, endDate = l.endDate })
-                            in
-                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = dateStr, cancelled = False }
+                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle l, cancelled = False }
 
                         Just (Types.SelectedEvent e) ->
                             let
@@ -1417,31 +1413,44 @@ urlBase url =
     Url.toString { url | query = Nothing, fragment = Nothing }
 
 
-locationToMarker : Location -> MarkerData
-locationToMarker loc =
-    let
-        formattedOh =
-            case loc.openingHours of
-                Just oh ->
-                    if String.trim oh == "" then
+{-| Second line of a location's map tooltip: its opening hours, formatted.
+
+Shared by `locationToMarker` and the `focusMapOnMarker` command so that hovering
+a marker, zooming past the auto-open level and opening the info pane all produce
+the same tooltip. They used to disagree — the pane's tooltip showed the
+start/end date here instead — which read as two different tooltips for one
+marker.
+
+Unparseable opening hours yield "", matching the marker tooltip's existing
+behaviour of showing a bare title rather than raw OSM syntax.
+
+-}
+locationTooltipSubtitle : Location -> String
+locationTooltipSubtitle loc =
+    case loc.openingHours of
+        Just oh ->
+            if String.trim oh == "" then
+                ""
+
+            else
+                case OHParser.parse oh of
+                    Ok parsed ->
+                        OHViewer.formatToString OHI18n.finnish parsed
+
+                    Err _ ->
                         ""
 
-                    else
-                        case OHParser.parse oh of
-                            Ok parsed ->
-                                OHViewer.formatToString OHI18n.finnish parsed
+        Nothing ->
+            ""
 
-                            Err _ ->
-                                ""
 
-                Nothing ->
-                    ""
-    in
+locationToMarker : Location -> MarkerData
+locationToMarker loc =
     { id = loc.id
     , lat = loc.point.lat
     , lon = loc.point.lon
     , title = loc.title
-    , date = formattedOh
+    , date = locationTooltipSubtitle loc
     , isEvent = False
     , tags = loc.tags
     , cancelled = False
