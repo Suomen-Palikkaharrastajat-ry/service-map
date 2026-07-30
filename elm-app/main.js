@@ -336,23 +336,29 @@ function syncAutoPopups(mapObj) {
 }
 
 /**
- * Make a tooltip itself open the info pane.
+ * Make tooltips open the info pane when tapped.
  *
  * On touch there is no hover, so the first tap on a marker only opens its
- * tooltip — tapping that tooltip is the natural way to ask for the details,
- * and previously did nothing. The ✕ is excluded so dismissing still dismisses.
+ * tooltip. Hitting the marker a second time is genuinely hard — it is a small
+ * target and the tooltip is now floating over it — so the tooltip has to be a
+ * target in its own right.
+ *
+ * Delegated from the map container rather than bound per popup: MapLibre owns
+ * the popup element's lifecycle, so anything that reaches into `Popup` and
+ * hangs a listener on it has to guess when `_container` exists. The marker id
+ * travels in the markup instead (see `markerPopupHtml`), which works for every
+ * popup — marker, spiderfied leaf, and the info pane's own — with one listener.
  */
-function popupOpensPane(popup, markerId) {
-  popup.on('open', () => {
-    const el = popup.getElement()
-    if (!el || el.__opensPane) return
-    el.__opensPane = true
-    el.style.cursor = 'pointer'
-    el.addEventListener('click', (e) => {
-      if (e.target.closest('.maplibregl-popup-close-button')) return
-      e.stopPropagation()
-      app.ports.markerClicked.send(markerId)
-    })
+function bindPopupPaneOpener(mapObj) {
+  if (mapObj.paneOpenerBound) return
+  mapObj.paneOpenerBound = true
+  mapObj.map.getContainer().addEventListener('click', (e) => {
+    // The ✕ dismisses; it must not also open the pane behind it.
+    if (e.target.closest('.maplibregl-popup-close-button')) return
+    const holder = e.target.closest('[data-marker-id]')
+    if (!holder) return
+    e.stopPropagation()
+    app.ports.markerClicked.send(holder.dataset.markerId)
   })
 }
 
@@ -371,12 +377,12 @@ function popupTitleHtml(title, cancelled) {
  * `subtitle` is whatever Elm decided belongs under the title: a location's
  * opening hours, or an event's date.
  */
-function markerPopupHtml(title, subtitle, cancelled) {
+function markerPopupHtml(title, subtitle, cancelled, markerId) {
   let html = popupTitleHtml(title, cancelled);
   if (subtitle) {
     html += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${subtitle}</div>`;
   }
-  return html;
+  return `<div data-marker-id="${markerId}" style="cursor: pointer;">${html}</div>`;
 }
 
 /**
@@ -446,6 +452,7 @@ function applyMarkers(mapObj, markerList) {
         mapObj.hiddenCluster = null;
       }
     };
+    bindPopupPaneOpener(mapObj);
     mapObj.map.on('click', mapObj.unspiderfyHandler);
     mapObj.map.on('move', () => {
       if (mapObj.supercluster) {
@@ -544,13 +551,12 @@ function renderClusters(mapObj) {
               .setLngLat(coords)
               .addTo(mapObj.map);
               
-            const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled);
+            const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id);
 
             // Spiderfied leaves are transient, so they are never auto-opened —
             // but a tap-opened one still needs a way out on touch devices.
             const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: true, closeOnClick: false }).setHTML(popupHtml);
 
-            popupOpensPane(popup, m.id);
             const leafKey = `leaf_${m.id}`;
             leafMarker.__popup = popup;
             leafMarker.__popupKey = leafKey;
@@ -601,7 +607,7 @@ function renderClusters(mapObj) {
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         }
 
-        const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled);
+        const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id);
 
         // closeButton: these tooltips can open by themselves from AUTO_POPUP_ZOOM
         // up, so there has to be a way to get rid of one without moving the map.
@@ -609,7 +615,6 @@ function renderClusters(mapObj) {
         const popupKey = String(m.id);
         marker.__popup = popup;
         marker.__popupKey = popupKey;
-        popupOpensPane(popup, m.id);
         popup.on('close', () => {
           if (popup.__silentClose) return;
           mapObj.dismissedPopups.add(popupKey);
@@ -862,7 +867,7 @@ if (app.ports.focusMapOnMarker) {
         // The marker is inside a cluster or not rendered yet, so there is no
         // tooltip to reuse. Stand in with an identical one until there is.
         const standIn = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
-          .setHTML(markerPopupHtml(title, date, cancelled))
+          .setHTML(markerPopupHtml(title, date, cancelled, id))
           .setLngLat([lon, lat])
           .addTo(mapObj.map);
         standIn.on('close', () => {
