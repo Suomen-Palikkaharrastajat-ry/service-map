@@ -29,8 +29,7 @@ hosts any tiles, glyphs, or GeoJSON — it just points MapLibre at that style.
 - The style references its PMTiles archives and glyphs with absolute URLs, so
   the app only registers the `pmtiles://` protocol (see `ensureMapLibs` in
   `main.js`) and loads the style — nothing else is needed.
-- The `nordic-baltic` and `finland` archives go to z11 (the `world` archive to
-  z6), which is why `main.js` caps the basemap at `maxZoom = 11`.
+- The `finland-hd` archive adds detailed data up to z13 within Finland, allowing `main.js` to cap the basemap at `maxZoom = 17`. Outside Finland, `nordic-baltic` (z11) is overzoomed.
 - The precise location-picker in the create/edit forms still uses an inline
   OpenStreetMap **raster** style (`osm`) for street-level zoom; that is
   unrelated to the vector basemap above.

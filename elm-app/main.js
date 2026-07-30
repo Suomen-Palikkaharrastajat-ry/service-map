@@ -498,7 +498,7 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
       }
     }
     if (mapStyle !== 'osm') {
-      mapOpts.maxZoom = 11
+      mapOpts.maxZoom = 17
     }
     const map = new maplibregl.Map(mapOpts)
 
@@ -608,8 +608,10 @@ if (app.ports.focusMapOnMarker) {
         };
       }
       
+      const isFinland = lat >= 59.5 && lat <= 70.2 && lon >= 19.0 && lon <= 32.0;
+      const idealZoom = isFinland ? 16 : 12;
       const maxZ = mapObj.map.getMaxZoom();
-      const targetZ = maxZ ? Math.min(14, maxZ) : 14;
+      const targetZ = maxZ ? Math.min(idealZoom, maxZ) : idealZoom;
       const paddingRight = window.innerWidth > 500 ? 352 : 0;
       
       mapObj.map.flyTo({
