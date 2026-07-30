@@ -4,9 +4,10 @@ import Component.Button as Button exposing (Size(..), Variant(..))
 import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
-import Html.Attributes exposing (checked, class, href, id, style, target, type_)
+import Html.Attributes exposing (attribute, checked, class, href, id, property, style, target, type_)
 import Html.Events exposing (onCheck, onClick)
-import I18n exposing (MsgKey(..), t)
+import I18n exposing (MsgKey(..), eventFilterLabel, t)
+import Json.Encode as Encode
 import OpeningHours.I18n as OHI18n
 import OpeningHours.Parser as OHParser
 import OpeningHours.Viewer as OHViewer
@@ -131,18 +132,40 @@ viewToggles model =
                             ]
                     )
              )
-                ++ [ label [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
-                        [ input
-                            [ type_ "checkbox"
-                            , checked (not model.eventsHidden)
-                            , onCheck (\chk -> ToggleEventVisibility (not chk))
-                            ]
-                            []
-                        , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-                        , text "Tapahtuma"
-                        ]
-                   ]
+                ++ [ viewEventFilterToggle model ]
             )
+
+
+{-| Tri-state events filter: checked (all) → indeterminate (no cancelled) → unchecked
+(none). `indeterminate` is a DOM property rather than an attribute, and the visible label
+always names the current state so the meaning never rests on the glyph alone.
+-}
+viewEventFilterToggle : Model -> Html Msg
+viewEventFilterToggle model =
+    let
+        ariaChecked =
+            case model.eventFilter of
+                Types.AllEvents ->
+                    "true"
+
+                Types.HideCancelled ->
+                    "mixed"
+
+                Types.NoEvents ->
+                    "false"
+    in
+    label [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
+        [ input
+            [ type_ "checkbox"
+            , checked (model.eventFilter == Types.AllEvents)
+            , property "indeterminate" (Encode.bool (model.eventFilter == Types.HideCancelled))
+            , attribute "aria-checked" ariaChecked
+            , onClick CycleEventFilter
+            ]
+            []
+        , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
+        , text (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
+        ]
 
 
 viewPanel : Model -> Html Msg
@@ -318,8 +341,24 @@ viewEventPanel model ev =
         ]
         [ -- Header
           div [ class "flex items-start justify-between gap-2 p-4 border-b border-border-default" ]
-            [ h2 [ class "type-h4 text-text-primary flex-1" ]
-                [ text ev.title ]
+            [ div [ class "flex-1 flex flex-col gap-1" ]
+                [ if ev.cancelled then
+                    span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5 self-start" ]
+                        [ text (t EventCancelled) ]
+
+                  else
+                    text ""
+                , h2
+                    [ class
+                        (if ev.cancelled then
+                            "type-h4 text-text-primary line-through"
+
+                         else
+                            "type-h4 text-text-primary"
+                        )
+                    ]
+                    [ text ev.title ]
+                ]
             , button
                 [ onClick ClosePanel
                 , class "text-text-subtle hover:text-text-primary mt-0.5 flex-shrink-0"

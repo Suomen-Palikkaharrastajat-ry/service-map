@@ -75,6 +75,7 @@ eventToFeature ev = case PB.eventPoint ev of
                             , "image" .= maybe Null (toJSON . T.unpack) (PB.eventImage ev)
                             , "image_description" .= maybe Null (toJSON . T.unpack) (PB.eventImageDesc ev)
                             , "state" .= T.unpack (PB.eventState ev)
+                            , "cancelled" .= PB.eventCancelled ev
                             , "point" .= object ["lat" .= PB.geoLat pt, "lon" .= PB.geoLon pt]
                             ]
                     ]

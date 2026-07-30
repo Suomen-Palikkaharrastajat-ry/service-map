@@ -95,6 +95,62 @@ zeroPointLocationJson =
 zeroPointLocation :: PB.Location
 zeroPointLocation = decodeLocation zeroPointLocationJson
 
+cancelledEventJson :: BLC.ByteString
+cancelledEventJson =
+    BLC.pack $
+        concat
+            [ "{\"id\":\"evt001\","
+            , "\"title\":\"Peruttu palikkatapahtuma\","
+            , "\"description\":\"Ei jarjesteta\","
+            , "\"start_date\":\"2026-08-01T09:00:00.000Z\","
+            , "\"end_date\":\"2026-08-01T15:00:00.000Z\","
+            , "\"all_day\":false,"
+            , "\"url\":\"https://example.com/evt\","
+            , "\"location\":\"Tampere\","
+            , "\"state\":\"published\","
+            , "\"image\":\"\","
+            , "\"image_description\":\"\","
+            , "\"point\":{\"lat\":61.4978,\"lon\":23.7610},"
+            , "\"tags\":[],"
+            , "\"created\":\"2026-01-01T00:00:00.000Z\","
+            , "\"updated\":\"2026-01-02T00:00:00.000Z\","
+            , "\"cancelled\":true}"
+            ]
+
+-- The "cancelled" key is deliberately absent: PocketBase omits false booleans in
+-- some responses, so the decoder must default to False.
+plainEventJson :: BLC.ByteString
+plainEventJson =
+    BLC.pack $
+        concat
+            [ "{\"id\":\"evt002\","
+            , "\"title\":\"Palikkatapahtuma\","
+            , "\"description\":\"\","
+            , "\"start_date\":\"2026-09-01T09:00:00.000Z\","
+            , "\"end_date\":null,"
+            , "\"all_day\":true,"
+            , "\"url\":\"\","
+            , "\"location\":\"Oulu\","
+            , "\"state\":\"published\","
+            , "\"image\":\"\","
+            , "\"image_description\":\"\","
+            , "\"point\":{\"lat\":65.0121,\"lon\":25.4651},"
+            , "\"tags\":[],"
+            , "\"created\":\"2026-01-01T00:00:00.000Z\","
+            , "\"updated\":\"2026-01-02T00:00:00.000Z\"}"
+            ]
+
+decodeEvent :: BLC.ByteString -> PB.Event
+decodeEvent bs = case eitherDecode bs of
+    Left err -> error ("Test fixture decode failed: " ++ err)
+    Right ev -> ev
+
+cancelledEvent :: PB.Event
+cancelledEvent = decodeEvent cancelledEventJson
+
+plainEvent :: PB.Event
+plainEvent = decodeEvent plainEventJson
+
 winterTime :: UTCTime
 winterTime = UTCTime (fromGregorian 2026 1 15) (secondsToDiffTime (10 * 3600))
 
@@ -157,6 +213,10 @@ pocketBaseTests =
     , testCase "imageUrl helper" $
         PB.imageUrl timedLocation "photo.jpg"
             @?= "https://data.palikkaharrastajat.fi/api/files/locations/abc123/photo.jpg"
+    , testCase "decodes event cancelled true" $
+        PB.eventCancelled cancelledEvent @?= True
+    , testCase "missing event cancelled defaults to False" $
+        PB.eventCancelled plainEvent @?= False
     ]
 
 -- ---------------------------------------------------------------------------
@@ -248,6 +308,14 @@ geoJsonTests =
         assertBool
             "no zero001 in output"
             (not ("zero001" `isInfixOf` geo))
+    , testCase "cancelled event carries cancelled true" $ do
+        geo <- GeoJsonGen.generateGeoJson [] [cancelledEvent]
+        assertBool "evt001 in output" ("evt001" `isInfixOf` geo)
+        assertBool "cancelled true" ("\"cancelled\":true" `isInfixOf` geo)
+    , testCase "event without cancelled key carries cancelled false" $ do
+        geo <- GeoJsonGen.generateGeoJson [] [plainEvent]
+        assertBool "evt002 in output" ("evt002" `isInfixOf` geo)
+        assertBool "cancelled false" ("\"cancelled\":false" `isInfixOf` geo)
     ]
 
 -- ---------------------------------------------------------------------------

@@ -2,10 +2,10 @@ module MainTest exposing (suite)
 
 import Expect
 import Http
-import Main exposing (applyFormDate, applyFormField, refreshLocationsOnMutationResult)
+import Main exposing (applyFormDate, applyFormField, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)
 import RemoteData exposing (RemoteData(..))
 import Test exposing (Test, describe, test)
-import Types exposing (LocationState(..), emptyLocationFormData)
+import Types exposing (EventFilter(..), LocationState(..), emptyLocationFormData)
 
 
 testLocation : Types.Location
@@ -24,6 +24,37 @@ testLocation =
     , openingHours = Nothing
     , state = Published
     }
+
+
+testEvent : String -> Bool -> Types.Event
+testEvent id cancelled =
+    { id = id
+    , title = "Tapahtuma " ++ id
+    , description = Nothing
+    , startDate = "2026-08-01T09:00:00.000Z"
+    , endDate = "2026-08-01T15:00:00.000Z"
+    , location = Nothing
+    , url = Nothing
+    , image = Nothing
+    , point = { lat = 60.1699, lon = 24.9384 }
+    , allDay = False
+    , cancelled = cancelled
+    }
+
+
+liveEvent : Types.Event
+liveEvent =
+    testEvent "live" False
+
+
+cancelledEvent : Types.Event
+cancelledEvent =
+    testEvent "cancelled" True
+
+
+unlocatedEvent : Types.Event
+unlocatedEvent =
+    { liveEvent | id = "unlocated", point = { lat = 0, lon = 0 } }
 
 
 suite : Test
@@ -144,5 +175,41 @@ suite =
                 \_ ->
                     refreshLocationsOnMutationResult (Err Http.NetworkError) (Success [ testLocation ])
                         |> Expect.equal (Success [ testLocation ])
+            ]
+        , describe "nextEventFilter"
+            [ test "AllEvents cycles to HideCancelled" <|
+                \_ -> nextEventFilter AllEvents |> Expect.equal HideCancelled
+            , test "HideCancelled cycles to NoEvents" <|
+                \_ -> nextEventFilter HideCancelled |> Expect.equal NoEvents
+            , test "NoEvents cycles back to AllEvents" <|
+                \_ -> nextEventFilter NoEvents |> Expect.equal AllEvents
+            , test "three cycles return to the starting state" <|
+                \_ ->
+                    nextEventFilter (nextEventFilter (nextEventFilter HideCancelled))
+                        |> Expect.equal HideCancelled
+            ]
+        , describe "visibleEvents"
+            [ test "AllEvents keeps cancelled events" <|
+                \_ ->
+                    visibleEvents { eventFilter = AllEvents, events = Success [ liveEvent, cancelledEvent ] }
+                        |> List.map .id
+                        |> Expect.equal [ "live", "cancelled" ]
+            , test "HideCancelled drops cancelled events" <|
+                \_ ->
+                    visibleEvents { eventFilter = HideCancelled, events = Success [ liveEvent, cancelledEvent ] }
+                        |> List.map .id
+                        |> Expect.equal [ "live" ]
+            , test "NoEvents drops everything" <|
+                \_ ->
+                    visibleEvents { eventFilter = NoEvents, events = Success [ liveEvent, cancelledEvent ] }
+                        |> Expect.equal []
+            , test "events at (0,0) are always dropped" <|
+                \_ ->
+                    visibleEvents { eventFilter = AllEvents, events = Success [ unlocatedEvent ] }
+                        |> Expect.equal []
+            , test "unloaded events give an empty list" <|
+                \_ ->
+                    visibleEvents { eventFilter = AllEvents, events = NotAsked }
+                        |> Expect.equal []
             ]
         ]

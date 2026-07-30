@@ -35,4 +35,18 @@ suite =
                 \_ ->
                     Types.locationStateFromString "nonsense" |> Expect.equal Nothing
             ]
+        , describe "eventFilterToString and eventFilterFromString"
+            [ test "AllEvents round-trip" <|
+                \_ ->
+                    Types.AllEvents |> Types.eventFilterToString |> Types.eventFilterFromString |> Expect.equal (Just Types.AllEvents)
+            , test "HideCancelled round-trip" <|
+                \_ ->
+                    Types.HideCancelled |> Types.eventFilterToString |> Types.eventFilterFromString |> Expect.equal (Just Types.HideCancelled)
+            , test "NoEvents round-trip" <|
+                \_ ->
+                    Types.NoEvents |> Types.eventFilterToString |> Types.eventFilterFromString |> Expect.equal (Just Types.NoEvents)
+            , test "unknown string gives Nothing" <|
+                \_ ->
+                    Types.eventFilterFromString "nonsense" |> Expect.equal Nothing
+            ]
         ]

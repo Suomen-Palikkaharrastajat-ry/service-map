@@ -1,6 +1,6 @@
-module I18n exposing (MsgKey(..), stateLabel, t)
+module I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
 
-import Types exposing (LocationState(..))
+import Types exposing (EventFilter(..), LocationState(..))
 
 
 type MsgKey
@@ -79,6 +79,11 @@ type MsgKey
     | MapLoading
     | MapLoadError
     | MapLocationsOnMap
+    | FilterEvents
+    | FilterEventsAll
+    | FilterEventsNoCancelled
+    | FilterEventsNone
+    | EventCancelled
     | PanelMoreInfo
     | PanelClose
 
@@ -311,11 +316,39 @@ t key =
         MapLocationsOnMap ->
             "kohdetta kartalla"
 
+        FilterEvents ->
+            "Tapahtumat"
+
+        FilterEventsAll ->
+            "kaikki"
+
+        FilterEventsNoCancelled ->
+            "ei peruttuja"
+
+        FilterEventsNone ->
+            "piilotettu"
+
+        EventCancelled ->
+            "PERUTTU"
+
         PanelMoreInfo ->
             "Lisätietoja"
 
         PanelClose ->
             "Sulje"
+
+
+eventFilterLabel : EventFilter -> String
+eventFilterLabel filter =
+    case filter of
+        AllEvents ->
+            t FilterEventsAll
+
+        HideCancelled ->
+            t FilterEventsNoCancelled
+
+        NoEvents ->
+            t FilterEventsNone
 
 
 stateLabel : LocationState -> String

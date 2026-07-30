@@ -1,6 +1,6 @@
 module ApiTest exposing (suite)
 
-import Api exposing (decodeLocation, httpErrorToString, imageUrl)
+import Api exposing (decodeEvent, decodeLocation, httpErrorToString, imageUrl)
 import Expect
 import Http
 import Json.Decode as Json
@@ -57,10 +57,61 @@ minimalLocationJson =
         "updated":"2026-01-02T00:00:00.000Z"}"""
 
 
+{-| Event JSON with the cancelled flag set.
+-}
+cancelledEventJson : String
+cancelledEventJson =
+    """{"id":"evt001",
+        "title":"Peruttu palikkatapahtuma",
+        "description":"Ei järjestetä",
+        "start_date":"2026-08-01T09:00:00.000Z",
+        "end_date":"2026-08-01T15:00:00.000Z",
+        "all_day":false,
+        "url":"https://example.com/evt",
+        "location":"Tampere",
+        "state":"published",
+        "point":{"lat":61.4978,"lon":23.7610},
+        "cancelled":true}"""
+
+
+{-| Event JSON without a cancelled key — both PocketBase (which omits false booleans)
+and the committed `public/kartta.geo.json` artifact can look like this.
+-}
+plainEventJson : String
+plainEventJson =
+    """{"id":"evt002",
+        "title":"Palikkatapahtuma",
+        "description":"",
+        "start_date":"2026-09-01T09:00:00.000Z",
+        "end_date":"",
+        "all_day":true,
+        "url":"",
+        "location":"Oulu",
+        "state":"published",
+        "point":{"lat":65.0121,"lon":25.4651}}"""
+
+
 suite : Test
 suite =
     describe "Api"
-        [ describe "decodeLocation"
+        [ describe "decodeEvent"
+            [ test "decodes cancelled true" <|
+                \_ ->
+                    decodeJson decodeEvent cancelledEventJson
+                        |> Result.map .cancelled
+                        |> Expect.equal (Ok True)
+            , test "missing cancelled key defaults to False" <|
+                \_ ->
+                    decodeJson decodeEvent plainEventJson
+                        |> Result.map .cancelled
+                        |> Expect.equal (Ok False)
+            , test "decodes id alongside cancelled" <|
+                \_ ->
+                    decodeJson decodeEvent cancelledEventJson
+                        |> Result.map .id
+                        |> Expect.equal (Ok "evt001")
+            ]
+        , describe "decodeLocation"
             [ test "decodes id" <|
                 \_ ->
                     decodeJson decodeLocation fullLocationJson

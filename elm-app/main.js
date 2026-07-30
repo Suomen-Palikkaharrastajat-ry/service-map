@@ -77,7 +77,7 @@ function getInitAuth() {
 
 const initAuth = getInitAuth()
 
-let initialFilters = { hiddenTags: [], eventsHidden: false }
+let initialFilters = { hiddenTags: [], eventsFilter: 'no-cancelled' }
 try {
   const storedFilters = localStorage.getItem('mapFilters')
   if (storedFilters) {
@@ -87,13 +87,19 @@ try {
   console.warn('Failed to parse stored mapFilters:', e)
 }
 
+// Migrate the legacy boolean: it expressed no opinion about cancelled events, so
+// "events shown" becomes 'no-cancelled' rather than 'all'.
+if (initialFilters && initialFilters.eventsFilter === undefined && 'eventsHidden' in initialFilters) {
+  initialFilters.eventsFilter = initialFilters.eventsHidden ? 'none' : 'no-cancelled'
+}
+
 const flags = {
   authToken: initAuth.authToken,
   authModel: initAuth.authModel,
   now: Date.now(),
   pbBaseUrl,
   hiddenTags: initialFilters.hiddenTags || [],
-  eventsHidden: initialFilters.eventsHidden || false,
+  eventsFilter: initialFilters.eventsFilter || 'no-cancelled',
   isEmbed: window.location.pathname.endsWith('embed.html'),
 }
 
@@ -214,6 +220,16 @@ if (app.ports.saveFilterState) {
 /** Registry of active MapLibre maps: containerId → { map, marker, pointMarkers, pendingMarkers } */
 const maps = {}
 
+/** Cancelled-event label. Keep in sync with `EventCancelled` in elm-app/src/I18n.elm. */
+const cancelledLabel = 'PERUTTU'
+
+/** Popup title markup; cancelled events get the label and a struck-through title. */
+function popupTitleHtml(title, cancelled) {
+  const inner = cancelled ? `<s>${title}</s>` : title;
+  const prefix = cancelled ? `${cancelledLabel} ` : '';
+  return `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${prefix}${inner}</div>`;
+}
+
 function applyMarkers(mapObj, markerList) {
   if (!mapObj.pointMarkers) {
     mapObj.pointMarkers = {};
@@ -320,7 +336,7 @@ function renderClusters(mapObj) {
             let leafEl;
             if (m.isEvent) {
               leafEl = document.createElement('div');
-              leafEl.className = 'event-marker';
+              leafEl.className = m.cancelled ? 'event-marker marker-cancelled' : 'event-marker';
               leafEl.style.cursor = 'pointer';
               leafEl.style.marginLeft = `${offsetX}px`;
               leafEl.style.marginTop = `${offsetY}px`;
@@ -343,7 +359,7 @@ function renderClusters(mapObj) {
               .setLngLat(coords)
               .addTo(mapObj.map);
               
-            let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
+            let popupHtml = popupTitleHtml(m.title, m.cancelled);
             if (m.date) {
               popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
             }
@@ -391,7 +407,7 @@ function renderClusters(mapObj) {
         let el;
         if (m.isEvent) {
           el = document.createElement('div');
-          el.className = 'event-marker';
+          el.className = m.cancelled ? 'event-marker marker-cancelled' : 'event-marker';
           el.style.cursor = 'pointer';
           el.innerHTML = getMarkerIconHtml(['event']);
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
@@ -402,7 +418,7 @@ function renderClusters(mapObj) {
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         }
 
-        let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${m.title}</div>`;
+        let popupHtml = popupTitleHtml(m.title, m.cancelled);
         if (m.date) {
           popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
         }
@@ -597,7 +613,7 @@ app.ports.destroyMap.subscribe((containerId) => {
 let savedMapState = null;
 
 if (app.ports.focusMapOnMarker) {
-  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date }) => {
+  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date, cancelled }) => {
     await ensureMapLibs();
     const mapObj = maps['map'];
     if (mapObj && mapObj.map) {
@@ -625,7 +641,7 @@ if (app.ports.focusMapOnMarker) {
         mapObj.activePopup.remove();
       }
       
-      let popupHtml = `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${title}</div>`;
+      let popupHtml = popupTitleHtml(title, cancelled);
       if (date) {
         popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${date}</div>`;
       }

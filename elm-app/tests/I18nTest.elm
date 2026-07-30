@@ -1,9 +1,9 @@
 module I18nTest exposing (suite)
 
 import Expect
-import I18n exposing (MsgKey(..), stateLabel, t)
+import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
 import Test exposing (Test, describe, test)
-import Types exposing (LocationState(..))
+import Types exposing (EventFilter(..), LocationState(..))
 
 
 suite : Test
@@ -172,5 +172,27 @@ suite =
                 \_ -> t MapLocationsOnMap |> String.isEmpty |> Expect.equal False
             , test "PanelMoreInfo is non-empty" <|
                 \_ -> t PanelMoreInfo |> String.isEmpty |> Expect.equal False
+            , test "FilterEvents is non-empty" <|
+                \_ -> t FilterEvents |> String.isEmpty |> Expect.equal False
+            , test "FilterEventsAll is non-empty" <|
+                \_ -> t FilterEventsAll |> String.isEmpty |> Expect.equal False
+            , test "FilterEventsNoCancelled is non-empty" <|
+                \_ -> t FilterEventsNoCancelled |> String.isEmpty |> Expect.equal False
+            , test "FilterEventsNone is non-empty" <|
+                \_ -> t FilterEventsNone |> String.isEmpty |> Expect.equal False
+            , test "EventCancelled is non-empty" <|
+                \_ -> t EventCancelled |> String.isEmpty |> Expect.equal False
+            ]
+        , describe "eventFilterLabel"
+            [ test "AllEvents label is non-empty" <|
+                \_ -> eventFilterLabel AllEvents |> String.isEmpty |> Expect.equal False
+            , test "HideCancelled label differs from AllEvents" <|
+                \_ ->
+                    eventFilterLabel HideCancelled
+                        |> Expect.notEqual (eventFilterLabel AllEvents)
+            , test "NoEvents label differs from HideCancelled" <|
+                \_ ->
+                    eventFilterLabel NoEvents
+                        |> Expect.notEqual (eventFilterLabel HideCancelled)
             ]
         ]

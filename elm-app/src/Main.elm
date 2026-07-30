@@ -1,4 +1,4 @@
-module Main exposing (applyFormDate, applyFormField, main, refreshLocationsOnMutationResult)
+module Main exposing (applyFormDate, applyFormField, main, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)
 
 import Api
 import Auth
@@ -38,6 +38,8 @@ import Types
     exposing
         ( AuthState(..)
         , AuthUser
+        , Event
+        , EventFilter(..)
         , Flags
         , FormStatus(..)
         , Location
@@ -92,7 +94,7 @@ init flags url key =
       , events = RemoteData.Loading
       , selectedMarker = Nothing
       , hiddenTags = flags.hiddenTags
-      , eventsHidden = flags.eventsHidden
+      , eventFilter = Maybe.withDefault HideCancelled (Types.eventFilterFromString flags.eventsFilter)
       , isEmbed = flags.isEmbed
       , presentationMode = False
       , now = now
@@ -316,14 +318,14 @@ update msg model =
                                 dateStr =
                                     Maybe.withDefault "" (DateUtils.formatLocationDateDisplay { startDate = l.startDate, endDate = l.endDate })
                             in
-                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = dateStr }
+                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = dateStr, cancelled = False }
 
                         Just (Types.SelectedEvent e) ->
                             let
                                 dateStr =
                                     Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
                             in
-                            Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr }
+                            Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled }
 
                         Nothing ->
                             Cmd.none
@@ -342,17 +344,8 @@ update msg model =
                         _ ->
                             []
                     )
-                        ++ (if model.eventsHidden then
-                                []
-
-                            else
-                                case model.events of
-                                    Success evts ->
-                                        List.filter (\e -> Types.hasValidCoordinates e.point) evts
-                                            |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
-
-                                    _ ->
-                                        []
+                        ++ (visibleEvents model
+                                |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
                            )
 
                 allIds =
@@ -430,17 +423,8 @@ update msg model =
                         _ ->
                             []
                     )
-                        ++ (if model.eventsHidden then
-                                []
-
-                            else
-                                case model.events of
-                                    Success evts ->
-                                        List.filter (\e -> Types.hasValidCoordinates e.point) evts
-                                            |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
-
-                                    _ ->
-                                        []
+                        ++ (visibleEvents model
+                                |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
                            )
 
                 allIds =
@@ -1288,14 +1272,22 @@ update msg model =
                 newModel =
                     { model | hiddenTags = newHiddenTags }
             in
-            ( newModel, Cmd.batch [ updateMarkers newModel, Ports.saveFilterState { hiddenTags = newModel.hiddenTags, eventsHidden = newModel.eventsHidden } ] )
+            ( newModel, Cmd.batch [ updateMarkers newModel, saveFilters newModel ] )
 
-        ToggleEventVisibility isHidden ->
+        CycleEventFilter ->
             let
                 newModel =
-                    { model | eventsHidden = isHidden }
+                    { model | eventFilter = nextEventFilter model.eventFilter }
             in
-            ( newModel, Cmd.batch [ updateMarkers newModel, Ports.saveFilterState { hiddenTags = newModel.hiddenTags, eventsHidden = newModel.eventsHidden } ] )
+            ( newModel, Cmd.batch [ updateMarkers newModel, saveFilters newModel ] )
+
+
+saveFilters : Model -> Cmd Msg
+saveFilters model =
+    Ports.saveFilterState
+        { hiddenTags = model.hiddenTags
+        , eventsFilter = Types.eventFilterToString model.eventFilter
+        }
 
 
 updateNewForm : Model -> (LocationFormData -> LocationFormData) -> ( Model, Cmd Msg )
@@ -1446,6 +1438,7 @@ locationToMarker loc =
     , date = formattedOh
     , isEvent = False
     , tags = loc.tags
+    , cancelled = False
     }
 
 
@@ -1458,7 +1451,46 @@ eventToMarker ev =
     , date = Maybe.withDefault "" (DateUtils.formatEventDateDisplay ev)
     , isEvent = True
     , tags = []
+    , cancelled = ev.cancelled
     }
+
+
+{-| Events the current filter lets through, with unlocated ones dropped. Shared by
+marker rendering and keyboard marker navigation so all three stay in agreement. Takes an
+extensible record rather than the `Model` so it is reachable from tests, which cannot
+construct a `Nav.Key`.
+-}
+visibleEvents : { a | eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> List Event
+visibleEvents model =
+    case ( model.eventFilter, model.events ) of
+        ( NoEvents, _ ) ->
+            []
+
+        ( filter, Success evts ) ->
+            evts
+                |> List.filter
+                    (\e ->
+                        Types.hasValidCoordinates e.point
+                            && (filter == AllEvents || not e.cancelled)
+                    )
+
+        _ ->
+            []
+
+
+{-| Cycle order of the tri-state events filter control.
+-}
+nextEventFilter : EventFilter -> EventFilter
+nextEventFilter filter =
+    case filter of
+        AllEvents ->
+            HideCancelled
+
+        HideCancelled ->
+            NoEvents
+
+        NoEvents ->
+            AllEvents
 
 
 updateMarkers : Model -> Cmd Msg
@@ -1476,18 +1508,8 @@ updateMarkers model =
                     []
 
         evtMarkers =
-            if model.eventsHidden then
-                []
-
-            else
-                case model.events of
-                    Success events ->
-                        events
-                            |> List.filter (\e -> Types.hasValidCoordinates e.point)
-                            |> List.map eventToMarker
-
-                    _ ->
-                        []
+            visibleEvents model
+                |> List.map eventToMarker
     in
     Ports.addMarkers (locMarkers ++ evtMarkers)
 

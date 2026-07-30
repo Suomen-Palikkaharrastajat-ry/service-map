@@ -67,6 +67,43 @@ locationStateToString state =
             "deleted"
 
 
+{-| Which events the map shows. `HideCancelled` is the default for a new visitor.
+-}
+type EventFilter
+    = AllEvents
+    | HideCancelled
+    | NoEvents
+
+
+eventFilterFromString : String -> Maybe EventFilter
+eventFilterFromString s =
+    case s of
+        "all" ->
+            Just AllEvents
+
+        "no-cancelled" ->
+            Just HideCancelled
+
+        "none" ->
+            Just NoEvents
+
+        _ ->
+            Nothing
+
+
+eventFilterToString : EventFilter -> String
+eventFilterToString filter =
+    case filter of
+        AllEvents ->
+            "all"
+
+        HideCancelled ->
+            "no-cancelled"
+
+        NoEvents ->
+            "none"
+
+
 type alias Location =
     { id : String
     , title : String
@@ -95,6 +132,7 @@ type alias Event =
     , image : Maybe String
     , point : GeoPoint
     , allDay : Bool
+    , cancelled : Bool
     }
 
 
@@ -137,7 +175,7 @@ type alias Flags =
     , authModel : Maybe String
     , now : Int
     , hiddenTags : List String
-    , eventsHidden : Bool
+    , eventsFilter : String
     , isEmbed : Bool
     }
 
@@ -264,7 +302,7 @@ type alias Model =
     , events : RemoteData Http.Error (List Event)
     , selectedMarker : Maybe SelectedMarker
     , hiddenTags : List String
-    , eventsHidden : Bool
+    , eventFilter : EventFilter
     , isEmbed : Bool
     , presentationMode : Bool
     , now : Time.Posix
@@ -376,7 +414,7 @@ type Msg
       -- Maps (via ports)
     | MapMarkerMoved Float Float
     | ToggleTagVisibility String Bool
-    | ToggleEventVisibility Bool
+    | CycleEventFilter
       -- KML Import
     | LocationKmlFileSelected File
     | LocationKmlGotContent String

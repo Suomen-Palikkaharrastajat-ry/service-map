@@ -111,6 +111,7 @@ data Event = Event
     , eventTags :: [Text]
     , eventCreated :: UTCTime
     , eventUpdated :: UTCTime
+    , eventCancelled :: Bool
     }
     deriving (Show)
 
@@ -132,6 +133,7 @@ instance FromJSON Event where
             <*> o .:? "tags" .!= []
             <*> o .: "created"
             <*> o .: "updated"
+            <*> o .:? "cancelled" .!= False
 
 data PbList a = PbList
     { pbItems :: [a]

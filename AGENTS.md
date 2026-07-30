@@ -96,6 +96,13 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 - `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`, `/#/callback`
 - MapLibre GL vector basemap loaded from the external [`service-map-tiles`](https://github.com/Suomen-Palikkaharrastajat-ry/service-map-tiles) service, served from `https://tiles.palikkaharrastajat.fi/`. `main.js` registers the `pmtiles://` protocol and points MapLibre at the published `style.json` (override via `VITE_BASEMAP_STYLE_URL`); no tiles, glyphs, or GeoJSON are hosted here. The form location-picker uses an inline OSM raster style for street-level zoom.
 - Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`, `getCallbackParams`/`callbackParams`.
+- Map filters are persisted to `localStorage.mapFilters` via `saveFilterState`, whose
+  payload is `{ hiddenTags : List String, eventsFilter : String }`. The events filter is
+  three-state (`Types.EventFilter`: `"all"` / `"no-cancelled"` / `"none"`), defaulting to
+  `no-cancelled` for a new visitor; `main.js` migrates the legacy `eventsHidden` boolean.
+  Cancelled events (`Event.cancelled`, read-only from the `events` collection) are dimmed
+  via the `marker-cancelled` class and badged in the detail panel. `addMarkers`
+  (`MarkerData`) and `focusMapOnMarker` both carry `cancelled`.
 - OAuth popup + redirect-callback flow.
 - Uses `RemoteData` for async state.
 - Uses the opening-hours editor from the vendored `osm-opening-hours` package.
@@ -118,6 +125,8 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 
 - [ ] Map renders markers (published only, signed-out)
 - [ ] Detail panel shows correctly when clicking a marker
+- [ ] Events filter cycles all → no-cancelled → none (middle state renders indeterminate) and survives a reload
+- [ ] Cancelled events show a `PERUTTU` badge with a struck title and a dimmed marker
 - [ ] Locations list view renders correctly
 - [ ] CRUD flow works (create, edit, delete) with appropriate toasts
 - [ ] Delete flow redirects appropriately

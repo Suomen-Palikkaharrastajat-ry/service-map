@@ -1,4 +1,4 @@
-module Api exposing (createLocation, decodeLocation, fetchEvents, fetchGeoJson, fetchLocation, fetchLocations, httpErrorToString, imageUrl, updateLocation, updateLocationState)
+module Api exposing (createLocation, decodeEvent, decodeLocation, fetchEvents, fetchGeoJson, fetchLocation, fetchLocations, httpErrorToString, imageUrl, updateLocation, updateLocationState)
 
 import DateUtils exposing (formDateTimeToUtc)
 import File
@@ -179,6 +179,7 @@ decodeEvent =
             , image = img
             , point = { lat = 0, lon = 0 }
             , allDay = False
+            , cancelled = False
             }
         )
         (Json.field "id" Json.string)
@@ -191,12 +192,13 @@ decodeEvent =
         (Json.maybe (Json.field "image" Json.string) |> Json.map emptyToNothing)
         |> Json.andThen
             (\partial ->
-                Json.map2
-                    (\pt ad ->
-                        { partial | point = pt, allDay = ad }
+                Json.map3
+                    (\pt ad isCancelled ->
+                        { partial | point = pt, allDay = ad, cancelled = isCancelled }
                     )
                     (Json.maybe (Json.field "point" decodeGeoPoint) |> Json.map (Maybe.withDefault { lat = 0, lon = 0 }))
                     (Json.maybe (Json.field "all_day" Json.bool) |> Json.map (Maybe.withDefault False))
+                    (Json.maybe (Json.field "cancelled" Json.bool) |> Json.map (Maybe.withDefault False))
             )
 
 
