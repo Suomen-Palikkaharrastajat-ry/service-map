@@ -4,7 +4,7 @@ import Component.Button as Button exposing (Size(..), Variant(..))
 import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
-import Html.Attributes exposing (attribute, checked, class, href, id, property, style, target, type_)
+import Html.Attributes exposing (attribute, checked, class, href, id, property, style, target, title, type_)
 import Html.Events exposing (onCheck, onClick)
 import I18n exposing (MsgKey(..), eventFilterLabel, t)
 import Json.Encode as Encode
@@ -154,7 +154,10 @@ viewEventFilterToggle model =
                 Types.NoEvents ->
                     "false"
     in
-    label [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
+    label
+        [ class "flex items-center gap-2 cursor-pointer type-body-small"
+        , title (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
+        ]
         [ input
             [ type_ "checkbox"
             , checked (model.eventFilter == Types.AllEvents)
@@ -164,7 +167,8 @@ viewEventFilterToggle model =
             ]
             []
         , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-        , text (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
+        , text (t FilterEvents)
+        , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel model.eventFilter) ]
         ]
 
 
