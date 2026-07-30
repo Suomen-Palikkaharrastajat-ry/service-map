@@ -295,6 +295,28 @@ button:not([disabled]) {
   outline-offset: 2px;
 }
 
+/* Marker tooltips open by themselves from zoom 13 up and stay open while the
+   info pane is, so the close control is the only way to dismiss one without
+   moving the map. MapLibre's default ✕ is a ~10px hit area in the corner; make
+   it a real target and keep the title clear of it. */
+.maplibregl-popup-close-button {
+  width: 24px;
+  height: 24px;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: var(--color-text-subtle);
+  border-radius: 4px;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: var(--color-gray-100, #f3f4f6);
+  color: var(--color-brand);
+}
+
+.maplibregl-popup-content {
+  padding-right: 1.75rem;
+}
+
 @keyframes progress-reverse {
   from { width: 100%; }
   to { width: 0%; }

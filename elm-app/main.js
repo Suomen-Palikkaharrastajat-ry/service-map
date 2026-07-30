@@ -233,6 +233,77 @@ const cancelledLabel = 'PERUTTU'
 /** Accessible name for a cluster pin. Finnish, to match the rest of the UI (`lang="fi"`). */
 const clusterLabel = (count) => `${count} kohdetta, avaa ryhmä`
 
+/**
+ * Zoom level from which marker tooltips open by themselves.
+ *
+ * `focusMapOnMarker` flies to this level (Finland) when a marker is opened from
+ * the info pane or presentation mode, so above it the tooltip is already on
+ * screen without anyone forcing it.
+ */
+const AUTO_POPUP_ZOOM = 13
+
+/**
+ * Remove a popup without recording it as dismissed.
+ *
+ * MapLibre fires `close` for every removal, including ours, so the popups we
+ * take down on mouseleave or when zooming out would otherwise look like the
+ * user having clicked the ✕ and stay shut on the way back in.
+ */
+function closePopupSilently(popup) {
+  popup.__silentClose = true
+  popup.remove()
+  popup.__silentClose = false
+}
+
+function autoPopupsActive(mapObj) {
+  return mapObj.map.getZoom() >= AUTO_POPUP_ZOOM
+}
+
+/**
+ * Close every marker tooltip except one.
+ *
+ * Done through the Popup API rather than by ripping `.maplibregl-popup` nodes
+ * out of the DOM: `isOpen()` reports on the popup's map reference, so a popup
+ * whose element was deleted behind its back still claims to be open and
+ * `syncAutoPopups` would then never reopen it.
+ */
+function closeOtherMarkerPopups(mapObj, exceptKey) {
+  const all = Object.values(mapObj.pointMarkers || {}).concat(mapObj.spiderMarkers || [])
+  all.forEach(marker => {
+    const popup = marker.__popup
+    if (popup && marker.__popupKey !== exceptKey && popup.isOpen()) closePopupSilently(popup)
+  })
+}
+
+/**
+ * Open/close the per-marker tooltips to match the current zoom.
+ *
+ * Called from `renderClusters`, which already runs on every `move` (zooming
+ * included). Dismissals are remembered only while auto-open is in effect —
+ * zooming back out and in again offers the tooltip afresh.
+ */
+function syncAutoPopups(mapObj) {
+  if (!mapObj.dismissedPopups) mapObj.dismissedPopups = new Set()
+  const active = autoPopupsActive(mapObj)
+  if (!active) mapObj.dismissedPopups.clear()
+
+  Object.values(mapObj.pointMarkers || {}).forEach(marker => {
+    const popup = marker.__popup
+    if (!popup) return
+    const key = marker.__popupKey
+    // The info pane keeps its own popup for the focused marker; a second one on
+    // the same spot would just draw on top of it.
+    const shouldOpen =
+      active && !mapObj.dismissedPopups.has(key) && key !== mapObj.focusedPopupKey
+
+    if (shouldOpen) {
+      if (!popup.isOpen()) popup.setLngLat(marker.getLngLat()).addTo(mapObj.map)
+    } else if (popup.isOpen() && !mapObj.dismissedPopups.has(key)) {
+      closePopupSilently(popup)
+    }
+  })
+}
+
 /** Popup title markup; cancelled events get the label and a struck-through title. */
 function popupTitleHtml(title, cancelled) {
   const inner = cancelled ? `<s>${title}</s>` : title;
@@ -276,9 +347,16 @@ function applyMarkers(mapObj, markerList) {
   if (!mapObj.pointMarkers) {
     mapObj.pointMarkers = {};
   }
-  
+  // Tooltips the user has closed by hand, so auto-open leaves them shut.
+  if (!mapObj.dismissedPopups) {
+    mapObj.dismissedPopups = new Set();
+  }
+
   if (mapObj.spiderMarkers) {
-    mapObj.spiderMarkers.forEach(m => m.remove());
+    mapObj.spiderMarkers.forEach(m => {
+      if (m.__popup && m.__popup.isOpen()) closePopupSilently(m.__popup);
+      m.remove();
+    });
     mapObj.spiderMarkers = null;
   }
 
@@ -286,7 +364,10 @@ function applyMarkers(mapObj, markerList) {
   if (!mapObj.unspiderfyHandler) {
     mapObj.unspiderfyHandler = (restoreFocus = false) => {
       if (mapObj.spiderMarkers) {
-        mapObj.spiderMarkers.forEach(m => m.remove());
+        mapObj.spiderMarkers.forEach(m => {
+          if (m.__popup && m.__popup.isOpen()) closePopupSilently(m.__popup);
+          m.remove();
+        });
         mapObj.spiderMarkers = null;
       }
       if (mapObj.hiddenCluster) {
@@ -400,14 +481,20 @@ function renderClusters(mapObj) {
               popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
             }
 
-            const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: false, closeOnClick: false }).setHTML(popupHtml);
+            // Spiderfied leaves are transient, so they are never auto-opened —
+            // but a tap-opened one still needs a way out on touch devices.
+            const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: true, closeOnClick: false }).setHTML(popupHtml);
+
+            const leafKey = `leaf_${m.id}`;
+            leafMarker.__popup = popup;
+            leafMarker.__popupKey = leafKey;
 
             makeMarkerButton(leafEl, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
             leafEl.addEventListener('click', (e) => {
               e.stopPropagation();
               if (window.matchMedia('(hover: none)').matches) {
                 if (!popup.isOpen()) {
-                  document.querySelectorAll('.mapboxgl-popup, .maplibregl-popup').forEach(p => p.remove());
+                  closeOtherMarkerPopups(mapObj, leafKey);
                   popup.setLngLat(coords).addTo(mapObj.map);
                 } else {
                   app.ports.markerClicked.send(m.id);
@@ -453,14 +540,23 @@ function renderClusters(mapObj) {
           popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${m.date}</div>`;
         }
 
-        const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
+        // closeButton: these tooltips can open by themselves from AUTO_POPUP_ZOOM
+        // up, so there has to be a way to get rid of one without moving the map.
+        const popup = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false }).setHTML(popupHtml);
+        const popupKey = String(m.id);
+        marker.__popup = popup;
+        marker.__popupKey = popupKey;
+        popup.on('close', () => {
+          if (!popup.__silentClose) mapObj.dismissedPopups.add(popupKey);
+        });
 
         makeMarkerButton(el, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           if (window.matchMedia('(hover: none)').matches) {
             if (!popup.isOpen()) {
-              document.querySelectorAll('.mapboxgl-popup, .maplibregl-popup').forEach(p => p.remove());
+              closeOtherMarkerPopups(mapObj, popupKey);
+              mapObj.dismissedPopups.delete(popupKey);
               popup.setLngLat(coords).addTo(mapObj.map);
             } else {
               app.ports.markerClicked.send(m.id);
@@ -470,8 +566,16 @@ function renderClusters(mapObj) {
           }
         });
 
-        el.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));
-        el.addEventListener('mouseleave', () => popup.remove());
+        el.addEventListener('mouseenter', () => {
+          if (!popup.isOpen()) popup.setLngLat(coords).addTo(mapObj.map);
+        });
+        el.addEventListener('mouseleave', () => {
+          // Leave the auto-opened ones alone; only a hover-opened tooltip (or one
+          // the user has already dismissed) should follow the pointer away.
+          if (!autoPopupsActive(mapObj) || mapObj.dismissedPopups.has(popupKey)) {
+            closePopupSilently(popup);
+          }
+        });
       }
     }
 
@@ -483,8 +587,13 @@ function renderClusters(mapObj) {
     delete mapObj.pointMarkers[id];
   });
 
-  Object.values(mapObj.pointMarkers).forEach(m => m.remove());
+  Object.values(mapObj.pointMarkers).forEach(m => {
+    if (m.__popup && m.__popup.isOpen()) closePopupSilently(m.__popup);
+    m.remove();
+  });
   mapObj.pointMarkers = newPointMarkers;
+
+  syncAutoPopups(mapObj);
 }
 
 // ── Map ports (MapLibre) ───────────────────────────────────────────────────────
@@ -534,7 +643,8 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
         'NavigationControl.ZoomOut': 'Loitonna',
         'NavigationControl.ResetBearing': 'Palauta suunta pohjoiseen',
         'GeolocateControl.FindMyLocation': 'Näytä sijaintini',
-        'GeolocateControl.LocationNotAvailable': 'Sijainti ei ole saatavilla'
+        'GeolocateControl.LocationNotAvailable': 'Sijainti ei ole saatavilla',
+        'Popup.Close': 'Sulje'
       }
     }
     if (mapStyle !== 'osm') {
@@ -670,10 +780,19 @@ if (app.ports.focusMapOnMarker) {
         popupHtml += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${date}</div>`;
       }
       
-      mapObj.activePopup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false })
+      // Held open for as long as the info pane is, so it needs its own ✕ — the
+      // marker's tooltip is suppressed while this one is up (see syncAutoPopups),
+      // and the marker may not even be rendered separately if it is clustered.
+      mapObj.focusedPopupKey = String(id);
+      mapObj.activePopup = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
         .setHTML(popupHtml)
         .setLngLat([lon, lat])
         .addTo(mapObj.map);
+      mapObj.activePopup.on('close', () => {
+        // Dismissing it should not make the marker's own tooltip pop up in its
+        // place at high zoom.
+        if (mapObj.dismissedPopups) mapObj.dismissedPopups.add(String(id));
+      });
     }
   });
 }
@@ -693,6 +812,7 @@ if (app.ports.restoreMapView) {
         mapObj.activePopup.remove();
         mapObj.activePopup = null;
       }
+      mapObj.focusedPopupKey = null;
       savedMapState = null;
     }
   });
