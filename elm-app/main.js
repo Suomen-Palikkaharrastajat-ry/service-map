@@ -609,7 +609,7 @@ if (app.ports.focusMapOnMarker) {
       }
       
       const isFinland = lat >= 59.5 && lat <= 70.2 && lon >= 19.0 && lon <= 32.0;
-      const idealZoom = isFinland ? 15 : 12;
+      const idealZoom = isFinland ? 13 : 12;
       const maxZ = mapObj.map.getMaxZoom();
       const targetZ = maxZ ? Math.min(idealZoom, maxZ) : idealZoom;
       const paddingRight = window.innerWidth > 500 ? 352 : 0;
