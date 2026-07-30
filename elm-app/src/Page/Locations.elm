@@ -79,12 +79,12 @@ view model locPage =
 
                 else
                     div [ class "flex flex-col gap-4" ]
-                        (List.map (viewLocationCard model.authState) locations)
+                        (List.map (viewLocationCard model.platform model.authState) locations)
         ]
 
 
-viewLocationCard : AuthState -> Location -> Html Msg
-viewLocationCard authState loc =
+viewLocationCard : String -> AuthState -> Location -> Html Msg
+viewLocationCard platform authState loc =
     let
         opacityClass =
             if loc.state == Types.Published then
@@ -122,14 +122,8 @@ viewLocationCard authState loc =
 
                   else
                     a
-                        [ href
-                            ("https://www.openstreetmap.org/?mlat="
-                                ++ String.fromFloat loc.point.lat
-                                ++ "&mlon="
-                                ++ String.fromFloat loc.point.lon
-                                ++ "&zoom=15"
-                            )
-                        , target "_blank"
+                        [ href (Types.mapLink platform loc.point loc.title)
+                        , target (Types.mapLinkTarget platform "_blank")
                         , Html.Attributes.attribute "aria-label" (t I18n.A11yOpenInOsm)
                         , class "text-brand hover:text-brand-yellow transition-colors"
                         ]

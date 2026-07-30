@@ -25,6 +25,53 @@ hasValidCoordinates point =
     not (point.lat == 0 && point.lon == 0)
 
 
+{-| Where a coordinate should link to, given the platform from `Flags`.
+
+On a phone this hands the coordinate to the OS rather than to a web map: `geo:`
+makes Android offer whichever navigation apps are installed, and the Apple Maps
+universal link opens Maps on iOS. Anywhere else — desktop, or a UA we do not
+recognise — it stays on OpenStreetMap, which is the only one of the three a
+desktop browser can do anything useful with.
+
+-}
+mapLink : String -> GeoPoint -> String -> String
+mapLink platform point label =
+    let
+        lat =
+            String.fromFloat point.lat
+
+        lon =
+            String.fromFloat point.lon
+
+        query =
+            Url.percentEncode label
+    in
+    case platform of
+        "android" ->
+            "geo:" ++ lat ++ "," ++ lon ++ "?q=" ++ lat ++ "," ++ lon ++ "(" ++ query ++ ")"
+
+        "ios" ->
+            "https://maps.apple.com/?ll=" ++ lat ++ "," ++ lon ++ "&q=" ++ query
+
+        _ ->
+            "https://www.openstreetmap.org/?mlat=" ++ lat ++ "&mlon=" ++ lon ++ "#map=17/" ++ lat ++ "/" ++ lon
+
+
+{-| Link target for `mapLink`.
+
+Android's `geo:` is handed to an app, not to a tab, so opening it in a new one
+leaves an empty tab behind. The web links keep whatever target the caller wants.
+
+-}
+mapLinkTarget : String -> String -> String
+mapLinkTarget platform webTarget =
+    if platform == "android" then
+        "_self"
+
+    else
+        webTarget
+
+
 type LocationState
     = Draft
     | Pending
@@ -177,6 +224,7 @@ type alias Flags =
     , hiddenTags : List String
     , eventsFilter : String
     , isEmbed : Bool
+    , platform : String
     }
 
 
@@ -304,6 +352,7 @@ type alias Model =
     , hiddenTags : List String
     , eventFilter : EventFilter
     , isEmbed : Bool
+    , platform : String
     , presentationMode : Bool
     , now : Time.Posix
     , toasts : List Toast

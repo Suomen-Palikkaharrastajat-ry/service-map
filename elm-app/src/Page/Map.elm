@@ -254,12 +254,12 @@ viewLocationPanel model loc =
             , case loc.location of
                 Just address ->
                     let
-                        osmUrl =
-                            "https://www.openstreetmap.org/?mlat=" ++ String.fromFloat loc.point.lat ++ "&mlon=" ++ String.fromFloat loc.point.lon ++ "#map=17/" ++ String.fromFloat loc.point.lat ++ "/" ++ String.fromFloat loc.point.lon
+                        mapUrl =
+                            Types.mapLink model.platform loc.point loc.title
                     in
                     div [ class "flex items-start gap-2 type-caption text-text-muted" ]
                         [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                        , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), class "hover:underline text-text-primary inline-flex items-center gap-1" ]
                             [ text address
                             , featherIcon FeatherIcons.externalLink 12
                             ]
@@ -385,12 +385,12 @@ viewEventPanel model ev =
             , case ev.location of
                 Just address ->
                     let
-                        osmUrl =
-                            "https://www.openstreetmap.org/?mlat=" ++ String.fromFloat ev.point.lat ++ "&mlon=" ++ String.fromFloat ev.point.lon ++ "#map=17/" ++ String.fromFloat ev.point.lat ++ "/" ++ String.fromFloat ev.point.lon
+                        mapUrl =
+                            Types.mapLink model.platform ev.point ev.title
                     in
                     div [ class "flex items-start gap-2 type-caption text-text-muted" ]
                         [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href osmUrl, target "_blank", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                        , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), class "hover:underline text-text-primary inline-flex items-center gap-1" ]
                             [ text address
                             , featherIcon FeatherIcons.externalLink 12
                             ]

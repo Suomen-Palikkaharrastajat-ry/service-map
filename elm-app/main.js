@@ -93,6 +93,24 @@ if (initialFilters && initialFilters.eventsFilter === undefined && 'eventsHidden
   initialFilters.eventsFilter = initialFilters.eventsHidden ? 'none' : 'no-cancelled'
 }
 
+/**
+ * Which mobile OS we are on, or 'other'.
+ *
+ * Drives whether a coordinate links to OpenStreetMap or hands off to the phone's
+ * own maps app (see `Types.mapLink`). iPadOS 13+ reports itself as Macintosh, so
+ * touch points are the only reliable tell.
+ */
+function detectPlatform() {
+  const ua = navigator.userAgent || ''
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
+    return 'ios'
+  }
+  if (/Android/.test(ua)) {
+    return 'android'
+  }
+  return 'other'
+}
+
 const flags = {
   authToken: initAuth.authToken,
   authModel: initAuth.authModel,
@@ -101,6 +119,7 @@ const flags = {
   hiddenTags: initialFilters.hiddenTags || [],
   eventsFilter: initialFilters.eventsFilter || 'no-cancelled',
   isEmbed: window.location.pathname.endsWith('embed.html'),
+  platform: detectPlatform(),
 }
 
 const app = Elm.Main.init({

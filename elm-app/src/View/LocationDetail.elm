@@ -16,8 +16,8 @@ import Types exposing (AuthState(..), LocationDetailPage, Msg(..), isAuthenticat
 import View.Icons exposing (featherIcon)
 
 
-view : String -> Bool -> AuthState -> String -> LocationDetailPage -> Html Msg
-view pbBaseUrl isEmbed authState _ detPage =
+view : String -> Bool -> String -> AuthState -> String -> LocationDetailPage -> Html Msg
+view pbBaseUrl isEmbed platform authState _ detPage =
     div [ class "max-w-2xl mx-auto p-4 w-full" ]
         [ case detPage.location of
             RemoteData.NotAsked ->
@@ -137,19 +137,15 @@ view pbBaseUrl isEmbed authState _ detPage =
 
                                   else
                                     a
-                                        [ href
-                                            ("https://www.openstreetmap.org/?mlat="
-                                                ++ String.fromFloat loc.point.lat
-                                                ++ "&mlon="
-                                                ++ String.fromFloat loc.point.lon
-                                                ++ "&zoom=15"
-                                            )
+                                        [ href (Types.mapLink platform loc.point loc.title)
                                         , target
-                                            (if isEmbed then
-                                                "_top"
+                                            (Types.mapLinkTarget platform
+                                                (if isEmbed then
+                                                    "_top"
 
-                                             else
-                                                "_blank"
+                                                 else
+                                                    "_blank"
+                                                )
                                             )
                                         , class "text-brand hover:underline inline-flex items-center gap-1"
                                         ]
