@@ -203,6 +203,7 @@ viewLocationPanel model loc =
             , if Types.isAuthenticated model.authState then
                 a
                     [ href (Route.toHref (Route.RouteLocationEdit loc.id))
+                    , attribute "aria-label" (t A11yPanelEdit)
                     , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0"
                     , style "cursor" "pointer"
                     ]
@@ -212,6 +213,7 @@ viewLocationPanel model loc =
                 text ""
             , button
                 [ onClick ClosePanel
+                , attribute "aria-label" (t A11yPanelClose)
                 , class "text-text-subtle hover:text-text-primary mt-0.5 flex-shrink-0"
                 , style "cursor" "pointer"
                 ]
@@ -278,7 +280,7 @@ viewLocationPanel model loc =
                     text ""
             , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
                 [ div [ class "flex items-center gap-2" ]
-                    [ button [ onClick SelectPrevMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                    [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                     , case loc.url of
                         Just url ->
                             Button.viewLink
@@ -309,7 +311,7 @@ viewLocationPanel model loc =
                         , loading = False
                         , ariaPressedState = Nothing
                         }
-                    , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                    , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
             , if model.presentationMode then
@@ -365,6 +367,7 @@ viewEventPanel model ev =
                 ]
             , button
                 [ onClick ClosePanel
+                , attribute "aria-label" (t A11yPanelClose)
                 , class "text-text-subtle hover:text-text-primary mt-0.5 flex-shrink-0"
                 , style "cursor" "pointer"
                 ]
@@ -403,7 +406,7 @@ viewEventPanel model ev =
                     text ""
             , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
                 [ div [ class "flex items-center gap-2" ]
-                    [ button [ onClick SelectPrevMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                    [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                     , case ev.url of
                         Just url ->
                             Button.viewLink
@@ -434,7 +437,7 @@ viewEventPanel model ev =
                         , loading = False
                         , ariaPressedState = Nothing
                         }
-                    , button [ onClick SelectNextMarker, class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                    , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
             , if model.presentationMode then

@@ -161,6 +161,13 @@ app.ports.focusMobileNav.subscribe(function () {
   })
 })
 
+app.ports.focusElement.subscribe(function (id) {
+  requestAnimationFrame(function () {
+    const el = document.getElementById(id)
+    if (el) el.focus({ focusVisible: true })
+  })
+})
+
 // ── Auth ports ────────────────────────────────────────────────────────────────
 
 app.ports.initiateOAuth.subscribe(async (pbBaseUrl) => {
@@ -223,11 +230,46 @@ const maps = {}
 /** Cancelled-event label. Keep in sync with `EventCancelled` in elm-app/src/I18n.elm. */
 const cancelledLabel = 'PERUTTU'
 
+/** Accessible name for a cluster pin. Finnish, to match the rest of the UI (`lang="fi"`). */
+const clusterLabel = (count) => `${count} kohdetta, avaa ryhmä`
+
 /** Popup title markup; cancelled events get the label and a struck-through title. */
 function popupTitleHtml(title, cancelled) {
   const inner = cancelled ? `<s>${title}</s>` : title;
   const prefix = cancelled ? `${cancelledLabel} ` : '';
   return `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${prefix}${inner}</div>`;
+}
+
+/**
+ * Turn a marker element into a labelled button for assistive technology.
+ *
+ * The pin graphic itself carries no text, and the title only ever appears in a
+ * hover popup, which keyboard and screen-reader users never trigger. Without
+ * this the whole map is a run of unlabelled tab stops.
+ *
+ * Activating with Space is handled here alongside Enter: once an element claims
+ * `role="button"`, screen readers tell users Space will work.
+ */
+function makeMarkerButton(el, label, onActivate) {
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', label);
+  el.tabIndex = 0;
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      e.stopPropagation();
+      onActivate();
+    }
+  });
+}
+
+/** Accessible name for a single location/event marker. */
+function markerAriaLabel(m) {
+  const parts = [];
+  if (m.cancelled) parts.push(cancelledLabel);
+  parts.push(m.title);
+  if (m.date) parts.push(m.date);
+  return parts.join(', ');
 }
 
 function applyMarkers(mapObj, markerList) {
@@ -300,13 +342,7 @@ function renderClusters(mapObj) {
         const count = cluster.properties.point_count;
         const el = document.createElement('div');
         el.style.cursor = 'pointer';
-        el.tabIndex = 0;
-        el.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.stopPropagation();
-            el.click();
-          }
-        });
+        makeMarkerButton(el, clusterLabel(count), () => el.click());
         el.innerHTML = `<div style="background-color: #05131D; color: white; border: 2px solid white; border-radius: 50%; width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: inherit; font-size: 0.875rem;">${count}</div>`;
         
         marker = new maplibregl.Marker({ element: el, anchor: 'center' })
@@ -366,7 +402,7 @@ function renderClusters(mapObj) {
 
             const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: false, closeOnClick: false }).setHTML(popupHtml);
 
-            leafEl.tabIndex = 0;
+            makeMarkerButton(leafEl, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
             leafEl.addEventListener('click', (e) => {
               e.stopPropagation();
               if (window.matchMedia('(hover: none)').matches) {
@@ -377,12 +413,6 @@ function renderClusters(mapObj) {
                   app.ports.markerClicked.send(m.id);
                 }
               } else {
-                app.ports.markerClicked.send(m.id);
-              }
-            });
-            leafEl.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') {
-                e.stopPropagation();
                 app.ports.markerClicked.send(m.id);
               }
             });
@@ -425,7 +455,7 @@ function renderClusters(mapObj) {
 
         const popup = new maplibregl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML(popupHtml);
 
-        el.tabIndex = 0;
+        makeMarkerButton(el, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           if (window.matchMedia('(hover: none)').matches) {
@@ -436,12 +466,6 @@ function renderClusters(mapObj) {
               app.ports.markerClicked.send(m.id);
             }
           } else {
-            app.ports.markerClicked.send(m.id);
-          }
-        });
-        el.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.stopPropagation();
             app.ports.markerClicked.send(m.id);
           }
         });

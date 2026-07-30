@@ -130,6 +130,7 @@ viewLocationCard authState loc =
                                 ++ "&zoom=15"
                             )
                         , target "_blank"
+                        , Html.Attributes.attribute "aria-label" (t I18n.A11yOpenInOsm)
                         , class "text-brand hover:text-brand-yellow transition-colors"
                         ]
                         [ featherIcon FeatherIcons.mapPin 16 ]
@@ -141,6 +142,7 @@ viewLocationCard authState loc =
                         a
                             [ href url
                             , target "_blank"
+                            , Html.Attributes.attribute "aria-label" (t I18n.A11yOpenExternal)
                             , class "text-brand hover:text-brand-yellow transition-colors"
                             ]
                             [ featherIcon FeatherIcons.externalLink 16 ]
@@ -148,7 +150,7 @@ viewLocationCard authState loc =
                     Authenticated _ ->
                         a
                             [ href (toHref (RouteLocationEdit loc.id))
-                            , class "type-caption text-primary hover:underline"
+                            , class "type-caption text-brand hover:underline"
                             ]
                             [ text (t I18n.LocationListEdit) ]
 

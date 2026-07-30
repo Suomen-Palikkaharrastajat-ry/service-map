@@ -535,13 +535,19 @@ update msg model =
 
         ToggleMenu ->
             if model.menuOpen then
-                ( { model | menuOpen = False }, Cmd.none )
+                ( { model | menuOpen = False }, Ports.focusElement View.Layout.menuButtonId )
 
             else
                 ( { model | menuOpen = True }, Ports.focusMobileNav () )
 
         CloseMenu ->
-            ( { model | menuOpen = False }, Cmd.none )
+            -- The drawer becomes `inert` when it closes, so the browser drops
+            -- focus to <body>. Put it back on the button that opened it.
+            if model.menuOpen then
+                ( { model | menuOpen = False }, Ports.focusElement View.Layout.menuButtonId )
+
+            else
+                ( model, Cmd.none )
 
         LoginClicked ->
             ( model, Ports.initiateOAuth model.pbBaseUrl )

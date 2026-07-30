@@ -5,6 +5,7 @@ port module Ports exposing
     , callbackParams
     , clearAuthToken
     , destroyMap
+    , focusElement
     , focusMapOnMarker
     , focusMobileNav
     , getCallbackParams
@@ -62,6 +63,12 @@ port markerClicked : (String -> msg) -> Sub msg
 
 
 port focusMobileNav : () -> Cmd msg
+
+
+{-| Move focus to an element by id. Used to return focus to the control that
+opened a dismissed overlay, which the browser otherwise drops to `<body>`.
+-}
+port focusElement : String -> Cmd msg
 
 
 port initiateOAuth : String -> Cmd msg

@@ -1,15 +1,23 @@
-module View.Layout exposing (viewBrandFooter, viewFooter, viewHeader, viewMobileDrawer, viewMobileOverlay)
+module View.Layout exposing (menuButtonId, viewBrandFooter, viewFooter, viewHeader, viewMobileDrawer, viewMobileOverlay)
 
 import Component.Button as Button
 import Component.MobileDrawer as MobileDrawer
 import FeatherIcons
 import Html exposing (Html, a, button, div, footer, h3, header, img, li, nav, p, span, text, ul)
-import Html.Attributes exposing (alt, attribute, class, href, src, style)
+import Html.Attributes exposing (alt, attribute, class, href, id, src, style)
 import Html.Events exposing (onClick)
 import I18n exposing (MsgKey(..), t)
 import Route exposing (Route(..), toHref)
 import Types exposing (AuthState(..), AuthUser, Msg(..), Page(..))
 import View.Icons exposing (featherIcon)
+
+
+{-| Id of the hamburger button. `CloseMenu` returns focus here so keyboard users
+land back where they opened the drawer instead of at the top of the document.
+-}
+menuButtonId : String
+menuButtonId =
+    "mobile-menu-button"
 
 
 viewHeader : AuthState -> Bool -> Bool -> Html Msg
@@ -34,10 +42,10 @@ viewHeader authState menuOpen presentationMode =
                     , style "cursor" "pointer"
                     , attribute "aria-label"
                         (if presentationMode then
-                            "Stop presentation"
+                            t A11yPresentationStop
 
                          else
-                            "Start presentation"
+                            t A11yPresentationStart
                         )
                     ]
                     [ featherIcon
@@ -55,7 +63,7 @@ viewHeader authState menuOpen presentationMode =
                   else
                     -- Desktop nav + auth (hidden on mobile)
                     div [ class "hidden md:flex items-center gap-6" ]
-                        [ nav [ class "flex gap-4" ]
+                        [ nav [ class "flex gap-4", attribute "aria-label" (t A11yNavPrimary) ]
                             [ a [ href (toHref RouteMap), class "type-caption text-white/80 hover:text-white hover:underline" ]
                                 [ text (t NavHome) ]
                             , a [ href (toHref RouteLocations), class "type-caption text-white/80 hover:text-white hover:underline" ]
@@ -70,14 +78,15 @@ viewHeader authState menuOpen presentationMode =
                     -- Hamburger button (mobile only)
                     button
                         [ onClick ToggleMenu
+                        , id menuButtonId
                         , class "md:hidden p-2 rounded-lg text-white"
                         , style "cursor" "pointer"
                         , attribute "aria-label"
                             (if menuOpen then
-                                "Sulje valikko"
+                                t A11yMenuClose
 
                              else
-                                "Avaa valikko"
+                                t A11yMenuOpen
                             )
                         , attribute "aria-expanded"
                             (if menuOpen then
@@ -86,6 +95,7 @@ viewHeader authState menuOpen presentationMode =
                              else
                                 "false"
                             )
+                        , attribute "aria-controls" "mobile-nav"
                         ]
                         [ featherIcon
                             (if menuOpen then
@@ -190,10 +200,11 @@ viewMobileDrawer menuOpen activePage authState =
     MobileDrawer.view
         { isOpen = menuOpen
         , id = "mobile-nav"
+        , label = t A11yNavMobile
         , onClose = CloseMenu
         , breakpoint = MobileDrawer.Md
         , content =
-            [ nav [ class "p-4" ]
+            [ nav [ class "p-4", attribute "aria-label" (t A11yNavMobile) ]
                 [ ul [ class "flex flex-col gap-1 list-none m-0 p-0" ]
                     [ MobileDrawer.viewNavLink { href = toHref RouteMap, label = t NavHome, isActive = isMapActive, onClose = CloseMenu }
                     , MobileDrawer.viewNavLink { href = toHref RouteLocations, label = t NavLocations, isActive = isLocationsActive, onClose = CloseMenu }

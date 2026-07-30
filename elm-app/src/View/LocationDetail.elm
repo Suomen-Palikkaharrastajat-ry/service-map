@@ -81,8 +81,8 @@ view pbBaseUrl isEmbed authState _ detPage =
                             text ""
                         ]
                     , if detPage.deleteConfirm then
-                        div [ class "mb-4 p-4 bg-bg-surface border-2 border-danger rounded-md shadow-sm" ]
-                            [ p [ class "type-body text-danger font-medium mb-3" ] [ text "Oletko varma, että haluat poistaa tämän kohteen?" ]
+                        div [ class "mb-4 p-4 bg-bg-subtle border-2 border-brand-red rounded-md shadow-sm" ]
+                            [ p [ class "type-body text-brand-red font-medium mb-3" ] [ text "Oletko varma, että haluat poistaa tämän kohteen?" ]
                             , div [ class "flex gap-3" ]
                                 [ Button.view
                                     { label = t I18n.DetailDeleteConfirm

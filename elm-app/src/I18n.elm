@@ -86,6 +86,19 @@ type MsgKey
     | EventCancelled
     | PanelMoreInfo
     | PanelClose
+      -- Accessible names for icon-only controls
+    | A11yPanelClose
+    | A11yPanelEdit
+    | A11yPrevMarker
+    | A11yNextMarker
+    | A11yOpenInOsm
+    | A11yOpenExternal
+    | A11yPresentationStart
+    | A11yPresentationStop
+    | A11yMenuOpen
+    | A11yMenuClose
+    | A11yNavPrimary
+    | A11yNavMobile
 
 
 t : MsgKey -> String
@@ -336,6 +349,42 @@ t key =
 
         PanelClose ->
             "Sulje"
+
+        A11yPanelClose ->
+            "Sulje tiedot"
+
+        A11yPanelEdit ->
+            "Muokkaa kohdetta"
+
+        A11yPrevMarker ->
+            "Edellinen kohde"
+
+        A11yNextMarker ->
+            "Seuraava kohde"
+
+        A11yOpenInOsm ->
+            "Näytä OpenStreetMap-kartalla (avautuu uuteen välilehteen)"
+
+        A11yOpenExternal ->
+            "Avaa kohteen verkkosivu (avautuu uuteen välilehteen)"
+
+        A11yPresentationStart ->
+            "Käynnistä esitystila"
+
+        A11yPresentationStop ->
+            "Pysäytä esitystila"
+
+        A11yMenuOpen ->
+            "Avaa valikko"
+
+        A11yMenuClose ->
+            "Sulje valikko"
+
+        A11yNavPrimary ->
+            "Päävalikko"
+
+        A11yNavMobile ->
+            "Mobiilivalikko"
 
 
 eventFilterLabel : EventFilter -> String
