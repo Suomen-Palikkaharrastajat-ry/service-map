@@ -95,6 +95,33 @@ zeroPointLocationJson =
 zeroPointLocation :: PB.Location
 zeroPointLocation = decodeLocation zeroPointLocationJson
 
+-- | Descriptions are free text and routinely contain newlines. They have to
+-- survive into the GeoJSON as @\\n@ escapes so consumers rendering from the
+-- feed can reproduce the same line breaks the app shows.
+multilineLocationJson :: BLC.ByteString
+multilineLocationJson =
+    BLC.pack $
+        concat
+            [ "{\"id\":\"multi01\","
+            , "\"title\":\"Multiline Shop\","
+            , "\"description\":\"First line\\nSecond line\\n\\nAfter a blank line\","
+            , "\"start_date\":\"2026-05-05T11:00:00.000Z\","
+            , "\"end_date\":null,"
+            , "\"url\":\"\","
+            , "\"location\":\"Helsinki\","
+            , "\"state\":\"published\","
+            , "\"image\":\"\","
+            , "\"image_description\":\"\","
+            , "\"point\":{\"lat\":60.1699,\"lon\":24.9384},"
+            , "\"tags\":[],"
+            , "\"opening_hours\":\"\","
+            , "\"created\":\"2026-01-01T00:00:00.000Z\","
+            , "\"updated\":\"2026-01-02T00:00:00.000Z\"}"
+            ]
+
+multilineLocation :: PB.Location
+multilineLocation = decodeLocation multilineLocationJson
+
 cancelledEventJson :: BLC.ByteString
 cancelledEventJson =
     BLC.pack $
@@ -316,6 +343,14 @@ geoJsonTests =
         geo <- GeoJsonGen.generateGeoJson [] [plainEvent]
         assertBool "evt002 in output" ("evt002" `isInfixOf` geo)
         assertBool "cancelled false" ("\"cancelled\":false" `isInfixOf` geo)
+    , testCase "description keeps line breaks as \\n escapes" $ do
+        geo <- GeoJsonGen.generateGeoJson [multilineLocation] []
+        assertBool
+            "newlines survive into the feed"
+            ("\"description\":\"First line\\nSecond line\\n\\nAfter a blank line\"" `isInfixOf` geo)
+        assertBool
+            "no raw newline inside the JSON string"
+            (not ("First line\nSecond" `isInfixOf` geo))
     ]
 
 -- ---------------------------------------------------------------------------

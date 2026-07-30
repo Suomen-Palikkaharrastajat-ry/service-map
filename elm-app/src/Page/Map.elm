@@ -274,7 +274,7 @@ viewLocationPanel model loc =
                 viewField FeatherIcons.tag (String.join ", " (List.map translateTag loc.tags))
             , case loc.description of
                 Just desc ->
-                    p [ class "type-caption text-text-primary leading-relaxed mt-4" ] [ text desc ]
+                    p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
 
                 Nothing ->
                     text ""
@@ -400,7 +400,7 @@ viewEventPanel model ev =
                     text ""
             , case ev.description of
                 Just desc ->
-                    p [ class "type-caption text-text-primary leading-relaxed mt-4" ] [ text desc ]
+                    p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
 
                 Nothing ->
                     text ""
