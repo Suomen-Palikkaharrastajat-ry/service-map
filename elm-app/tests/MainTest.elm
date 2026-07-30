@@ -1,9 +1,29 @@
 module MainTest exposing (suite)
 
 import Expect
-import Main exposing (applyFormDate, applyFormField)
+import Http
+import Main exposing (applyFormDate, applyFormField, refreshLocationsOnMutationResult)
+import RemoteData exposing (RemoteData(..))
 import Test exposing (Test, describe, test)
 import Types exposing (LocationState(..), emptyLocationFormData)
+
+
+testLocation : Types.Location
+testLocation =
+    { id = "abc123"
+    , title = "Testikohde"
+    , description = Nothing
+    , startDate = Nothing
+    , endDate = Nothing
+    , location = Nothing
+    , url = Nothing
+    , image = Nothing
+    , imageDescription = Nothing
+    , point = { lat = 60.1699, lon = 24.9384 }
+    , tags = []
+    , openingHours = Nothing
+    , state = Published
+    }
 
 
 suite : Test
@@ -106,5 +126,23 @@ suite =
                     in
                     form.endDate
                         |> Expect.equal ""
+            ]
+        , describe "refreshLocationsOnMutationResult"
+            [ test "successful save purges a cached list, marking it Loading" <|
+                \_ ->
+                    refreshLocationsOnMutationResult (Ok testLocation) (Success [ testLocation ])
+                        |> Expect.equal Loading
+            , test "successful save marks NotAsked cache Loading" <|
+                \_ ->
+                    refreshLocationsOnMutationResult (Ok testLocation) NotAsked
+                        |> Expect.equal Loading
+            , test "successful save marks a Failure cache Loading" <|
+                \_ ->
+                    refreshLocationsOnMutationResult (Ok testLocation) (Failure Http.NetworkError)
+                        |> Expect.equal Loading
+            , test "failed save leaves a cached list unchanged" <|
+                \_ ->
+                    refreshLocationsOnMutationResult (Err Http.NetworkError) (Success [ testLocation ])
+                        |> Expect.equal (Success [ testLocation ])
             ]
         ]
