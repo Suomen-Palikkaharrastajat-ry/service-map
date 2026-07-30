@@ -335,6 +335,27 @@ function syncAutoPopups(mapObj) {
   })
 }
 
+/**
+ * Make a tooltip itself open the info pane.
+ *
+ * On touch there is no hover, so the first tap on a marker only opens its
+ * tooltip — tapping that tooltip is the natural way to ask for the details,
+ * and previously did nothing. The ✕ is excluded so dismissing still dismisses.
+ */
+function popupOpensPane(popup, markerId) {
+  popup.on('open', () => {
+    const el = popup.getElement()
+    if (!el || el.__opensPane) return
+    el.__opensPane = true
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.maplibregl-popup-close-button')) return
+      e.stopPropagation()
+      app.ports.markerClicked.send(markerId)
+    })
+  })
+}
+
 /** Popup title markup; cancelled events get the label and a struck-through title. */
 function popupTitleHtml(title, cancelled) {
   const inner = cancelled ? `<s>${title}</s>` : title;
@@ -529,6 +550,7 @@ function renderClusters(mapObj) {
             // but a tap-opened one still needs a way out on touch devices.
             const popup = new maplibregl.Popup({ offset: [offsetX, offsetY - 20], closeButton: true, closeOnClick: false }).setHTML(popupHtml);
 
+            popupOpensPane(popup, m.id);
             const leafKey = `leaf_${m.id}`;
             leafMarker.__popup = popup;
             leafMarker.__popupKey = leafKey;
@@ -587,6 +609,7 @@ function renderClusters(mapObj) {
         const popupKey = String(m.id);
         marker.__popup = popup;
         marker.__popupKey = popupKey;
+        popupOpensPane(popup, m.id);
         popup.on('close', () => {
           if (popup.__silentClose) return;
           mapObj.dismissedPopups.add(popupKey);
