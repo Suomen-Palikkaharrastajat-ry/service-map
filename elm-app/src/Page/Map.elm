@@ -334,6 +334,18 @@ viewLocationPanel model loc =
         ]
 
 
+{-| Where an event is edited.
+
+Events live in the calendar service, not here, so unlike a location — which
+routes to an in-app edit page — this leaves the app entirely. Opened in a new
+tab so the map and the pane the user came from stay put.
+
+-}
+eventEditUrl : String -> String
+eventEditUrl id =
+    "https://kalenteri.palikkaharrastajat.fi/#/events/" ++ id ++ "/edit"
+
+
 viewEventPanel : Model -> Types.Event -> Html Msg
 viewEventPanel model ev =
     div
@@ -365,6 +377,18 @@ viewEventPanel model ev =
                     ]
                     [ text ev.title ]
                 ]
+            , if Types.isAuthenticated model.authState then
+                a
+                    [ href (eventEditUrl ev.id)
+                    , target "_blank"
+                    , attribute "aria-label" (t A11yPanelEdit)
+                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0"
+                    , style "cursor" "pointer"
+                    ]
+                    [ featherIcon FeatherIcons.edit2 20 ]
+
+              else
+                text ""
             , button
                 [ onClick ClosePanel
                 , attribute "aria-label" (t A11yPanelClose)
