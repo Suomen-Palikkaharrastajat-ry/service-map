@@ -66,6 +66,10 @@ elm-build-local: ## Production build of Elm SPA targeting local PocketBase
 elm-test: elm-tailwind-gen ## Run Elm unit tests
 	cd elm-app && elm-test
 
+.PHONY: js-test
+js-test: ## Run the plain-JS tests in elm-app/tests (node + jsdom)
+	node elm-app/tests/popup-pane-opener.test.mjs
+
 .PHONY: elm-check
 elm-check: ## Check Elm formatting + elm-review (no changes)
 	cd elm-app && elm-format --validate src/ tests/

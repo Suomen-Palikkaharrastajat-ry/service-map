@@ -355,7 +355,13 @@ function bindPopupPaneOpener(mapObj) {
   mapObj.map.getContainer().addEventListener('click', (e) => {
     // The ✕ dismisses; it must not also open the pane behind it.
     if (e.target.closest('.maplibregl-popup-close-button')) return
-    const holder = e.target.closest('[data-marker-id]')
+    // Match the popup, not the id holder. The holder sits *inside*
+    // .maplibregl-popup-content, which carries 15px/10px of padding, so
+    // matching the holder by ancestry leaves that padding ring dead — a big
+    // share of the target on a small tooltip. Anywhere in the popup counts.
+    const popupEl = e.target.closest('.maplibregl-popup')
+    if (!popupEl) return
+    const holder = popupEl.querySelector('[data-marker-id]')
     if (!holder) return
     e.stopPropagation()
     app.ports.markerClicked.send(holder.dataset.markerId)
@@ -382,7 +388,7 @@ function markerPopupHtml(title, subtitle, cancelled, markerId) {
   if (subtitle) {
     html += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${subtitle}</div>`;
   }
-  return `<div data-marker-id="${markerId}" style="cursor: pointer;">${html}</div>`;
+  return `<div data-marker-id="${markerId}" style="cursor: pointer; margin: -15px -10px; padding: 15px 10px;">${html}</div>`;
 }
 
 /**
