@@ -69,5 +69,45 @@ tap('.maplibregl-popup-tip', 'tap the tip', 'evt42')
 tap('.maplibregl-popup-close-button', 'tap the close button', null)
 tap('.maplibregl-canvas-container', 'tap the map canvas', null)
 
+// --- shouldCloseOnPointerLeave -------------------------------------------
+//
+// A tooltip opened by tapping a marker was torn down by the synthetic
+// mouseleave a phone fires when the user reaches for it, so the tap landed on a
+// popup that had already gone. It only showed below the auto-open zoom, since
+// above it the first condition is false and the tooltip survived.
+
+const leaveSrc = src.match(/function shouldCloseOnPointerLeave\(mapObj, popupKey\) \{([\s\S]*?)\n\}/)
+if (!leaveSrc) {
+  console.error('FAIL: could not find shouldCloseOnPointerLeave in main.js')
+  process.exit(1)
+}
+const AUTO_POPUP_ZOOM = Number(src.match(/const AUTO_POPUP_ZOOM = (\d+)/)[1])
+
+const decide = (touch, zoom, dismissed) => {
+  const fn = new Function(
+    'mapObj', 'popupKey', 'isTouchDevice', 'autoPopupsActive',
+    leaveSrc[1] + '\n'
+  )
+  return fn(
+    { dismissedPopups: new Set(dismissed ? ['m1'] : []) },
+    'm1',
+    () => touch,
+    () => zoom >= AUTO_POPUP_ZOOM
+  )
+}
+
+const check = (label, got, expected) => {
+  const ok = got === expected
+  if (!ok) failures++
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${label.padEnd(32)} closes=${got}`)
+}
+
+check('touch, zoomed out', decide(true, 10, false), false)
+check('touch, zoomed in', decide(true, 14, false), false)
+check('touch, dismissed', decide(true, 14, true), false)
+check('pointer, zoomed out', decide(false, 10, false), true)
+check('pointer, auto-open zoom', decide(false, 14, false), false)
+check('pointer, dismissed', decide(false, 14, true), true)
+
 console.log(failures === 0 ? '\nall passed' : `\n${failures} failed`)
 process.exit(failures === 0 ? 0 : 1)

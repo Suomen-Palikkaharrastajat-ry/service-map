@@ -278,6 +278,26 @@ function autoPopupsActive(mapObj) {
   return mapObj.map.getZoom() >= AUTO_POPUP_ZOOM
 }
 
+/** True on a device with no hover — a phone or tablet rather than a pointer. */
+function isTouchDevice() {
+  return window.matchMedia('(hover: none)').matches
+}
+
+/**
+ * Whether a marker's tooltip should close when the pointer leaves the marker.
+ *
+ * Never on touch. Phones synthesise mouseenter/mouseleave around a tap, so a
+ * tooltip opened by tapping the marker was being torn down the instant the user
+ * reached for it — the tap landed on a popup that had already gone. That only
+ * showed below the auto-open zoom, because above it the first condition is
+ * false and the tooltip survived, which is why tapping worked when zoomed in
+ * and not when zoomed out.
+ */
+function shouldCloseOnPointerLeave(mapObj, popupKey) {
+  if (isTouchDevice()) return false
+  return !autoPopupsActive(mapObj) || mapObj.dismissedPopups.has(popupKey)
+}
+
 /**
  * Close every marker tooltip except one.
  *
@@ -570,7 +590,7 @@ function renderClusters(mapObj) {
             makeMarkerButton(leafEl, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
             leafEl.addEventListener('click', (e) => {
               e.stopPropagation();
-              if (window.matchMedia('(hover: none)').matches) {
+              if (isTouchDevice()) {
                 if (!popup.isOpen()) {
                   closeOtherMarkerPopups(mapObj, leafKey);
                   popup.setLngLat(coords).addTo(mapObj.map);
@@ -582,8 +602,14 @@ function renderClusters(mapObj) {
               }
             });
 
-            leafEl.addEventListener('mouseenter', () => popup.setLngLat(coords).addTo(mapObj.map));
-            leafEl.addEventListener('mouseleave', () => popup.remove());
+            leafEl.addEventListener('mouseenter', () => {
+              if (isTouchDevice()) return;
+              popup.setLngLat(coords).addTo(mapObj.map);
+            });
+            leafEl.addEventListener('mouseleave', () => {
+              if (isTouchDevice()) return;
+              popup.remove();
+            });
             
             if (idx === 0) {
               firstLeafEl = leafEl;
@@ -632,7 +658,7 @@ function renderClusters(mapObj) {
         makeMarkerButton(el, markerAriaLabel(m), () => app.ports.markerClicked.send(m.id));
         el.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (window.matchMedia('(hover: none)').matches) {
+          if (isTouchDevice()) {
             if (!popup.isOpen()) {
               closeOtherMarkerPopups(mapObj, popupKey);
               mapObj.dismissedPopups.delete(popupKey);
@@ -646,14 +672,11 @@ function renderClusters(mapObj) {
         });
 
         el.addEventListener('mouseenter', () => {
+          if (isTouchDevice()) return;
           if (!popup.isOpen()) popup.setLngLat(coords).addTo(mapObj.map);
         });
         el.addEventListener('mouseleave', () => {
-          // Leave the auto-opened ones alone; only a hover-opened tooltip (or one
-          // the user has already dismissed) should follow the pointer away.
-          if (!autoPopupsActive(mapObj) || mapObj.dismissedPopups.has(popupKey)) {
-            closePopupSilently(popup);
-          }
+          if (shouldCloseOnPointerLeave(mapObj, popupKey)) closePopupSilently(popup);
         });
       }
     }
