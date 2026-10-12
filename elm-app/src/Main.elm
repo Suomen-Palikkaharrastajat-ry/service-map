@@ -16,6 +16,7 @@ import DatePicker
 import DateUtils
 import FeatherIcons
 import File
+import FinnishDatePicker
 import Geocoding
 import Html exposing (Html, div, main_)
 import Html.Attributes exposing (class, id, style)
@@ -54,7 +55,6 @@ import Types
         , emptyLocationFormData
         )
 import Url exposing (Url)
-import View.FinnishDatePicker as FinnishDatePicker
 import View.Layout
 
 
@@ -319,14 +319,20 @@ update msg model =
                 cmd =
                     case selected of
                         Just (Types.SelectedLocation l) ->
-                            Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle l, cancelled = False }
+                            Cmd.batch
+                                [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle l, cancelled = False }
+                                , Ports.focusElement "map-detail-close"
+                                ]
 
                         Just (Types.SelectedEvent e) ->
                             let
                                 dateStr =
                                     Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
                             in
-                            Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled }
+                            Cmd.batch
+                                [ Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled }
+                                , Ports.focusElement "map-detail-close"
+                                ]
 
                         Nothing ->
                             Cmd.none

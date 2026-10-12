@@ -23,6 +23,8 @@ type MsgKey
     | FormUrl
     | FormImage
     | FormImageAlt
+    | FormImagePreview
+    | FormImageCurrent
     | FormStartDate
     | FormEndDate
     | FormStatus
@@ -86,6 +88,8 @@ type MsgKey
     | FilterEventsAll
     | FilterEventsNoCancelled
     | FilterEventsNone
+    | FilterPanelTitle
+    | FilterGroupLegend
     | EventCancelled
     | PanelMoreInfo
     | PanelClose
@@ -154,6 +158,12 @@ t key =
 
         FormImageAlt ->
             "Kuvan vaihtoehtoinen teksti"
+
+        FormImagePreview ->
+            "Esikatselu"
+
+        FormImageCurrent ->
+            "Nykyinen kuva"
 
         FormStartDate ->
             "Alkamispäivä"
@@ -343,6 +353,12 @@ t key =
 
         FilterEventsNone ->
             "piilotettu"
+
+        FilterPanelTitle ->
+            "Suodattimet"
+
+        FilterGroupLegend ->
+            "Kohteiden ja tapahtumien suodatus"
 
         EventCancelled ->
             "PERUTTU"

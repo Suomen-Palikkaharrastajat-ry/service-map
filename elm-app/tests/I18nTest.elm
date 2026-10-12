@@ -55,6 +55,10 @@ suite =
                 \_ -> t FormImage |> String.isEmpty |> Expect.equal False
             , test "FormImageAlt is non-empty" <|
                 \_ -> t FormImageAlt |> String.isEmpty |> Expect.equal False
+            , test "FormImagePreview is non-empty" <|
+                \_ -> t FormImagePreview |> String.isEmpty |> Expect.equal False
+            , test "FormImageCurrent is non-empty" <|
+                \_ -> t FormImageCurrent |> String.isEmpty |> Expect.equal False
             , test "FormStartDate is non-empty" <|
                 \_ -> t FormStartDate |> String.isEmpty |> Expect.equal False
             , test "FormEndDate is non-empty" <|
@@ -183,6 +187,10 @@ suite =
                 \_ -> t FilterEventsNoCancelled |> String.isEmpty |> Expect.equal False
             , test "FilterEventsNone is non-empty" <|
                 \_ -> t FilterEventsNone |> String.isEmpty |> Expect.equal False
+            , test "FilterPanelTitle is non-empty" <|
+                \_ -> t FilterPanelTitle |> String.isEmpty |> Expect.equal False
+            , test "FilterGroupLegend is non-empty" <|
+                \_ -> t FilterGroupLegend |> String.isEmpty |> Expect.equal False
             , test "EventCancelled is non-empty" <|
                 \_ -> t EventCancelled |> String.isEmpty |> Expect.equal False
             ]

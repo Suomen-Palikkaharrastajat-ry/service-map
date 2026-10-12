@@ -6,7 +6,8 @@
         "packages/design-tokens/src",
         "packages/ui-components/src",
         "packages/app-toolkit/src",
-        "packages/osm-opening-hours/src"
+        "packages/osm-opening-hours/src",
+        "packages/finnish-datepicker/src"
     ],
     "elm-version": "0.19.1",
     "dependencies": {

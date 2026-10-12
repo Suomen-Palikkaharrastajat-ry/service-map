@@ -4,12 +4,13 @@ module Page.Map exposing (view)
 -}
 
 import Component.Button as Button exposing (Size(..), Variant(..))
+import Component.Form as Form
 import Component.LoadState as LoadState
 import DateUtils
 import FeatherIcons
-import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
-import Html.Attributes exposing (attribute, checked, class, href, id, property, style, target, title, type_)
-import Html.Events exposing (onCheck, onClick)
+import Html exposing (Html, a, button, div, input, label, p, span, text)
+import Html.Attributes exposing (attribute, checked, class, for, href, id, property, rel, target, title, type_)
+import Html.Events exposing (onClick)
 import I18n exposing (MsgKey(..), eventFilterLabel, t)
 import Json.Encode as Encode
 import OpeningHours.I18n as OHI18n
@@ -22,6 +23,7 @@ import Set
 import Svg.Attributes as SvgA
 import Types exposing (Location, Model, Msg(..))
 import View.Icons exposing (featherIcon)
+import View.MapOverlay as MapOverlay
 
 
 view : Model -> Html Msg
@@ -87,34 +89,29 @@ viewToggles model =
         text ""
 
     else
-        div
-            [ style "position" "absolute"
-            , style "bottom" "2rem"
-            , style "left" "1rem"
-            , style "z-index" "1000"
-            , class "bg-white/90 backdrop-blur rounded shadow p-4 flex flex-col gap-2"
+        MapOverlay.panel
+            { position = MapOverlay.BottomLeft
+            , label = Just (t FilterPanelTitle)
+            }
+            [ MapOverlay.filterGroup
+                { legend = t FilterGroupLegend }
+                ((allTags
+                    |> List.map
+                        (\tag ->
+                            let
+                                isVisible =
+                                    not (List.member tag model.hiddenTags)
+                            in
+                            Form.checkbox
+                                (Form.defaultField ("tag-filter-" ++ tag) (localizeTag tag))
+                                { checked = isVisible
+                                , onCheck = \chk -> ToggleTagVisibility tag (not chk)
+                                }
+                        )
+                 )
+                    ++ [ viewEventFilterToggle model ]
+                )
             ]
-            ((allTags
-                |> List.map
-                    (\tag ->
-                        let
-                            isVisible =
-                                not (List.member tag model.hiddenTags)
-                        in
-                        label [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
-                            [ input
-                                [ type_ "checkbox"
-                                , checked isVisible
-                                , onCheck (\chk -> ToggleTagVisibility tag (not chk))
-                                ]
-                                []
-                            , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
-                            , text (localizeTag tag)
-                            ]
-                    )
-             )
-                ++ [ viewEventFilterToggle model ]
-            )
 
 
 {-| Tri-state events filter: checked (all) → indeterminate (no cancelled) → unchecked
@@ -135,21 +132,26 @@ viewEventFilterToggle model =
                 Types.NoEvents ->
                     "false"
     in
-    label
-        [ class "flex items-center gap-2 cursor-pointer type-body-small"
-        , title (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
-        ]
-        [ input
-            [ type_ "checkbox"
-            , checked (model.eventFilter == Types.AllEvents)
-            , property "indeterminate" (Encode.bool (model.eventFilter == Types.HideCancelled))
-            , attribute "aria-checked" ariaChecked
-            , onClick CycleEventFilter
+    div [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
+        [ label
+            [ for "event-filter-toggle"
+            , class "flex items-center gap-2 cursor-pointer type-body-small"
+            , title (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
             ]
-            []
-        , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-        , text (t FilterEvents)
-        , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel model.eventFilter) ]
+            [ input
+                [ type_ "checkbox"
+                , id "event-filter-toggle"
+                , checked (model.eventFilter == Types.AllEvents)
+                , property "indeterminate" (Encode.bool (model.eventFilter == Types.HideCancelled))
+                , attribute "aria-checked" ariaChecked
+                , onClick CycleEventFilter
+                , class "rounded border border-border-default text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                ]
+                []
+            , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
+            , text (t FilterEvents)
+            , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel model.eventFilter) ]
+            ]
         ]
 
 
@@ -168,142 +170,127 @@ viewPanel model =
 
 viewLocationPanel : Model -> Location -> Html Msg
 viewLocationPanel model loc =
-    div
-        [ style "position" "absolute"
-        , style "top" "0"
-        , style "right" "0"
-        , style "height" "100%"
-        , style "width" "22rem"
-        , style "z-index" "1000"
-        , class "bg-white shadow-xl overflow-y-auto flex flex-col"
-        ]
-        [ -- Header
-          div [ class "flex items-start justify-between gap-2 p-4 border-b border-border-default" ]
-            [ h2 [ class "type-h4 text-text-primary flex-1" ]
-                [ text loc.title ]
-            , if Types.isAuthenticated model.authState then
-                a
+    let
+        headerActions =
+            if Types.isAuthenticated model.authState then
+                [ a
                     [ href (Route.toHref (Route.RouteLocationEdit loc.id))
                     , attribute "aria-label" (t A11yPanelEdit)
-                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0"
-                    , style "cursor" "pointer"
+                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
                     ]
                     [ featherIcon FeatherIcons.edit2 20 ]
-
-              else
-                text ""
-            , button
-                [ onClick ClosePanel
-                , attribute "aria-label" (t A11yPanelClose)
-                , class "text-text-subtle hover:text-text-primary mt-0.5 flex-shrink-0"
-                , style "cursor" "pointer"
                 ]
-                [ featherIcon FeatherIcons.x 24 ]
-            ]
 
-        -- Body
-        , div [ class "p-4 flex-1 space-y-3" ]
-            [ case loc.startDate of
-                Just _ ->
-                    case DateUtils.formatLocationDateDisplay { startDate = loc.startDate, endDate = loc.endDate } of
-                        Just dateStr ->
-                            viewField FeatherIcons.calendar dateStr
-
-                        Nothing ->
-                            text ""
-
-                Nothing ->
-                    text ""
-            , case loc.openingHours of
-                Just oh ->
-                    if String.trim oh == "" then
-                        text ""
-
-                    else
-                        case OHParser.parse oh of
-                            Ok parsed ->
-                                div [ class "flex items-start gap-2 type-caption text-text-muted" ]
-                                    [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.clock 16 ]
-                                    , OHViewer.view OHI18n.finnish parsed
-                                    ]
-
-                            Err _ ->
-                                viewField FeatherIcons.clock oh
-
-                Nothing ->
-                    text ""
-            , case loc.location of
-                Just address ->
-                    let
-                        mapUrl =
-                            Types.mapLink model.platform loc.point loc.title
-                    in
-                    div [ class "flex items-start gap-2 type-caption text-text-muted" ]
-                        [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), class "hover:underline text-text-primary inline-flex items-center gap-1" ]
-                            [ text address
-                            , featherIcon FeatherIcons.externalLink 12
-                            ]
-                        ]
-
-                Nothing ->
-                    text ""
-            , if List.isEmpty loc.tags then
-                text ""
-
-              else
-                viewField FeatherIcons.tag (String.join ", " (List.map translateTag loc.tags))
-            , case loc.description of
-                Just desc ->
-                    p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
-
-                Nothing ->
-                    text ""
-            , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
-                [ div [ class "flex items-center gap-2" ]
-                    [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
-                    , case loc.url of
-                        Just url ->
-                            Button.link { label = t PanelMoreInfo, href = url }
-                                |> Button.withVariant Button.Primary
-                                |> Button.withSize Button.Small
-                                |> Button.withTarget
-                                    (if model.isEmbed then
-                                        "_top"
-
-                                     else
-                                        "_blank"
-                                    )
-                                |> Button.toHtml
-
-                        Nothing ->
-                            text ""
-                    ]
-                , div [ class "ml-auto flex items-center gap-2" ]
-                    [ Button.new { label = t PanelClose, onClick = ClosePanel }
-                        |> Button.withVariant Button.Secondary
-                        |> Button.withSize Button.Small
-                        |> Button.toHtml
-                    , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
-                    ]
-                ]
-            , if model.presentationMode then
-                case loc.url of
-                    Just url ->
-                        case QRCode.fromString url of
-                            Ok qrCode ->
-                                div [ class "mt-6 flex justify-center pb-4" ]
-                                    [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
-
-                            Err _ ->
-                                text ""
+            else
+                []
+    in
+    MapOverlay.detailPanelWithHeaderActions
+        { isOpen = True
+        , onClose = ClosePanel
+        , closeLabel = t A11yPanelClose
+        , title = loc.title
+        , headerActions = headerActions
+        }
+        [ case loc.startDate of
+            Just _ ->
+                case DateUtils.formatLocationDateDisplay { startDate = loc.startDate, endDate = loc.endDate } of
+                    Just dateStr ->
+                        viewField FeatherIcons.calendar dateStr
 
                     Nothing ->
                         text ""
 
-              else
+            Nothing ->
                 text ""
+        , case loc.openingHours of
+            Just oh ->
+                if String.trim oh == "" then
+                    text ""
+
+                else
+                    case OHParser.parse oh of
+                        Ok parsed ->
+                            div [ class "flex items-start gap-2 type-caption text-text-muted" ]
+                                [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.clock 16 ]
+                                , OHViewer.view OHI18n.finnish parsed
+                                ]
+
+                        Err _ ->
+                            viewField FeatherIcons.clock oh
+
+            Nothing ->
+                text ""
+        , case loc.location of
+            Just address ->
+                let
+                    mapUrl =
+                        Types.mapLink model.platform loc.point loc.title
+                in
+                div [ class "flex items-start gap-2 type-caption text-text-muted" ]
+                    [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
+                    , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), rel "noopener noreferrer", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                        [ text address
+                        , featherIcon FeatherIcons.externalLink 12
+                        ]
+                    ]
+
+            Nothing ->
+                text ""
+        , if List.isEmpty loc.tags then
+            text ""
+
+          else
+            viewField FeatherIcons.tag (String.join ", " (List.map translateTag loc.tags))
+        , case loc.description of
+            Just desc ->
+                p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
+
+            Nothing ->
+                text ""
+        , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
+            [ div [ class "flex items-center gap-2" ]
+                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                , case loc.url of
+                    Just url ->
+                        Button.link { label = t PanelMoreInfo, href = url }
+                            |> Button.withVariant Button.Primary
+                            |> Button.withSize Button.Small
+                            |> Button.withTarget
+                                (if model.isEmbed then
+                                    "_top"
+
+                                 else
+                                    "_blank"
+                                )
+                            |> Button.toHtml
+
+                    Nothing ->
+                        text ""
+                ]
+            , div [ class "ml-auto flex items-center gap-2" ]
+                [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                    |> Button.withVariant Button.Secondary
+                    |> Button.withSize Button.Small
+                    |> Button.toHtml
+                , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                ]
             ]
+        , if model.presentationMode then
+            case loc.url of
+                Just url ->
+                    case QRCode.fromString url of
+                        Ok qrCode ->
+                            div [ class "mt-6 flex justify-center pb-4" ]
+                                [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
+
+                        Err _ ->
+                            text ""
+
+                Nothing ->
+                    text ""
+
+          else
+            text ""
         ]
 
 
@@ -321,131 +308,112 @@ eventEditUrl id =
 
 viewEventPanel : Model -> Types.Event -> Html Msg
 viewEventPanel model ev =
-    div
-        [ style "position" "absolute"
-        , style "top" "0"
-        , style "right" "0"
-        , style "height" "100%"
-        , style "width" "22rem"
-        , style "z-index" "1000"
-        , class "bg-white shadow-xl overflow-y-auto flex flex-col"
-        ]
-        [ -- Header
-          div [ class "flex items-start justify-between gap-2 p-4 border-b border-border-default" ]
-            [ div [ class "flex-1 flex flex-col gap-1" ]
-                [ if ev.cancelled then
-                    span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5 self-start" ]
-                        [ text (t EventCancelled) ]
-
-                  else
-                    text ""
-                , h2
-                    [ class
-                        (if ev.cancelled then
-                            "type-h4 text-text-primary line-through"
-
-                         else
-                            "type-h4 text-text-primary"
-                        )
-                    ]
-                    [ text ev.title ]
-                ]
-            , if Types.isAuthenticated model.authState then
-                a
+    let
+        headerActions =
+            if Types.isAuthenticated model.authState then
+                [ a
                     [ href (eventEditUrl ev.id)
                     , target "_blank"
+                    , rel "noopener noreferrer"
                     , attribute "aria-label" (t A11yPanelEdit)
-                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0"
-                    , style "cursor" "pointer"
+                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
                     ]
                     [ featherIcon FeatherIcons.edit2 20 ]
+                ]
 
-              else
+            else
+                []
+
+        cancelledBadge =
+            if ev.cancelled then
+                div [ class "event-cancelled-indicator mb-2" ]
+                    [ span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5" ]
+                        [ text (t EventCancelled) ]
+                    ]
+
+            else
                 text ""
-            , button
-                [ onClick ClosePanel
-                , attribute "aria-label" (t A11yPanelClose)
-                , class "text-text-subtle hover:text-text-primary mt-0.5 flex-shrink-0"
-                , style "cursor" "pointer"
-                ]
-                [ featherIcon FeatherIcons.x 24 ]
-            ]
+    in
+    MapOverlay.detailPanelWithHeaderActions
+        { isOpen = True
+        , onClose = ClosePanel
+        , closeLabel = t A11yPanelClose
+        , title = ev.title
+        , headerActions = headerActions
+        }
+        [ cancelledBadge
+        , case DateUtils.formatEventDateDisplay ev of
+            Just dateStr ->
+                viewField FeatherIcons.calendar dateStr
 
-        -- Body
-        , div [ class "p-4 flex-1 space-y-3" ]
-            [ case DateUtils.formatEventDateDisplay ev of
-                Just dateStr ->
-                    viewField FeatherIcons.calendar dateStr
-
-                Nothing ->
-                    text ""
-            , case ev.location of
-                Just address ->
-                    let
-                        mapUrl =
-                            Types.mapLink model.platform ev.point ev.title
-                    in
-                    div [ class "flex items-start gap-2 type-caption text-text-muted" ]
-                        [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                        , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), class "hover:underline text-text-primary inline-flex items-center gap-1" ]
-                            [ text address
-                            , featherIcon FeatherIcons.externalLink 12
-                            ]
+            Nothing ->
+                text ""
+        , case ev.location of
+            Just address ->
+                let
+                    mapUrl =
+                        Types.mapLink model.platform ev.point ev.title
+                in
+                div [ class "flex items-start gap-2 type-caption text-text-muted" ]
+                    [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
+                    , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), rel "noopener noreferrer", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
+                        [ text address
+                        , featherIcon FeatherIcons.externalLink 12
                         ]
-
-                Nothing ->
-                    text ""
-            , case ev.description of
-                Just desc ->
-                    p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
-
-                Nothing ->
-                    text ""
-            , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
-                [ div [ class "flex items-center gap-2" ]
-                    [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
-                    , case ev.url of
-                        Just url ->
-                            Button.link { label = t PanelMoreInfo, href = url }
-                                |> Button.withVariant Button.Primary
-                                |> Button.withSize Button.Small
-                                |> Button.withTarget
-                                    (if model.isEmbed then
-                                        "_top"
-
-                                     else
-                                        "_blank"
-                                    )
-                                |> Button.toHtml
-
-                        Nothing ->
-                            text ""
                     ]
-                , div [ class "ml-auto flex items-center gap-2" ]
-                    [ Button.new { label = t PanelClose, onClick = ClosePanel }
-                        |> Button.withVariant Button.Secondary
-                        |> Button.withSize Button.Small
-                        |> Button.toHtml
-                    , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
-                    ]
-                ]
-            , if model.presentationMode then
-                case ev.url of
+
+            Nothing ->
+                text ""
+        , case ev.description of
+            Just desc ->
+                p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
+
+            Nothing ->
+                text ""
+        , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
+            [ div [ class "flex items-center gap-2" ]
+                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                , case ev.url of
                     Just url ->
-                        case QRCode.fromString url of
-                            Ok qrCode ->
-                                div [ class "mt-6 flex justify-center pb-4" ]
-                                    [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
+                        Button.link { label = t PanelMoreInfo, href = url }
+                            |> Button.withVariant Button.Primary
+                            |> Button.withSize Button.Small
+                            |> Button.withTarget
+                                (if model.isEmbed then
+                                    "_top"
 
-                            Err _ ->
-                                text ""
+                                 else
+                                    "_blank"
+                                )
+                            |> Button.toHtml
 
                     Nothing ->
                         text ""
-
-              else
-                text ""
+                ]
+            , div [ class "ml-auto flex items-center gap-2" ]
+                [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                    |> Button.withVariant Button.Secondary
+                    |> Button.withSize Button.Small
+                    |> Button.toHtml
+                , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                ]
             ]
+        , if model.presentationMode then
+            case ev.url of
+                Just url ->
+                    case QRCode.fromString url of
+                        Ok qrCode ->
+                            div [ class "mt-6 flex justify-center pb-4" ]
+                                [ QRCode.toSvg [ SvgA.width "150px", SvgA.height "150px" ] qrCode ]
+
+                        Err _ ->
+                            text ""
+
+                Nothing ->
+                    text ""
+
+          else
+            text ""
         ]
 
 
@@ -477,22 +445,3 @@ translateTag tagStr =
 
         _ ->
             tagStr
-
-
-iconForTag : String -> FeatherIcons.Icon
-iconForTag tag =
-    case tag of
-        "exhibition" ->
-            FeatherIcons.image
-
-        "store" ->
-            FeatherIcons.shoppingBag
-
-        "fleamarket" ->
-            FeatherIcons.tag
-
-        "museum" ->
-            FeatherIcons.bookOpen
-
-        _ ->
-            FeatherIcons.mapPin
