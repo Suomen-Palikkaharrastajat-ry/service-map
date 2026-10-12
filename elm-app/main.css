@@ -5,12 +5,6 @@
 @plugin "@tailwindcss/forms";
 @source "./src";
 
-@theme {
-  /* Keep brand-green until design-guide#7 decides whether it becomes a token:
-     https://github.com/Suomen-Palikkaharrastajat-ry/design-guide/issues/7 */
-  --color-brand-green: #237841;
-}
-
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 
 @layer base {
