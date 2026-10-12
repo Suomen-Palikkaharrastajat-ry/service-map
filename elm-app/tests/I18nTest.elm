@@ -132,8 +132,6 @@ suite =
                 \_ -> t Lang.Fi LogoutButton |> String.isEmpty |> Expect.equal False
             , test "AuthFailed is non-empty" <|
                 \_ -> t Lang.Fi AuthFailed |> String.isEmpty |> Expect.equal False
-            , test "ContactEmail is non-empty" <|
-                \_ -> t Lang.Fi ContactEmail |> String.isEmpty |> Expect.equal False
             , test "FeedRss is non-empty" <|
                 \_ -> t Lang.Fi FeedRss |> String.isEmpty |> Expect.equal False
             , test "FeedAtom is non-empty" <|
@@ -212,5 +210,11 @@ suite =
                 \_ ->
                     ( stateLabel Lang.Fi Draft, stateLabel Lang.En Draft )
                         |> Expect.equal ( "Luonnos", "Draft" )
+            ]
+        , describe "importedCount"
+            [ test "counts places grammatically in both languages" <|
+                \_ ->
+                    [ I18n.importedCount Lang.Fi 3, I18n.importedCount Lang.En 1, I18n.importedCount Lang.En 3 ]
+                        |> Expect.equal [ "Tuotiin 3 kohdetta", "Imported 1 place", "Imported 3 places" ]
             ]
         ]

@@ -18,6 +18,8 @@ title       = "Palikkakartta"
 description = "Palikkakartta — the service map and place feeds of Suomen Palikkaharrastajat ry"
 
 [pwa]
+scope       = "/"
+orientation = "portrait"
 description = "Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden syötteet"
 
 [pwa.en]

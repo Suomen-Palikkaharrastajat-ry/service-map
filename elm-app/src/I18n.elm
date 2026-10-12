@@ -1,4 +1,4 @@
-module I18n exposing (MsgKey(..), eventFilterLabel, locale, stateLabel, t)
+module I18n exposing (MsgKey(..), eventFilterLabel, importedCount, locale, stateLabel, t)
 
 {-| UI strings per language, keyed by MsgKey, plus state and filter labels.
 -}
@@ -63,7 +63,6 @@ type MsgKey
     | LoginButton
     | LogoutButton
     | AuthFailed
-    | ContactEmail
     | FeedRss
     | FeedAtom
     | FeedJson
@@ -125,8 +124,6 @@ type MsgKey
     | LocationDeleted
     | KmlParseFailed
     | KmlParseError
-    | ImportedPrefix
-    | ImportedSuffix
     | PageNotFoundText
     | DateAtTime
 
@@ -308,9 +305,6 @@ fi key =
         AuthFailed ->
             "Kirjautuminen epäonnistui"
 
-        ContactEmail ->
-            "palikkaharrastajatry@outlook.com"
-
         FeedRss ->
             "RSS-syöte"
 
@@ -491,12 +485,6 @@ fi key =
         KmlParseError ->
             "Jäsennysvirhe"
 
-        ImportedPrefix ->
-            "Tuotiin "
-
-        ImportedSuffix ->
-            " kohdetta"
-
         PageNotFoundText ->
             "404 - Sivua ei löytynyt"
 
@@ -668,9 +656,6 @@ en key =
 
         AuthFailed ->
             "Sign-in failed"
-
-        ContactEmail ->
-            "palikkaharrastajatry@outlook.com"
 
         FeedRss ->
             "RSS feed"
@@ -852,12 +837,6 @@ en key =
         KmlParseError ->
             "Parse error"
 
-        ImportedPrefix ->
-            "Imported "
-
-        ImportedSuffix ->
-            " places"
-
         PageNotFoundText ->
             "404 - Page not found"
 
@@ -899,3 +878,22 @@ stateLabel lang state =
 locale : Lang -> Locale
 locale lang =
     Locale.forCode (Lang.toString lang)
+
+
+{-| Message after a KML import of `count` places.
+-}
+importedCount : Lang -> Int -> String
+importedCount lang count =
+    case lang of
+        Fi ->
+            "Tuotiin " ++ String.fromInt count ++ " kohdetta"
+
+        En ->
+            "Imported "
+                ++ String.fromInt count
+                ++ (if count == 1 then
+                        " place"
+
+                    else
+                        " places"
+                   )

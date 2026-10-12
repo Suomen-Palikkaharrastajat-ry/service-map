@@ -282,10 +282,10 @@ dateUtilsTests =
         DU.formatDate timedZoned @?= "5.5."
     , testCase "formatTime gives H.MM" $
         DU.formatTime timedZoned @?= "14.00"
-    , testCase "finnishWeekdayAbbr gives ti for Tuesday" $
+    , testCase "weekdayAbbr gives ti for Tuesday" $
         DU.formatDay timedZoned @?= "ti"
-    , testCase "finnishMonthName gives Toukokuu for 5" $
-        DU.finnishMonthName 5 @?= "Toukokuu"
+    , testCase "monthName gives Toukokuu for 5" $
+        DU.monthName 5 @?= "Toukokuu"
     ]
 
 -- ---------------------------------------------------------------------------

@@ -1207,7 +1207,7 @@ update msg model =
                                     { locPage | kmlImportStatus = Types.KmlDone locPage.importCount }
 
                                 ( m, c ) =
-                                    addToast model Types.ToastSuccess (t model.lang ImportedPrefix ++ String.fromInt locPage.importCount ++ t model.lang ImportedSuffix)
+                                    addToast model Types.ToastSuccess (I18n.importedCount model.lang locPage.importCount)
                             in
                             ( { m | page = PageLocations newLocPage }
                             , Cmd.batch [ c, Api.fetchLocations model.pbBaseUrl (Just token) ]

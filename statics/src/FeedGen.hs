@@ -183,7 +183,7 @@ buildAtomEntry ctx loc = do
             , "    <title type=\"html\">" ++ xmlEscape (feedItemTitle loc) ++ "</title>"
             , "    " ++ xmlText "published" (formatRfc3339 (PB.locationCreated loc))
             , "    " ++ xmlText "updated" (formatRfc3339 (PB.locationUpdated loc))
-            , "    <author><name>" ++ SC.author SC.defaultLang ++ "</name></author>"
+            , "    <author>" ++ xmlText "name" (SC.author SC.defaultLang) ++ "</author>"
             , "    <link rel=\"alternate\" href=\""
                 ++ maybe
                     (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)
@@ -214,7 +214,7 @@ generateAtom ctx locs = do
             , "  " ++ xmlEl "logo" feedLogoUrl
             , "  " ++ xmlEl "icon" (Config.siteBaseUrl ++ "/favicon.ico")
             , "  " ++ xmlText "generator" "Emmet"
-            , "  <author><name>" ++ SC.author SC.defaultLang ++ "</name><email>" ++ SC.appContactEmail SC.defaultLang ++ "</email><uri>" ++ SC.appOrganisationUrl SC.defaultLang ++ "</uri></author>"
+            , "  <author>" ++ xmlText "name" (SC.author SC.defaultLang) ++ xmlText "email" (SC.appContactEmail SC.defaultLang) ++ xmlText "uri" (SC.appOrganisationUrl SC.defaultLang) ++ "</author>"
             , concat entries
             , "</feed>"
             ]

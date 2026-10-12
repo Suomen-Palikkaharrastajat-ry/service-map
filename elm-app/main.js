@@ -128,7 +128,7 @@ const flags = {
   isEmbed: window.location.pathname.endsWith('embed.html'),
   platform: detectPlatform(),
   siteConfig,
-  requestedLang: requestedLang(),
+  requestedLang: requestedLang(siteConfig),
 }
 
 const app = Elm.Main.init({
