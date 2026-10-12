@@ -22,7 +22,7 @@ module SiteConfig (
 ) where
 
 -- | The languages the site declares in @[i18n] languages@.
-data Lang = Fi
+data Lang = Fi | En
     deriving (Eq, Show)
 
 -- | @[i18n] default@: the language static files are generated in.
@@ -36,39 +36,49 @@ siteUrl = "https://kartta.palikkaharrastajat.fi"
 -- | @[site] title@.
 siteTitle :: Lang -> String
 siteTitle Fi = "Palikkakartta"
+siteTitle En = "Palikkakartta"
 
 -- | @[site] description@.
 siteDescription :: Lang -> String
 siteDescription Fi = "Palikkakartta \8212\& Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden sy\246\&tteet"
+siteDescription En = "Palikkakartta \8212\& the service map and place feeds of Suomen Palikkaharrastajat ry"
 
 -- | @[metadata] author@: the organisation behind the site.
 author :: Lang -> String
 author Fi = "Suomen Palikkaharrastajat ry"
+author En = "Suomen Palikkaharrastajat ry"
 
 -- | @[app] pocketbase_url@.
 appPocketbaseUrl :: Lang -> String
 appPocketbaseUrl Fi = "https://data.palikkaharrastajat.fi"
+appPocketbaseUrl En = "https://data.palikkaharrastajat.fi"
 
 -- | @[app] basemap_style_url@.
 appBasemapStyleUrl :: Lang -> String
 appBasemapStyleUrl Fi = "https://tiles.palikkaharrastajat.fi/style.json"
+appBasemapStyleUrl En = "https://tiles.palikkaharrastajat.fi/style.json"
 
 -- | @[app] contact_email@.
 appContactEmail :: Lang -> String
 appContactEmail Fi = "palikkaharrastajatry@outlook.com"
+appContactEmail En = "palikkaharrastajatry@outlook.com"
 
 -- | @[app] organisation_url@.
 appOrganisationUrl :: Lang -> String
 appOrganisationUrl Fi = "https://palikkaharrastajat.fi/"
+appOrganisationUrl En = "https://palikkaharrastajat.fi/"
 
 -- | @[app.statics] months@.
 staticsMonths :: Lang -> [String]
 staticsMonths Fi = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kes\228\&kuu", "Hein\228\&kuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"]
+staticsMonths En = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 -- | @[app.statics] weekdays@.
 staticsWeekdays :: Lang -> [String]
 staticsWeekdays Fi = ["ma", "ti", "ke", "to", "pe", "la", "su"]
+staticsWeekdays En = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 -- | @[app.statics] feed_description@.
 staticsFeedDescription :: Lang -> String
 staticsFeedDescription Fi = "Suomen Palikkaharrastajat ry:n palvelukartta"
+staticsFeedDescription En = "Service map of Suomen Palikkaharrastajat ry"

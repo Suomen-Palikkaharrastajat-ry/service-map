@@ -132,10 +132,6 @@ type MsgKey
 
 
 {-| The text of a key in a language.
-
-English is not translated yet: the site declares only Finnish in its
-`config.toml`, so English falls back to Finnish until it is.
-
 -}
 t : Lang -> MsgKey -> String
 t lang key =
@@ -144,7 +140,7 @@ t lang key =
             fi key
 
         En ->
-            fi key
+            en key
 
 
 fi : MsgKey -> String
@@ -506,6 +502,367 @@ fi key =
 
         DateAtTime ->
             " klo "
+
+
+en : MsgKey -> String
+en key =
+    case key of
+        NavHome ->
+            "Map"
+
+        NavLocations ->
+            "Places"
+
+        NavLogin ->
+            "Sign in"
+
+        NavLogout ->
+            "Sign out"
+
+        StateDraft ->
+            "Draft"
+
+        StatePending ->
+            "Pending"
+
+        StatePublished ->
+            "Published"
+
+        StateDeleted ->
+            "Deleted"
+
+        FormTitle ->
+            "Place name"
+
+        FormLocation ->
+            "Location"
+
+        FormDescription ->
+            "Description"
+
+        FormUrl ->
+            "Website"
+
+        FormImage ->
+            "Image"
+
+        FormImageAlt ->
+            "Alternative text for the image"
+
+        FormImagePreview ->
+            "Preview"
+
+        FormImageCurrent ->
+            "Current image"
+
+        FormStartDate ->
+            "Start date"
+
+        FormEndDate ->
+            "End date"
+
+        FormStatus ->
+            "Status"
+
+        FormOpeningHours ->
+            "Opening hours"
+
+        FormTag ->
+            "Type"
+
+        TagNone ->
+            "None"
+
+        TagExhibition ->
+            "Exhibition"
+
+        TagStore ->
+            "Shop"
+
+        TagFleamarket ->
+            "Flea market"
+
+        TagMuseum ->
+            "Museum"
+
+        TagOther ->
+            "Other"
+
+        FormSave ->
+            "Save"
+
+        FormCancel ->
+            "Cancel"
+
+        FormGeocode ->
+            "Look up coordinates"
+
+        FormManualCoords ->
+            "Enter coordinates manually"
+
+        FormLat ->
+            "Latitude"
+
+        FormLon ->
+            "Longitude"
+
+        DetailEdit ->
+            "Edit"
+
+        DetailDelete ->
+            "Delete"
+
+        DetailDeleteConfirm ->
+            "Confirm deletion"
+
+        DetailDeleteCancel ->
+            "Cancel"
+
+        DetailBack ->
+            "Back"
+
+        DetailLocation ->
+            "Location"
+
+        DetailMoreInfo ->
+            "More information"
+
+        LocationListTitle ->
+            "Places"
+
+        LocationListEmpty ->
+            "No places"
+
+        LocationListNew ->
+            "Create a new place"
+
+        LocationListEdit ->
+            "Edit"
+
+        LocationListPage ->
+            "Page"
+
+        LocationListOf ->
+            "/"
+
+        KmlImport ->
+            "Import a KML file"
+
+        KmlImporting ->
+            "Importing..."
+
+        KmlDone ->
+            "Import finished"
+
+        KmlError ->
+            "Import error"
+
+        LoginPrompt ->
+            "Not a member? Send the place by email."
+
+        LoginButton ->
+            "Sign in"
+
+        LogoutButton ->
+            "Sign out"
+
+        AuthFailed ->
+            "Sign-in failed"
+
+        ContactEmail ->
+            "palikkaharrastajatry@outlook.com"
+
+        FeedRss ->
+            "RSS feed"
+
+        FeedAtom ->
+            "Atom feed"
+
+        FeedJson ->
+            "JSON feed"
+
+        FeedGeoJson ->
+            "GeoJSON"
+
+        ErrorNetwork ->
+            "Network error"
+
+        ErrorNotFound ->
+            "Place not found"
+
+        ErrorUnknown ->
+            "Unknown error"
+
+        Loading ->
+            "Loading..."
+
+        Saving ->
+            "Saving..."
+
+        GeocodingSearching ->
+            "Looking up the location..."
+
+        GeocodingNotFound ->
+            "Location not found"
+
+        GeocodingError ->
+            "Geocoding error"
+
+        SaveSuccess ->
+            "Place saved"
+
+        DeleteSuccess ->
+            "Place deleted"
+
+        ImportSuccess ->
+            "places imported"
+
+        SubmitByEmailText ->
+            "If you are not a member of Suomen Palikkaharrastajat ry,"
+
+        SubmitByEmailLinkText ->
+            "send us the place by email."
+
+        MapLoading ->
+            "Loading places..."
+
+        MapLoadError ->
+            "Loading the places failed"
+
+        MapLocationsOnMap ->
+            "places on the map"
+
+        FilterEvents ->
+            "Events"
+
+        FilterEventsAll ->
+            "all"
+
+        FilterEventsNoCancelled ->
+            "no cancelled"
+
+        FilterEventsNone ->
+            "hidden"
+
+        FilterPanelTitle ->
+            "Filters"
+
+        FilterGroupLegend ->
+            "Filter places and events"
+
+        EventCancelled ->
+            "CANCELLED"
+
+        PanelMoreInfo ->
+            "More information"
+
+        PanelClose ->
+            "Close"
+
+        A11yPanelClose ->
+            "Close details"
+
+        A11yPanelEdit ->
+            "Edit place"
+
+        A11yPrevMarker ->
+            "Previous place"
+
+        A11yNextMarker ->
+            "Next place"
+
+        A11yOpenInOsm ->
+            "Show on OpenStreetMap (opens in a new tab)"
+
+        A11yOpenExternal ->
+            "Open the place's website (opens in a new tab)"
+
+        A11yPresentationStart ->
+            "Start presentation mode"
+
+        A11yPresentationStop ->
+            "Stop presentation mode"
+
+        LoggedInAs ->
+            "Signed in: "
+
+        FeedsLabel ->
+            "Feeds and export"
+
+        FeedsTitle ->
+            "Feeds"
+
+        FeedsDescription ->
+            "Feeds bring the places to other services."
+
+        DetailDeleteQuestion ->
+            "Are you sure you want to delete this place?"
+
+        FormUsePreciseMap ->
+            "Use the detailed map (OSM)"
+
+        ErrBadUrl ->
+            "Invalid URL: "
+
+        ErrTimeout ->
+            "The request timed out. Check your network connection."
+
+        ErrNetwork ->
+            "Network error. Check your network connection."
+
+        ErrBadRequest ->
+            "Invalid request."
+
+        ErrUnauthorized ->
+            "Not authorised. Sign in again."
+
+        ErrForbidden ->
+            "You are not allowed to do that."
+
+        ErrNotFound ->
+            "The place was not found."
+
+        ErrServerPrefix ->
+            "Server error ("
+
+        ErrServerSuffix ->
+            ")."
+
+        ErrBadBody ->
+            "Error processing the data: "
+
+        LoginRequired ->
+            "Sign in to manage places"
+
+        LoginSuccess ->
+            "Signed in"
+
+        LoginFailed ->
+            "Sign-in failed"
+
+        LocationSaved ->
+            "Place saved"
+
+        LocationDeleted ->
+            "Place deleted"
+
+        KmlParseFailed ->
+            "Parsing the KML failed"
+
+        KmlParseError ->
+            "Parse error"
+
+        ImportedPrefix ->
+            "Imported "
+
+        ImportedSuffix ->
+            " places"
+
+        PageNotFoundText ->
+            "404 - Page not found"
+
+        DateAtTime ->
+            " at "
 
 
 eventFilterLabel : Lang -> EventFilter -> String

@@ -1,12 +1,13 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
 import siteConfig from 'virtual:site-config'
-import { appSettings, requestedLang, setDocumentLang } from './packages/site-config/browser.mjs'
+import { appSettings, pickLang, requestedLang, setDocumentLang } from './packages/site-config/browser.mjs'
 
 // ── App init ──────────────────────────────────────────────────────────────────
 
-// App settings and the text main.js renders itself come from [app] in ../config.toml.
-const settings = appSettings(siteConfig)
+// App settings and the text main.js renders itself come from [app] in
+// ../config.toml, in the language being shown.
+const settings = appSettings(siteConfig, pickLang(siteConfig))
 const strings = settings.strings
 
 const pbBaseUrl = import.meta.env.VITE_POCKETBASE_URL || settings.pocketbase_url

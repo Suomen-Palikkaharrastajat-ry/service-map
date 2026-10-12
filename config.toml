@@ -6,15 +6,22 @@
 
 [i18n]
 default   = "fi"
-languages = ["fi"]
+languages = ["fi", "en"]
 
 [site]
 url         = "https://kartta.palikkaharrastajat.fi"
 title       = "Palikkakartta"
 description = "Palikkakartta — Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden syötteet"
 
+[site.en]
+title       = "Palikkakartta"
+description = "Palikkakartta — the service map and place feeds of Suomen Palikkaharrastajat ry"
+
 [pwa]
 description = "Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden syötteet"
+
+[pwa.en]
+description = "Service map and place feeds of Suomen Palikkaharrastajat ry"
 
 [navbar]
 variant = "app"
@@ -43,3 +50,19 @@ close_popup            = "Sulje"
 months           = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kesäkuu", "Heinäkuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"]
 weekdays         = ["ma", "ti", "ke", "to", "pe", "la", "su"]
 feed_description = "Suomen Palikkaharrastajat ry:n palvelukartta"
+
+[app.en.strings]
+refresh                = "⟳ Refresh page"
+cancelled              = "CANCELLED"
+cluster                = "{count} places, open the group"
+zoom_in                = "Zoom in"
+zoom_out               = "Zoom out"
+reset_bearing          = "Reset bearing to north"
+find_my_location       = "Show my location"
+location_not_available = "Location not available"
+close_popup            = "Close"
+
+[app.en.statics]
+months           = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+weekdays         = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+feed_description = "Service map of Suomen Palikkaharrastajat ry"

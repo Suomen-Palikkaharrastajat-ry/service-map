@@ -203,4 +203,14 @@ suite =
                     eventFilterLabel Lang.Fi NoEvents
                         |> Expect.notEqual (eventFilterLabel Lang.Fi HideCancelled)
             ]
+        , describe "languages"
+            [ test "Finnish and English have their own text" <|
+                \_ ->
+                    ( t Lang.Fi NavLocations, t Lang.En NavLocations )
+                        |> Expect.equal ( "Kohteet", "Places" )
+            , test "state labels follow the language" <|
+                \_ ->
+                    ( stateLabel Lang.Fi Draft, stateLabel Lang.En Draft )
+                        |> Expect.equal ( "Luonnos", "Draft" )
+            ]
         ]
