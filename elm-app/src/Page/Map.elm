@@ -10,7 +10,7 @@ import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, input, label, p, span, text)
 import Html.Attributes exposing (attribute, checked, class, for, href, id, property, rel, target, title, type_)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onCheck, onClick)
 import I18n exposing (MsgKey(..), eventFilterLabel, t)
 import Json.Encode as Encode
 import OpeningHours.I18n as OHI18n
@@ -102,11 +102,21 @@ viewToggles model =
                                 isVisible =
                                     not (List.member tag model.hiddenTags)
                             in
-                            Form.checkbox
-                                (Form.defaultField ("tag-filter-" ++ tag) (localizeTag tag))
-                                { checked = isVisible
-                                , onCheck = \chk -> ToggleTagVisibility tag (not chk)
-                                }
+                            label
+                                [ for ("tag-filter-" ++ tag)
+                                , class "flex items-center gap-2 cursor-pointer type-body-small"
+                                ]
+                                [ input
+                                    [ type_ "checkbox"
+                                    , id ("tag-filter-" ++ tag)
+                                    , checked isVisible
+                                    , onCheck (\chk -> ToggleTagVisibility tag (not chk))
+                                    , class filterCheckboxClass
+                                    ]
+                                    []
+                                , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
+                                , text (localizeTag tag)
+                                ]
                         )
                  )
                     ++ [ viewEventFilterToggle model ]
@@ -145,7 +155,7 @@ viewEventFilterToggle model =
                 , property "indeterminate" (Encode.bool (model.eventFilter == Types.HideCancelled))
                 , attribute "aria-checked" ariaChecked
                 , onClick CycleEventFilter
-                , class "rounded border border-border-default text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                , class filterCheckboxClass
                 ]
                 []
             , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
@@ -153,6 +163,33 @@ viewEventFilterToggle model =
             , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel model.eventFilter) ]
             ]
         ]
+
+
+iconForTag : String -> FeatherIcons.Icon
+iconForTag tag =
+    case tag of
+        "exhibition" ->
+            FeatherIcons.image
+
+        "store" ->
+            FeatherIcons.shoppingBag
+
+        "fleamarket" ->
+            FeatherIcons.tag
+
+        "museum" ->
+            FeatherIcons.bookOpen
+
+        _ ->
+            FeatherIcons.mapPin
+
+
+{-| Compact checkbox styling shared by the filter rows. `Component.Form.checkbox` is a
+full form field (bottom margin, hint and error slots, no icon), which is too tall here.
+-}
+filterCheckboxClass : String
+filterCheckboxClass =
+    "rounded border border-border-brand text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
 
 
 viewPanel : Model -> Html Msg
