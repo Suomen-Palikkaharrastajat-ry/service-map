@@ -255,14 +255,9 @@ viewFooter =
 
 viewBrandFooter : Html Msg
 viewBrandFooter =
-    Footer.viewWith
-        { topMargin = False
+    FooterFamily.view
+        { currentSite = "https://kartta.palikkaharrastajat.fi"
+        , year = 2026
+        , topMargin = False
         , extra = []
-        }
-        { logo = Just FooterFamily.logo
-        , siteLabel = Just "Palikkaharrastajat"
-        , links = List.filter (\l -> l.href /= "https://kartta.palikkaharrastajat.fi") FooterFamily.links
-        , groups = []
-        , copyright = FooterFamily.copyright 2026
-        , disclaimer = Just FooterFamily.disclaimer
         }
