@@ -1,5 +1,8 @@
 module ApiTest exposing (suite)
 
+{-| Test suite for Api JSON decoders and helper functions.
+-}
+
 import Api exposing (decodeEvent, decodeLocation, httpErrorToString, imageUrl)
 import Expect
 import Http

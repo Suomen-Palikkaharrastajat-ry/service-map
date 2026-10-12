@@ -1,5 +1,8 @@
 module OpeningHoursParserTest exposing (suite)
 
+{-| Test suite for OpeningHours parser integration.
+-}
+
 import Expect
 import OpeningHours exposing (..)
 import OpeningHours.Parser exposing (parse)

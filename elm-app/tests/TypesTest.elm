@@ -1,5 +1,8 @@
 module TypesTest exposing (suite)
 
+{-| Test suite for Types utility functions.
+-}
+
 import Expect
 import Test exposing (Test, describe, test)
 import Types exposing (GeoPoint, hasValidCoordinates)

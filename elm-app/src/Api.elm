@@ -1,5 +1,8 @@
 module Api exposing (createLocation, decodeEvent, decodeLocation, fetchEvents, fetchGeoJson, fetchLocation, fetchLocations, httpErrorToString, imageUrl, updateLocation, updateLocationState)
 
+{-| PocketBase API client for fetching and updating locations and events.
+-}
+
 import DateUtils exposing (formDateTimeToUtc)
 import File
 import Http

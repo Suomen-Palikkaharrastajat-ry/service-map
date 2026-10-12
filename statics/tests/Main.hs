@@ -95,9 +95,10 @@ zeroPointLocationJson =
 zeroPointLocation :: PB.Location
 zeroPointLocation = decodeLocation zeroPointLocationJson
 
--- | Descriptions are free text and routinely contain newlines. They have to
--- survive into the GeoJSON as @\\n@ escapes so consumers rendering from the
--- feed can reproduce the same line breaks the app shows.
+{- | Descriptions are free text and routinely contain newlines. They have to
+survive into the GeoJSON as @\\n@ escapes so consumers rendering from the
+feed can reproduce the same line breaks the app shows.
+-}
 multilineLocationJson :: BLC.ByteString
 multilineLocationJson =
     BLC.pack $

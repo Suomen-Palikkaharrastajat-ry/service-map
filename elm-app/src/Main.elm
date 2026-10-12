@@ -1,10 +1,14 @@
 module Main exposing (applyFormDate, applyFormField, main, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)
 
+{-| Main application module: routing, state management, and top-level view.
+-}
+
 import Api
 import Auth
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
+import Component.SkipLink
 import Component.Spinner
 import Component.Toast
 import Date
@@ -14,7 +18,7 @@ import FeatherIcons
 import File
 import Geocoding
 import Html exposing (Html, div, main_)
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (class, id, style)
 import Html.Keyed
 import Http
 import I18n exposing (MsgKey(..), t)
@@ -1652,12 +1656,13 @@ view model =
     in
     { title = t AppTitle
     , body =
-        [ div [ class containerClass ]
+        [ Component.SkipLink.view { target = "main-content", label = "Siirry suoraan sisältöön" }
+        , div [ class containerClass ]
             [ if model.isEmbed then
                 Html.text ""
 
               else
-                View.Layout.viewHeader model.authState model.menuOpen model.presentationMode
+                View.Layout.viewHeader model.authState model.menuOpen model.presentationMode model.page
             , if model.isEmbed then
                 Html.text ""
 
@@ -1668,7 +1673,10 @@ view model =
 
               else
                 View.Layout.viewMobileDrawer model.menuOpen model.page model.authState
-            , Html.main_ [ class "flex-1 flex flex-col items-stretch relative w-full overflow-hidden" ]
+            , Html.main_
+                [ id "main-content"
+                , class "flex-1 flex flex-col items-stretch relative w-full overflow-hidden"
+                ]
                 [ case model.page of
                     PageMap ->
                         Page.Map.view model
@@ -1743,29 +1751,33 @@ view model =
 
 viewToasts : Model -> Html Msg
 viewToasts model =
-    div [ class "fixed bottom-0 right-0 z-50 p-4 space-y-4 pointer-events-none w-full max-w-sm" ]
-        (List.map viewToast model.toasts)
+    let
+        toasts =
+            List.map
+                (\t ->
+                    { id = String.fromInt t.id
+                    , title = Nothing
+                    , body = t.message
+                    , variant =
+                        case t.kind of
+                            Types.ToastInfo ->
+                                Component.Toast.Default
 
+                            Types.ToastSuccess ->
+                                Component.Toast.Success
 
-viewToast : Types.Toast -> Html Msg
-viewToast toast =
-    div [ class "pointer-events-auto" ]
-        [ Component.Toast.view
-            { title = ""
-            , body = toast.message
-            , variant =
-                case toast.kind of
-                    Types.ToastInfo ->
-                        Component.Toast.Default
-
-                    Types.ToastSuccess ->
-                        Component.Toast.Success
-
-                    Types.ToastError ->
-                        Component.Toast.Danger
-            , onClose = Just (DismissToast toast.id)
-            }
-        ]
+                            Types.ToastError ->
+                                Component.Toast.Danger
+                    , onClose = Just (DismissToast t.id)
+                    }
+                )
+                model.toasts
+    in
+    Component.Toast.region
+        { label = "Ilmoitukset"
+        , closeLabel = "Sulje"
+        }
+        toasts
 
 
 main : Program Flags Model Msg

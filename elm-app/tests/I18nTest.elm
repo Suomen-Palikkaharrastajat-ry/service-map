@@ -1,5 +1,8 @@
 module I18nTest exposing (suite)
 
+{-| Test suite for I18n translation keys and localized labels.
+-}
+
 import Expect
 import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
 import Test exposing (Test, describe, test)

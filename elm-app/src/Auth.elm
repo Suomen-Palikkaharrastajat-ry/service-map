@@ -1,5 +1,8 @@
 module Auth exposing (decodeAuthUser, fetchOAuthToken, restoreAuthFromFlags)
 
+{-| Authentication helpers for PocketBase OAuth token retrieval and state restoration.
+-}
+
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode

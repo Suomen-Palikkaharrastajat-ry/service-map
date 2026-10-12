@@ -1,5 +1,8 @@
 module Page.LocationEdit exposing (init, view)
 
+{-| Location edit page model initialization and view delegation.
+-}
+
 import Api
 import Date
 import DatePicker

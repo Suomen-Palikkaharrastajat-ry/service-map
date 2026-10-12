@@ -1,7 +1,48 @@
-module Types exposing (..)
+module Types exposing
+    ( AuthState(..)
+    , AuthUser
+    , Event
+    , EventFilter(..)
+    , Flags
+    , FormStatus(..)
+    , GeoPoint
+    , KmlImportStatus(..)
+    , KmlPlacemark
+    , Location
+    , LocationDetailPage
+    , LocationEditPage
+    , LocationFormData
+    , LocationNewPage
+    , LocationState(..)
+    , LocationsPage
+    , MapStyle(..)
+    , Model
+    , Msg(..)
+    , Page(..)
+    , SelectedMarker(..)
+    , Toast
+    , ToastKind(..)
+    , decodeKmlPlacemark
+    , emptyLocationFormData
+    , eventFilterFromString
+    , eventFilterToString
+    , fromRemoteData
+    , getToken
+    , hasValidCoordinates
+    , isAuthenticated
+    , isValidForm
+    , locationStateFromString
+    , locationStateToString
+    , mapLink
+    , mapLinkTarget
+    )
+
+{-| Core types, models, messages, and state representations for Palikkakartta.
+-}
 
 import Browser
 import Browser.Navigation as Nav
+import Component.LoadState as LoadState
 import DatePicker
 import File exposing (File)
 import Html exposing (Html)
@@ -284,6 +325,24 @@ isValidForm form =
         && not (String.isEmpty form.tag)
         && not (String.isEmpty (String.trim form.lat))
         && not (String.isEmpty (String.trim form.lon))
+
+
+{-| Convert a `RemoteData` state into a shared `LoadState.State`.
+-}
+fromRemoteData : RemoteData e a -> LoadState.State e a
+fromRemoteData rd =
+    case rd of
+        RemoteData.NotAsked ->
+            LoadState.NotAsked
+
+        RemoteData.Loading ->
+            LoadState.Loading
+
+        RemoteData.Failure err ->
+            LoadState.Failure err
+
+        RemoteData.Success data ->
+            LoadState.Success data
 
 
 type MapStyle

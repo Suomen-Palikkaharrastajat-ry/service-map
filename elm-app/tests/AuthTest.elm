@@ -1,5 +1,8 @@
 module AuthTest exposing (suite)
 
+{-| Test suite for Auth decoders and state restoration.
+-}
+
 import Auth exposing (decodeAuthUser, restoreAuthFromFlags)
 import Expect
 import Json.Decode as Json

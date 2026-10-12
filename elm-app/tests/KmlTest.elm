@@ -1,5 +1,8 @@
 module KmlTest exposing (suite)
 
+{-| Test suite for KML JSON decoder.
+-}
+
 import Expect
 import Json.Decode as Decode
 import Test exposing (Test, describe, test)

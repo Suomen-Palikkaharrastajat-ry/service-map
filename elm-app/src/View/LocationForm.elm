@@ -1,8 +1,10 @@
 module View.LocationForm exposing (view, viewEdit)
 
-import Component.Alert as Alert
+{-| View module for creating and editing locations.
+-}
+
 import Component.Button as Button
-import Component.Spinner as Spinner
+import Component.LoadState as LoadState
 import Component.Toggle as Toggle
 import DatePicker
 import FeatherIcons
@@ -94,7 +96,7 @@ viewEdit editPage =
     let
         isValid =
             case editPage.location of
-                RemoteData.Success location ->
+                RemoteData.Success _ ->
                     Types.isValidForm editPage.form
 
                 _ ->
@@ -102,25 +104,16 @@ viewEdit editPage =
     in
     div [ class "max-w-2xl mx-auto p-4 w-full" ]
         [ h2 [ class "type-h3 mb-4" ] [ text (t LocationListEdit) ]
-        , case editPage.location of
-            RemoteData.Loading ->
-                div [ class "flex justify-center py-8" ]
-                    [ Spinner.view { size = Spinner.Medium, label = t Loading } ]
-
-            RemoteData.Failure _ ->
-                Alert.view
-                    { alertType = Alert.Error
-                    , title = Nothing
-                    , body = [ text (t ErrorUnknown) ]
-                    , customIcon = Nothing
-                    , onDismiss = Nothing
-                    }
-
-            RemoteData.Success _ ->
+        , LoadState.view
+            { loadingLabel = t Loading
+            , errorMessage = \_ -> t ErrorUnknown
+            , onRetry = Nothing
+            , retryLabel = ""
+            }
+            (Types.fromRemoteData editPage.location)
+            (\_ ->
                 viewSharedFields editFormMsgs editPage.form isValid editPage.startDatePicker editPage.endDatePicker editPage.formStatus True editPage.mapStyle
-
-            RemoteData.NotAsked ->
-                text ""
+            )
         ]
 
 
@@ -145,12 +138,12 @@ viewGeocodeSection : FormMsgs -> LocationFormData -> Types.MapStyle -> Html Msg
 viewGeocodeSection msgs form mapStyle =
     div [ class "flex flex-col gap-2" ]
         [ div [ class "flex items-center gap-2 justify-between" ]
-            [ button
-                [ onClick msgs.onGeocode
-                , class "type-caption inline-flex items-center gap-1 whitespace-nowrap px-2 py-1 bg-brand-yellow text-brand rounded hover:opacity-90 disabled:opacity-60"
-                , disabled (String.isEmpty (String.trim form.location))
-                ]
-                [ featherIcon FeatherIcons.mapPin 14, text (t FormGeocode) ]
+            [ Button.new { label = t FormGeocode, onClick = msgs.onGeocode }
+                |> Button.withVariant Button.Accent
+                |> Button.withSize Button.Small
+                |> Button.withIcon FeatherIcons.mapPin
+                |> Button.withDisabled (String.isEmpty (String.trim form.location))
+                |> Button.toHtml
             , Toggle.view
                 { id = "map-style-toggle"
                 , label = "Käytä tarkkaa karttaa (OSM)"
@@ -285,29 +278,27 @@ viewStateRadio inputId groupName radioState currentState toMsg =
 viewFormButtons : FormMsgs -> FormStatus -> Bool -> Html Msg
 viewFormButtons msgs formStatus isValid =
     div [ class "flex gap-2 pt-2" ]
-        [ Button.view
+        [ Button.new
             { label =
                 if formStatus == FormSubmitting then
                     t Saving
 
                 else
                     t FormSave
-            , variant = Button.Primary
-            , size = Button.Medium
             , onClick = msgs.onSubmit
-            , disabled = formStatus == FormSubmitting || not isValid
-            , loading = formStatus == FormSubmitting
-            , ariaPressedState = Nothing
             }
-        , Button.view
+            |> Button.withVariant Button.Primary
+            |> Button.withSize Button.Medium
+            |> Button.withDisabled (formStatus == FormSubmitting || not isValid)
+            |> Button.withLoading (formStatus == FormSubmitting)
+            |> Button.toHtml
+        , Button.new
             { label = t FormCancel
-            , variant = Button.Secondary
-            , size = Button.Medium
             , onClick = NavigateTo RouteLocations
-            , disabled = False
-            , loading = False
-            , ariaPressedState = Nothing
             }
+            |> Button.withVariant Button.Secondary
+            |> Button.withSize Button.Medium
+            |> Button.toHtml
         ]
 
 

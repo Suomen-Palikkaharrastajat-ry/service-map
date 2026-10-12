@@ -24,6 +24,9 @@ module DateUtils exposing
     , utcStringToHelsinkiTimeInput
     )
 
+{-| Date and time formatting utilities with Helsinki timezone and Finnish localization.
+-}
+
 import Date
 import Iso8601
 import Time exposing (Month(..), Posix, Weekday(..), Zone)

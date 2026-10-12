@@ -1,5 +1,8 @@
 module MainTest exposing (suite)
 
+{-| Test suite for Main helper functions and update logic.
+-}
+
 import Expect
 import Http
 import Main exposing (applyFormDate, applyFormField, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)

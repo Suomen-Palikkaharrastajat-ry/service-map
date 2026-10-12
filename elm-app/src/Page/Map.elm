@@ -1,6 +1,10 @@
 module Page.Map exposing (view)
 
+{-| Interactive map view page with location markers, filters, and detail drawer.
+-}
+
 import Component.Button as Button exposing (Size(..), Variant(..))
+import Component.LoadState as LoadState
 import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
@@ -37,34 +41,11 @@ view model =
 
 viewStatusBadge : Model -> Html Msg
 viewStatusBadge model =
-    case model.locations of
-        RemoteData.Loading ->
-            div
-                [ style "position" "absolute"
-                , style "top" "1rem"
-                , style "left" "50%"
-                , style "transform" "translateX(-50%)"
-                , style "z-index" "1000"
-                , class "bg-white rounded shadow px-4 py-2 type-caption text-text-muted"
-                ]
-                [ text (t MapLoading) ]
-
-        Failure _ ->
-            div
-                [ style "position" "absolute"
-                , style "top" "1rem"
-                , style "left" "50%"
-                , style "transform" "translateX(-50%)"
-                , style "z-index" "1000"
-                , class "bg-brand-red/10 text-brand-red rounded shadow px-4 py-2 type-caption"
-                ]
-                [ text (t MapLoadError) ]
-
-        Success _ ->
-            text ""
-
-        NotAsked ->
-            text ""
+    LoadState.badge
+        { loadingLabel = t MapLoading
+        , errorMessage = \_ -> t MapLoadError
+        }
+        (Types.fromRemoteData model.locations)
 
 
 viewToggles : Model -> Html Msg
@@ -283,34 +264,26 @@ viewLocationPanel model loc =
                     [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                     , case loc.url of
                         Just url ->
-                            Button.viewLink
-                                { label = t PanelMoreInfo
-                                , variant = Primary
-                                , size = Small
-                                , href = url
-                                , target =
-                                    Just
-                                        (if model.isEmbed then
-                                            "_top"
+                            Button.link { label = t PanelMoreInfo, href = url }
+                                |> Button.withVariant Button.Primary
+                                |> Button.withSize Button.Small
+                                |> Button.withTarget
+                                    (if model.isEmbed then
+                                        "_top"
 
-                                         else
-                                            "_blank"
-                                        )
-                                }
+                                     else
+                                        "_blank"
+                                    )
+                                |> Button.toHtml
 
                         Nothing ->
                             text ""
                     ]
                 , div [ class "ml-auto flex items-center gap-2" ]
-                    [ Button.view
-                        { label = t PanelClose
-                        , variant = Secondary
-                        , size = Small
-                        , onClick = ClosePanel
-                        , disabled = False
-                        , loading = False
-                        , ariaPressedState = Nothing
-                        }
+                    [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                        |> Button.withVariant Button.Secondary
+                        |> Button.withSize Button.Small
+                        |> Button.toHtml
                     , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]
@@ -433,34 +406,26 @@ viewEventPanel model ev =
                     [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                     , case ev.url of
                         Just url ->
-                            Button.viewLink
-                                { label = t PanelMoreInfo
-                                , variant = Primary
-                                , size = Small
-                                , href = url
-                                , target =
-                                    Just
-                                        (if model.isEmbed then
-                                            "_top"
+                            Button.link { label = t PanelMoreInfo, href = url }
+                                |> Button.withVariant Button.Primary
+                                |> Button.withSize Button.Small
+                                |> Button.withTarget
+                                    (if model.isEmbed then
+                                        "_top"
 
-                                         else
-                                            "_blank"
-                                        )
-                                }
+                                     else
+                                        "_blank"
+                                    )
+                                |> Button.toHtml
 
                         Nothing ->
                             text ""
                     ]
                 , div [ class "ml-auto flex items-center gap-2" ]
-                    [ Button.view
-                        { label = t PanelClose
-                        , variant = Secondary
-                        , size = Small
-                        , onClick = ClosePanel
-                        , disabled = False
-                        , loading = False
-                        , ariaPressedState = Nothing
-                        }
+                    [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                        |> Button.withVariant Button.Secondary
+                        |> Button.withSize Button.Small
+                        |> Button.toHtml
                     , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                     ]
                 ]

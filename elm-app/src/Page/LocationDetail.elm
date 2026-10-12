@@ -1,5 +1,8 @@
 module Page.LocationDetail exposing (init, view)
 
+{-| Location detail page model initialization and view delegation.
+-}
+
 import Api
 import Html exposing (Html)
 import RemoteData

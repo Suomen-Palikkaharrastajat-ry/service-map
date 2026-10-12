@@ -53,7 +53,7 @@ daysInMonth year month
     | month `elem` [4, 6, 9, 11] = 30
     | otherwise = 31
   where
-    isLeap y = (y `mod` 4 == 0 && y `mod` 100 /= 0) || y `mod` 400 == 0
+    isLeap y = y `mod` 4 == 0 && y `mod` 100 /= 0 || y `mod` 400 == 0
 
 toHelsinki :: UTCTime -> ZonedTime
 toHelsinki t =

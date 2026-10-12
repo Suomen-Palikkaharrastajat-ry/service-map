@@ -3,6 +3,9 @@ module View.FinnishDatePicker exposing
     , view
     )
 
+{-| Finnish localization settings and wrapper for DatePicker component.
+-}
+
 import Date
 import DatePicker exposing (DateEvent(..), InputError(..), defaultSettings)
 import DateUtils

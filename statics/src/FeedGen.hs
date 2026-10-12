@@ -223,7 +223,7 @@ jsonFeedItem loc =
     let contentHtml =
             DH.descriptionWithDateHtml (PB.locationDescription loc) ""
         baseFields =
-            [ "id" .= (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)
+            [ "id" .= concat [Config.siteBaseUrl, "/#/locations/", PB.locationId loc]
             , "title" .= feedItemTitle loc
             , "content_html" .= contentHtml
             , "date_published" .= formatRfc3339Ms (PB.locationCreated loc)
@@ -232,7 +232,7 @@ jsonFeedItem loc =
             ]
         urlField = case PB.locationUrl loc of
             Just u -> ["url" .= T.unpack u]
-            Nothing -> ["url" .= (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)]
+            Nothing -> ["url" .= concat [Config.siteBaseUrl, "/#/locations/", PB.locationId loc]]
         imgField = case locationImageUrl loc of
             Just img -> ["image" .= img]
             Nothing -> []

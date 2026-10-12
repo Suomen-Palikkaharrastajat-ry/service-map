@@ -1,5 +1,8 @@
 module KmlImportTest exposing (suite)
 
+{-| Test suite for KML import placemark decoding.
+-}
+
 import Expect
 import Json.Decode as Decode
 import Test exposing (..)

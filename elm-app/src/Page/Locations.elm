@@ -1,6 +1,10 @@
 module Page.Locations exposing (view)
 
+{-| Locations list view page with KML import and CRUD actions.
+-}
+
 import Component.Button as Button
+import Component.LoadState as LoadState
 import FeatherIcons
 import File
 import Html exposing (Html, a, div, h1, h3, p, span, text)
@@ -8,7 +12,6 @@ import Html.Attributes exposing (class, href, target)
 import Html.Events as Events
 import I18n exposing (t)
 import Json.Decode as Decode
-import RemoteData exposing (RemoteData(..))
 import Route exposing (Route(..), toHref)
 import Types exposing (AuthState(..), Location, Model, Msg)
 import View.Icons exposing (featherIcon)
@@ -51,35 +54,30 @@ view model locPage =
                             Types.KmlError err ->
                                 span [ class "type-caption text-brand-red flex items-center gap-1" ]
                                     [ featherIcon FeatherIcons.alertCircle 14, text (t I18n.KmlError) ]
-                        , Button.viewLink
-                            { label = "+ " ++ t I18n.LocationListNew
-                            , variant = Button.Primary
-                            , size = Button.Small
-                            , href = toHref RouteLocationNew
-                            , target = Nothing
-                            }
+                        , Button.link { label = "+ " ++ t I18n.LocationListNew, href = toHref RouteLocationNew }
+                            |> Button.withVariant Button.Primary
+                            |> Button.withSize Button.Small
+                            |> Button.toHtml
                         ]
 
                 NotAuthenticated ->
                     text ""
             ]
-        , case model.locations of
-            NotAsked ->
-                text ""
-
-            Loading ->
-                p [ class "type-body text-text-muted" ] [ text (t I18n.Loading) ]
-
-            Failure _ ->
-                p [ class "type-body text-brand-red" ] [ text (t I18n.ErrorNetwork) ]
-
-            Success locations ->
+        , LoadState.view
+            { loadingLabel = t I18n.Loading
+            , errorMessage = \_ -> t I18n.ErrorNetwork
+            , onRetry = Nothing
+            , retryLabel = ""
+            }
+            (Types.fromRemoteData model.locations)
+            (\locations ->
                 if List.isEmpty locations then
                     p [ class "type-body text-text-muted text-center py-8" ] [ text (t I18n.LocationListEmpty) ]
 
                 else
                     div [ class "flex flex-col gap-4" ]
                         (List.map (viewLocationCard model.platform model.authState) locations)
+            )
         ]
 
 

@@ -1,5 +1,8 @@
 module RouteTest exposing (suite)
 
+{-| Test suite for application routing and URL parsing.
+-}
+
 import Expect
 import Route exposing (Route(..), parseUrl, toHref)
 import Test exposing (Test, describe, test)

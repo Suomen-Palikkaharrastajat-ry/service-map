@@ -1,5 +1,8 @@
 module I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
 
+{-| Internationalization and localization strings for Finnish UI text.
+-}
+
 import Types exposing (EventFilter(..), LocationState(..))
 
 

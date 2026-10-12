@@ -23,6 +23,9 @@ port module Ports exposing
     , setMapStyle
     )
 
+{-| JavaScript interop ports for MapLibre GL, OAuth, KML parsing, and focus management.
+-}
+
 import Json.Decode as Json
 
 

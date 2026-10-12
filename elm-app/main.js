@@ -183,7 +183,12 @@ app.ports.focusMobileNav.subscribe(function () {
 app.ports.focusElement.subscribe(function (id) {
   requestAnimationFrame(function () {
     const el = document.getElementById(id)
-    if (el) el.focus({ focusVisible: true })
+    if (el) {
+      const target = el.matches('button, a, input, select, textarea, [tabindex]')
+        ? el
+        : (el.querySelector('button, a, input, select, textarea, [tabindex]') || el)
+      target.focus({ focusVisible: true })
+    }
   })
 })
 

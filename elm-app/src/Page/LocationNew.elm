@@ -1,5 +1,8 @@
 module Page.LocationNew exposing (init, view)
 
+{-| Location creation page model initialization and view delegation.
+-}
+
 import Date
 import DatePicker
 import DateUtils
