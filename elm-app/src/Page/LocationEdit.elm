@@ -8,6 +8,7 @@ import Date
 import DatePicker
 import FinnishTime
 import Html exposing (Html)
+import Lang exposing (Lang)
 import RemoteData
 import Time exposing (Posix)
 import Types exposing (FormStatus(..), LocationEditPage, Msg(..), emptyLocationFormData)
@@ -37,6 +38,6 @@ init now pbBaseUrl maybeToken id =
     )
 
 
-view : LocationEditPage -> Html Msg
-view =
-    View.LocationForm.viewEdit
+view : Lang -> LocationEditPage -> Html Msg
+view lang =
+    View.LocationForm.viewEdit lang

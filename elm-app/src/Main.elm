@@ -8,6 +8,7 @@ import Auth
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
+import Component.Layout
 import Component.SkipLink
 import Component.Spinner
 import Component.Toast
@@ -25,6 +26,7 @@ import Http
 import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Lang exposing (Lang)
 import OpeningHours.Editor
 import OpeningHours.I18n as OHI18n
 import OpeningHours.Parser as OHParser
@@ -37,6 +39,7 @@ import Page.Map
 import Ports exposing (MarkerData)
 import RemoteData exposing (RemoteData(..))
 import Route exposing (Route(..), parseUrl)
+import SiteSettings
 import Task
 import Time
 import Types
@@ -85,8 +88,22 @@ init flags url key =
         now =
             Time.millisToPosix flags.now
 
+        localized =
+            Decode.decodeValue SiteSettings.localizedDecoder flags.siteConfig
+
+        lang =
+            localized
+                |> Result.map (SiteSettings.pickLang flags.requestedLang)
+                |> Result.withDefault Lang.Fi
+
+        site =
+            localized
+                |> Result.toMaybe
+                |> Maybe.andThen (SiteSettings.forLang lang)
+                |> Maybe.withDefault (SiteSettings.placeholder lang)
+
         ( page, cmd ) =
-            initPage flags.pbBaseUrl key initialRoute authState url now
+            initPage lang flags.pbBaseUrl key initialRoute authState url now
     in
     ( { pbBaseUrl = flags.pbBaseUrl
       , key = key
@@ -105,25 +122,30 @@ init flags url key =
       , now = now
       , toasts = []
       , nextToastId = 0
+      , site = site
+      , lang = lang
       }
-    , case authState of
-        Authenticated _ ->
-            Cmd.batch
-                [ Api.fetchLocations flags.pbBaseUrl (getToken authState)
-                , Api.fetchEvents flags.pbBaseUrl (getToken authState)
-                , cmd
-                ]
+    , Cmd.batch
+        [ Ports.setDocumentLang (Lang.toString lang)
+        , case authState of
+            Authenticated _ ->
+                Cmd.batch
+                    [ Api.fetchLocations flags.pbBaseUrl (getToken authState)
+                    , Api.fetchEvents flags.pbBaseUrl (getToken authState)
+                    , cmd
+                    ]
 
-        NotAuthenticated ->
-            Cmd.batch
-                [ Api.fetchGeoJson
-                , cmd
-                ]
+            NotAuthenticated ->
+                Cmd.batch
+                    [ Api.fetchGeoJson
+                    , cmd
+                    ]
+        ]
     )
 
 
-initPage : String -> Nav.Key -> Route -> AuthState -> Url -> Time.Posix -> ( Page, Cmd Msg )
-initPage pbBaseUrl key route authState url now =
+initPage : Lang -> String -> Nav.Key -> Route -> AuthState -> Url -> Time.Posix -> ( Page, Cmd Msg )
+initPage lang pbBaseUrl key route authState url now =
     case route of
         RouteMap ->
             ( PageMap
@@ -169,7 +191,7 @@ initPage pbBaseUrl key route authState url now =
                     ( PageLocations { kmlImportStatus = Types.KmlIdle, kmlQueue = [], importCount = 0 }
                     , Cmd.batch
                         [ Nav.pushUrl key (Route.toHref RouteLocations)
-                        , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo "Kirjaudu sisään päästäksesi hallintanäkymään"))
+                        , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo (t lang LoginRequired)))
                         ]
                     )
 
@@ -193,7 +215,7 @@ initPage pbBaseUrl key route authState url now =
                     ( PageLocations { kmlImportStatus = Types.KmlIdle, kmlQueue = [], importCount = 0 }
                     , Cmd.batch
                         [ Nav.pushUrl key (Route.toHref RouteLocations)
-                        , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo "Kirjaudu sisään päästäksesi hallintanäkymään"))
+                        , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo (t lang LoginRequired)))
                         ]
                     )
 
@@ -227,7 +249,7 @@ update msg model =
                             Cmd.none
 
                 ( page, cmd ) =
-                    initPage model.pbBaseUrl model.key newRoute model.authState url model.now
+                    initPage model.lang model.pbBaseUrl model.key newRoute model.authState url model.now
 
                 newModel =
                     { model | url = url, page = page, menuOpen = False }
@@ -320,14 +342,14 @@ update msg model =
                     case selected of
                         Just (Types.SelectedLocation l) ->
                             Cmd.batch
-                                [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle l, cancelled = False }
+                                [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle model.lang l, cancelled = False }
                                 , Ports.focusElement "map-detail-close"
                                 ]
 
                         Just (Types.SelectedEvent e) ->
                             let
                                 dateStr =
-                                    Maybe.withDefault "" (DateUtils.formatEventDateDisplay e)
+                                    Maybe.withDefault "" (DateUtils.formatEventDateDisplay model.lang e)
                             in
                             Cmd.batch
                                 [ Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled }
@@ -542,7 +564,7 @@ update msg model =
 
         ToggleMenu ->
             if model.menuOpen then
-                ( { model | menuOpen = False }, Ports.focusElement View.Layout.menuButtonId )
+                ( { model | menuOpen = False }, Ports.focusElement Component.Layout.menuButtonId )
 
             else
                 ( { model | menuOpen = True }, Ports.focusMobileNav () )
@@ -551,7 +573,7 @@ update msg model =
             -- The drawer becomes `inert` when it closes, so the browser drops
             -- focus to <body>. Put it back on the button that opened it.
             if model.menuOpen then
-                ( { model | menuOpen = False }, Ports.focusElement View.Layout.menuButtonId )
+                ( { model | menuOpen = False }, Ports.focusElement Component.Layout.menuButtonId )
 
             else
                 ( model, Cmd.none )
@@ -572,7 +594,7 @@ update msg model =
             if String.isEmpty data.token then
                 let
                     ( m, c ) =
-                        addToast model Types.ToastError "Kirjautuminen epäonnistui"
+                        addToast model Types.ToastError (t model.lang LoginFailed)
                 in
                 ( m, c )
 
@@ -584,7 +606,7 @@ update msg model =
                                 { user | token = data.token }
 
                             ( m, c ) =
-                                addToast { model | authState = Authenticated authedUser } Types.ToastSuccess "Kirjautuminen onnistui"
+                                addToast { model | authState = Authenticated authedUser } Types.ToastSuccess (t model.lang LoginSuccess)
                         in
                         ( m
                         , Cmd.batch
@@ -597,7 +619,7 @@ update msg model =
                     Err _ ->
                         let
                             ( m, c ) =
-                                addToast model Types.ToastError "Kirjautuminen epäonnistui"
+                                addToast model Types.ToastError (t model.lang LoginFailed)
                         in
                         ( m, c )
 
@@ -640,7 +662,7 @@ update msg model =
                     if stateParam /= providerState then
                         let
                             ( m, c ) =
-                                addToast model Types.ToastError "Kirjautuminen epäonnistui"
+                                addToast model Types.ToastError (t model.lang LoginFailed)
                         in
                         ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
 
@@ -658,7 +680,7 @@ update msg model =
                 _ ->
                     let
                         ( m, c ) =
-                            addToast model Types.ToastError "Kirjautuminen epäonnistui"
+                            addToast model Types.ToastError (t model.lang LoginFailed)
                     in
                     ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
 
@@ -674,7 +696,7 @@ update msg model =
                         )
 
                 ( m, c ) =
-                    addToast { model | authState = Authenticated user } Types.ToastSuccess "Kirjautuminen onnistui"
+                    addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
             in
             ( m
             , Cmd.batch
@@ -691,7 +713,7 @@ update msg model =
         GotOAuthToken (Err err) ->
             let
                 ( m, c ) =
-                    addToast model Types.ToastError (Api.httpErrorToString err)
+                    addToast model Types.ToastError (Api.httpErrorToString model.lang err)
             in
             ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
 
@@ -707,7 +729,7 @@ update msg model =
                 PageLocationNew newPage ->
                     let
                         ( nextPicker, maybeIso ) =
-                            FinnishDatePicker.update datePickerMsg newPage.startDatePicker
+                            FinnishDatePicker.update (I18n.locale model.lang) datePickerMsg newPage.startDatePicker
 
                         nextForm =
                             case maybeIso of
@@ -727,7 +749,7 @@ update msg model =
                 PageLocationNew newPage ->
                     let
                         ( nextPicker, maybeIso ) =
-                            FinnishDatePicker.update datePickerMsg newPage.endDatePicker
+                            FinnishDatePicker.update (I18n.locale model.lang) datePickerMsg newPage.endDatePicker
 
                         nextForm =
                             case maybeIso of
@@ -821,7 +843,7 @@ update msg model =
                         Ok _ ->
                             let
                                 ( m, c ) =
-                                    addToast model Types.ToastSuccess "Kohde tallennettu"
+                                    addToast model Types.ToastSuccess (t model.lang LocationSaved)
                             in
                             ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                             , Cmd.batch
@@ -834,7 +856,7 @@ update msg model =
                         Err err ->
                             let
                                 errorStr =
-                                    Api.httpErrorToString err
+                                    Api.httpErrorToString model.lang err
 
                                 ( m, c ) =
                                     addToast model Types.ToastError errorStr
@@ -926,7 +948,7 @@ update msg model =
                 PageLocationEdit id editPage ->
                     let
                         ( nextPicker, maybeIso ) =
-                            FinnishDatePicker.update datePickerMsg editPage.startDatePicker
+                            FinnishDatePicker.update (I18n.locale model.lang) datePickerMsg editPage.startDatePicker
 
                         nextForm =
                             case maybeIso of
@@ -946,7 +968,7 @@ update msg model =
                 PageLocationEdit id editPage ->
                     let
                         ( nextPicker, maybeIso ) =
-                            FinnishDatePicker.update datePickerMsg editPage.endDatePicker
+                            FinnishDatePicker.update (I18n.locale model.lang) datePickerMsg editPage.endDatePicker
 
                         nextForm =
                             case maybeIso of
@@ -1040,7 +1062,7 @@ update msg model =
                         Ok _ ->
                             let
                                 ( m, c ) =
-                                    addToast model Types.ToastSuccess "Kohde tallennettu"
+                                    addToast model Types.ToastSuccess (t model.lang LocationSaved)
                             in
                             ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                             , Cmd.batch
@@ -1053,7 +1075,7 @@ update msg model =
                         Err err ->
                             let
                                 errorStr =
-                                    Api.httpErrorToString err
+                                    Api.httpErrorToString model.lang err
 
                                 ( m, c ) =
                                     addToast model Types.ToastError errorStr
@@ -1116,7 +1138,7 @@ update msg model =
                 Ok _ ->
                     let
                         ( m, c ) =
-                            addToast model Types.ToastSuccess "Kohde poistettu"
+                            addToast model Types.ToastSuccess (t model.lang LocationDeleted)
                     in
                     ( { m | locations = refreshLocationsOnMutationResult result m.locations }
                     , Cmd.batch
@@ -1127,7 +1149,7 @@ update msg model =
                     )
 
                 Err err ->
-                    addToast model Types.ToastError (Api.httpErrorToString err)
+                    addToast model Types.ToastError (Api.httpErrorToString model.lang err)
 
         LocationKmlFileSelected file ->
             case model.page of
@@ -1162,9 +1184,9 @@ update msg model =
                         Err err ->
                             let
                                 ( m, c ) =
-                                    addToast model Types.ToastError "KML jäsentäminen epäonnistui"
+                                    addToast model Types.ToastError (t model.lang KmlParseFailed)
                             in
-                            ( { m | page = PageLocations { locPage | kmlImportStatus = Types.KmlError "Jäsennysvirhe" } }, c )
+                            ( { m | page = PageLocations { locPage | kmlImportStatus = Types.KmlError (t model.lang KmlParseError) } }, c )
 
                 _ ->
                     ( model, Cmd.none )
@@ -1179,7 +1201,7 @@ update msg model =
                                     { locPage | kmlImportStatus = Types.KmlDone locPage.importCount }
 
                                 ( m, c ) =
-                                    addToast model Types.ToastSuccess ("Tuotiin " ++ String.fromInt locPage.importCount ++ " kohdetta")
+                                    addToast model Types.ToastSuccess (t model.lang ImportedPrefix ++ String.fromInt locPage.importCount ++ t model.lang ImportedSuffix)
                             in
                             ( { m | page = PageLocations newLocPage }
                             , Cmd.batch [ c, Api.fetchLocations model.pbBaseUrl (Just token) ]
@@ -1436,8 +1458,8 @@ Unparseable opening hours yield "", matching the marker tooltip's existing
 behaviour of showing a bare title rather than raw OSM syntax.
 
 -}
-locationTooltipSubtitle : Location -> String
-locationTooltipSubtitle loc =
+locationTooltipSubtitle : Lang -> Location -> String
+locationTooltipSubtitle lang loc =
     case loc.openingHours of
         Just oh ->
             if String.trim oh == "" then
@@ -1446,7 +1468,7 @@ locationTooltipSubtitle loc =
             else
                 case OHParser.parse oh of
                     Ok parsed ->
-                        OHViewer.formatToString OHI18n.finnish parsed
+                        OHViewer.formatToString (OHI18n.forCode (Lang.toString lang)) parsed
 
                     Err _ ->
                         ""
@@ -1455,26 +1477,26 @@ locationTooltipSubtitle loc =
             ""
 
 
-locationToMarker : Location -> MarkerData
-locationToMarker loc =
+locationToMarker : Lang -> Location -> MarkerData
+locationToMarker lang loc =
     { id = loc.id
     , lat = loc.point.lat
     , lon = loc.point.lon
     , title = loc.title
-    , date = locationTooltipSubtitle loc
+    , date = locationTooltipSubtitle lang loc
     , isEvent = False
     , tags = loc.tags
     , cancelled = False
     }
 
 
-eventToMarker : Types.Event -> MarkerData
-eventToMarker ev =
+eventToMarker : Lang -> Types.Event -> MarkerData
+eventToMarker lang ev =
     { id = ev.id
     , lat = ev.point.lat
     , lon = ev.point.lon
     , title = ev.title
-    , date = Maybe.withDefault "" (DateUtils.formatEventDateDisplay ev)
+    , date = Maybe.withDefault "" (DateUtils.formatEventDateDisplay lang ev)
     , isEvent = True
     , tags = []
     , cancelled = ev.cancelled
@@ -1528,14 +1550,14 @@ updateMarkers model =
                     locations
                         |> List.filter (\l -> Types.hasValidCoordinates l.point)
                         |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                        |> List.map locationToMarker
+                        |> List.map (locationToMarker model.lang)
 
                 _ ->
                     []
 
         evtMarkers =
             visibleEvents model
-                |> List.map eventToMarker
+                |> List.map (eventToMarker model.lang)
     in
     Ports.addMarkers (locMarkers ++ evtMarkers)
 
@@ -1660,130 +1682,83 @@ view model =
             else
                 "flex flex-col min-h-[100dvh] font-sans"
     in
-    { title = t AppTitle
+    { title = model.site.site.title ++ " | " ++ Maybe.withDefault "" model.site.metadata.author
     , body =
-        [ Component.SkipLink.view { target = "main-content", label = "Siirry suoraan sisältöön" }
-        , div [ class containerClass ]
-            [ if model.isEmbed then
-                Html.text ""
-
-              else
-                View.Layout.viewHeader model.authState model.menuOpen model.presentationMode model.page
-            , if model.isEmbed then
-                Html.text ""
-
-              else
-                View.Layout.viewMobileOverlay model.menuOpen
-            , if model.isEmbed then
-                Html.text ""
-
-              else
-                View.Layout.viewMobileDrawer model.menuOpen model.page model.authState
-            , Html.main_
-                [ id "main-content"
-                , class "flex-1 flex flex-col items-stretch relative w-full overflow-hidden"
-                ]
-                [ case model.page of
-                    PageMap ->
-                        Page.Map.view model
-
-                    PageLocations locPage ->
-                        div [ class "flex-1 overflow-y-auto w-full" ]
-                            [ Page.Locations.view model locPage ]
-
-                    PageLocationNew newPage ->
-                        div [ class "flex-1 overflow-y-auto w-full" ]
-                            [ Page.LocationNew.view newPage ]
-
-                    PageLocationDetail id detPage ->
-                        div [ class "flex-1 overflow-y-auto w-full" ]
-                            [ Page.LocationDetail.view model.pbBaseUrl model.isEmbed model.platform model.authState id detPage ]
-
-                    PageLocationEdit id editPage ->
-                        div [ class "flex-1 overflow-y-auto w-full" ]
-                            [ Page.LocationEdit.view editPage ]
-
-                    PageAuthCallback ->
-                        div [ class "flex items-center justify-center flex-1 h-full w-full" ]
-                            [ Component.Spinner.view { size = Component.Spinner.Medium, label = t I18n.Loading } ]
-
-                    PageNotFound ->
-                        div [ class "p-8 text-center" ] [ Html.text "404 - Sivua ei löytynyt" ]
-
-                    _ ->
-                        div [] []
-                ]
-            , if isMapPage then
-                Html.text ""
-
-              else
-                View.Layout.viewFooter
-            , if isMapPage then
-                Html.text ""
-
-              else
-                View.Layout.viewBrandFooter
-            , viewToasts model
-            , if model.presentationMode then
-                let
-                    markerId =
-                        case model.selectedMarker of
-                            Just (Types.SelectedLocation l) ->
-                                l.id
-
-                            Just (Types.SelectedEvent e) ->
-                                e.id
-
-                            Nothing ->
-                                "none"
-                in
-                Html.Keyed.node "div"
-                    [ class "fixed bottom-0 left-0 right-0 h-2 z-[9999]" ]
-                    [ ( markerId
-                      , div
-                            [ class "h-full bg-brand opacity-50"
-                            , style "animation" "progress-reverse 30s linear"
-                            ]
-                            []
-                      )
+        View.Layout.view
+            { site = model.site
+            , lang = model.lang
+            , authState = model.authState
+            , menuOpen = model.menuOpen
+            , presentationMode = model.presentationMode
+            , isEmbed = model.isEmbed
+            , activePage = model.page
+            , toasts = model.toasts
+            , attributes = [ class containerClass ]
+            , main =
+                Html.main_
+                    [ id "main-content"
+                    , class "flex-1 flex flex-col items-stretch relative w-full overflow-hidden"
                     ]
+                    [ case model.page of
+                        PageMap ->
+                            Page.Map.view model.lang model
 
-              else
-                Html.text ""
-            ]
-        ]
+                        PageLocations locPage ->
+                            div [ class "flex-1 overflow-y-auto w-full" ]
+                                [ Page.Locations.view model.lang model locPage ]
+
+                        PageLocationNew newPage ->
+                            div [ class "flex-1 overflow-y-auto w-full" ]
+                                [ Page.LocationNew.view model.lang newPage ]
+
+                        PageLocationDetail id detPage ->
+                            div [ class "flex-1 overflow-y-auto w-full" ]
+                                [ Page.LocationDetail.view model.lang model.pbBaseUrl model.isEmbed model.platform model.authState id detPage ]
+
+                        PageLocationEdit id editPage ->
+                            div [ class "flex-1 overflow-y-auto w-full" ]
+                                [ Page.LocationEdit.view model.lang editPage ]
+
+                        PageAuthCallback ->
+                            div [ class "flex items-center justify-center flex-1 h-full w-full" ]
+                                [ Component.Spinner.view { size = Component.Spinner.Medium, label = t model.lang I18n.Loading } ]
+
+                        PageNotFound ->
+                            div [ class "p-8 text-center" ] [ Html.text (t model.lang PageNotFoundText) ]
+
+                        _ ->
+                            div [] []
+                    ]
+            , overlays =
+                [ if model.presentationMode then
+                    let
+                        markerId =
+                            case model.selectedMarker of
+                                Just (Types.SelectedLocation l) ->
+                                    l.id
+
+                                Just (Types.SelectedEvent e) ->
+                                    e.id
+
+                                Nothing ->
+                                    "none"
+                    in
+                    Html.Keyed.node "div"
+                        [ class "fixed bottom-0 left-0 right-0 h-2 z-[9999]" ]
+                        [ ( markerId
+                          , div
+                                [ class "h-full bg-brand opacity-50"
+                                , style "animation" "progress-reverse 30s linear"
+                                ]
+                                []
+                          )
+                        ]
+
+                  else
+                    Html.text ""
+                ]
+            }
     }
-
-
-viewToasts : Model -> Html Msg
-viewToasts model =
-    let
-        toasts =
-            List.map
-                (\t ->
-                    { id = String.fromInt t.id
-                    , title = Nothing
-                    , body = t.message
-                    , variant =
-                        case t.kind of
-                            Types.ToastInfo ->
-                                Component.Toast.Default
-
-                            Types.ToastSuccess ->
-                                Component.Toast.Success
-
-                            Types.ToastError ->
-                                Component.Toast.Danger
-                    , onClose = Just (DismissToast t.id)
-                    }
-                )
-                model.toasts
-    in
-    Component.Toast.region
-        { label = "Ilmoitukset"
-        , closeLabel = "Sulje"
-        }
-        toasts
 
 
 main : Program Flags Model Msg

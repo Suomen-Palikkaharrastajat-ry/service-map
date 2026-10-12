@@ -23,6 +23,7 @@ import Data.Time (
     utcToZonedTime,
  )
 import Data.Time.Calendar (Day)
+import qualified SiteConfig as SC
 
 helsinkiOffset :: UTCTime -> Int
 helsinkiOffset t = if isDst t then 180 else 120
@@ -62,31 +63,13 @@ toHelsinki t =
         tz = TimeZone offsetMins True tzName
      in utcToZonedTime tz t
 
+-- | Weekday abbreviation in the site's language (Mon=ma … Sun=su).
 finnishWeekdayAbbr :: DayOfWeek -> String
-finnishWeekdayAbbr Monday = "ma"
-finnishWeekdayAbbr Tuesday = "ti"
-finnishWeekdayAbbr Wednesday = "ke"
-finnishWeekdayAbbr Thursday = "to"
-finnishWeekdayAbbr Friday = "pe"
-finnishWeekdayAbbr Saturday = "la"
-finnishWeekdayAbbr Sunday = "su"
+finnishWeekdayAbbr day = SC.staticsWeekdays SC.defaultLang !! (fromEnum day - 1)
 
+-- | Month name in the site's language (1-indexed, January=1).
 finnishMonthName :: Int -> String
-finnishMonthName m =
-    [ "Tammikuu"
-    , "Helmikuu"
-    , "Maaliskuu"
-    , "Huhtikuu"
-    , "Toukokuu"
-    , "Kesäkuu"
-    , "Heinäkuu"
-    , "Elokuu"
-    , "Syyskuu"
-    , "Lokakuu"
-    , "Marraskuu"
-    , "Joulukuu"
-    ]
-        !! (m - 1)
+finnishMonthName m = SC.staticsMonths SC.defaultLang !! (m - 1)
 
 formatDay :: ZonedTime -> String
 formatDay zt = finnishWeekdayAbbr (dayOfWeek (localDay (zonedTimeToLocalTime zt)))

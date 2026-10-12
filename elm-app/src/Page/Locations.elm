@@ -12,16 +12,17 @@ import Html.Attributes exposing (class, href, target)
 import Html.Events as Events
 import I18n exposing (t)
 import Json.Decode as Decode
+import Lang exposing (Lang)
 import Route exposing (Route(..), toHref)
 import Types exposing (AuthState(..), Location, Model, Msg)
 import View.Icons exposing (featherIcon)
 
 
-view : Model -> Types.LocationsPage -> Html Msg
-view model locPage =
+view : Lang -> Model -> Types.LocationsPage -> Html Msg
+view lang model locPage =
     div [ class "p-4 max-w-5xl mx-auto w-full" ]
         [ div [ class "flex items-center justify-between mb-4 flex-wrap gap-4" ]
-            [ h1 [ class "type-h1" ] [ text (t I18n.LocationListTitle) ]
+            [ h1 [ class "type-h1" ] [ text (t lang I18n.LocationListTitle) ]
             , case model.authState of
                 Authenticated _ ->
                     div [ class "flex items-center gap-4" ]
@@ -29,7 +30,7 @@ view model locPage =
                             Types.KmlIdle ->
                                 Html.label [ class "cursor-pointer type-caption text-brand hover:underline flex items-center gap-1" ]
                                     [ featherIcon FeatherIcons.upload 14
-                                    , text (t I18n.KmlImport)
+                                    , text (t lang I18n.KmlImport)
                                     , Html.input
                                         [ Html.Attributes.type_ "file"
                                         , Html.Attributes.accept ".kml"
@@ -41,20 +42,20 @@ view model locPage =
 
                             Types.KmlParsing ->
                                 span [ class "type-caption text-text-muted flex items-center gap-1" ]
-                                    [ featherIcon FeatherIcons.loader 14, text (t I18n.KmlImporting) ]
+                                    [ featherIcon FeatherIcons.loader 14, text (t lang I18n.KmlImporting) ]
 
                             Types.KmlImporting i total ->
                                 span [ class "type-caption text-text-muted flex items-center gap-1" ]
-                                    [ featherIcon FeatherIcons.loader 14, text (t I18n.KmlImporting ++ " " ++ String.fromInt i ++ "/" ++ String.fromInt total) ]
+                                    [ featherIcon FeatherIcons.loader 14, text (t lang I18n.KmlImporting ++ " " ++ String.fromInt i ++ "/" ++ String.fromInt total) ]
 
                             Types.KmlDone total ->
                                 span [ class "type-caption text-brand-green flex items-center gap-1" ]
-                                    [ featherIcon FeatherIcons.check 14, text (String.fromInt total ++ " " ++ t I18n.ImportSuccess) ]
+                                    [ featherIcon FeatherIcons.check 14, text (String.fromInt total ++ " " ++ t lang I18n.ImportSuccess) ]
 
                             Types.KmlError err ->
                                 span [ class "type-caption text-brand-red flex items-center gap-1" ]
-                                    [ featherIcon FeatherIcons.alertCircle 14, text (t I18n.KmlError) ]
-                        , Button.link { label = "+ " ++ t I18n.LocationListNew, href = toHref RouteLocationNew }
+                                    [ featherIcon FeatherIcons.alertCircle 14, text (t lang I18n.KmlError) ]
+                        , Button.link { label = "+ " ++ t lang I18n.LocationListNew, href = toHref RouteLocationNew }
                             |> Button.withVariant Button.Primary
                             |> Button.withSize Button.Small
                             |> Button.toHtml
@@ -64,25 +65,25 @@ view model locPage =
                     text ""
             ]
         , LoadState.view
-            { loadingLabel = t I18n.Loading
-            , errorMessage = \_ -> t I18n.ErrorNetwork
+            { loadingLabel = t lang I18n.Loading
+            , errorMessage = \_ -> t lang I18n.ErrorNetwork
             , onRetry = Nothing
             , retryLabel = ""
             }
             (Types.fromRemoteData model.locations)
             (\locations ->
                 if List.isEmpty locations then
-                    p [ class "type-body text-text-muted text-center py-8" ] [ text (t I18n.LocationListEmpty) ]
+                    p [ class "type-body text-text-muted text-center py-8" ] [ text (t lang I18n.LocationListEmpty) ]
 
                 else
                     div [ class "flex flex-col gap-4" ]
-                        (List.map (viewLocationCard model.platform model.authState) locations)
+                        (List.map (viewLocationCard lang model.platform model.authState) locations)
             )
         ]
 
 
-viewLocationCard : String -> AuthState -> Location -> Html Msg
-viewLocationCard platform authState loc =
+viewLocationCard : Lang -> String -> AuthState -> Location -> Html Msg
+viewLocationCard lang platform authState loc =
     let
         opacityClass =
             if loc.state == Types.Published then
@@ -122,7 +123,7 @@ viewLocationCard platform authState loc =
                     a
                         [ href (Types.mapLink platform loc.point loc.title)
                         , target (Types.mapLinkTarget platform "_blank")
-                        , Html.Attributes.attribute "aria-label" (t I18n.A11yOpenInOsm)
+                        , Html.Attributes.attribute "aria-label" (t lang I18n.A11yOpenInOsm)
                         , class "text-brand hover:text-brand-yellow transition-colors"
                         ]
                         [ featherIcon FeatherIcons.mapPin 16 ]
@@ -134,7 +135,7 @@ viewLocationCard platform authState loc =
                         a
                             [ href url
                             , target "_blank"
-                            , Html.Attributes.attribute "aria-label" (t I18n.A11yOpenExternal)
+                            , Html.Attributes.attribute "aria-label" (t lang I18n.A11yOpenExternal)
                             , class "text-brand hover:text-brand-yellow transition-colors"
                             ]
                             [ featherIcon FeatherIcons.externalLink 16 ]
@@ -144,7 +145,7 @@ viewLocationCard platform authState loc =
                             [ href (toHref (RouteLocationEdit loc.id))
                             , class "type-caption text-brand hover:underline"
                             ]
-                            [ text (t I18n.LocationListEdit) ]
+                            [ text (t lang I18n.LocationListEdit) ]
 
                     NotAuthenticated ->
                         text ""

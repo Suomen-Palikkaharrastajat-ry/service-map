@@ -1,0 +1,45 @@
+# Site configuration for Palikkakartta.
+#
+# Layered on the family defaults in
+# vendor/master-builder/packages/site-config/family.toml, which supply the
+# icons, branding and footer. See vendor/master-builder/docs/site-config.md.
+
+[i18n]
+default   = "fi"
+languages = ["fi"]
+
+[site]
+url         = "https://kartta.palikkaharrastajat.fi"
+title       = "Palikkakartta"
+description = "Palikkakartta — Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden syötteet"
+
+[pwa]
+description = "Suomen Palikkaharrastajat ry:n palvelukartta ja kohteiden syötteet"
+
+[navbar]
+variant = "app"
+
+[app]
+pocketbase_url    = "https://data.palikkaharrastajat.fi"
+# The style references its PMTiles archives and glyphs by absolute URL.
+basemap_style_url = "https://tiles.palikkaharrastajat.fi/style.json"
+contact_email     = "palikkaharrastajatry@outlook.com"
+organisation_url  = "https://palikkaharrastajat.fi/"
+
+# Text rendered by main.js (map controls and markers).
+[app.strings]
+refresh                = "⟳ Päivitä sivu"
+cancelled              = "PERUTTU"
+cluster                = "{count} kohdetta, avaa ryhmä"
+zoom_in                = "Lähennä"
+zoom_out               = "Loitonna"
+reset_bearing          = "Palauta suunta pohjoiseen"
+find_my_location       = "Näytä sijaintini"
+location_not_available = "Sijainti ei ole saatavilla"
+close_popup            = "Sulje"
+
+# Text of the generated feeds (statics/).
+[app.statics]
+months           = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kesäkuu", "Heinäkuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"]
+weekdays         = ["ma", "ti", "ke", "to", "pe", "la", "su"]
+feed_description = "Suomen Palikkaharrastajat ry:n palvelukartta"

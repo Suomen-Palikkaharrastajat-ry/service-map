@@ -6,8 +6,10 @@ module Api exposing (createLocation, decodeEvent, decodeLocation, fetchEvents, f
 import File
 import FinnishTime exposing (formDateTimeToUtc)
 import Http
+import I18n exposing (MsgKey(..), t)
 import Json.Decode as Json exposing (Decoder)
 import Json.Encode as Encode
+import Lang exposing (Lang)
 import OpeningHours.Editor
 import Types exposing (Event, GeoPoint, Location, LocationFormData, LocationState, Msg(..), locationStateToString)
 import Url
@@ -431,34 +433,34 @@ updateLocationState pbBaseUrl token id state toMsg =
         }
 
 
-httpErrorToString : Http.Error -> String
-httpErrorToString err =
+httpErrorToString : Lang -> Http.Error -> String
+httpErrorToString lang err =
     case err of
         Http.BadUrl url ->
-            "Virheellinen URL: " ++ url
+            t lang ErrBadUrl ++ url
 
         Http.Timeout ->
-            "Pyyntö aikakatkaistiin. Tarkista verkkoyhteytesi."
+            t lang ErrTimeout
 
         Http.NetworkError ->
-            "Verkkovirhe. Tarkista verkkoyhteytesi."
+            t lang ErrNetwork
 
         Http.BadStatus statusCode ->
             case statusCode of
                 400 ->
-                    "Virheellinen pyyntö."
+                    t lang ErrBadRequest
 
                 401 ->
-                    "Ei oikeuksia. Kirjaudu sisään uudelleen."
+                    t lang ErrUnauthorized
 
                 403 ->
-                    "Ei oikeuksia toimintoon."
+                    t lang ErrForbidden
 
                 404 ->
-                    "Kohdetta ei löytynyt."
+                    t lang ErrNotFound
 
                 _ ->
-                    "Palvelinvirhe (" ++ String.fromInt statusCode ++ ")."
+                    t lang ErrServerPrefix ++ String.fromInt statusCode ++ t lang ErrServerSuffix
 
         Http.BadBody message ->
-            "Virhe datan käsittelyssä: " ++ message
+            t lang ErrBadBody ++ message

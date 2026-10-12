@@ -7,6 +7,7 @@ import Api exposing (decodeEvent, decodeLocation, httpErrorToString, imageUrl)
 import Expect
 import Http
 import Json.Decode as Json
+import Lang
 import Test exposing (Test, describe, test)
 import Types exposing (LocationState(..))
 
@@ -236,20 +237,20 @@ suite =
         , describe "httpErrorToString"
             [ test "BadUrl returns Finnish message" <|
                 \_ ->
-                    httpErrorToString (Http.BadUrl "http://bad")
+                    httpErrorToString Lang.Fi (Http.BadUrl "http://bad")
                         |> String.startsWith "Virheellinen URL"
                         |> Expect.equal True
             , test "Timeout returns Finnish message" <|
                 \_ ->
-                    httpErrorToString Http.Timeout
+                    httpErrorToString Lang.Fi Http.Timeout
                         |> Expect.equal "Pyyntö aikakatkaistiin. Tarkista verkkoyhteytesi."
             , test "NetworkError returns Finnish message" <|
                 \_ ->
-                    httpErrorToString Http.NetworkError
+                    httpErrorToString Lang.Fi Http.NetworkError
                         |> Expect.equal "Verkkovirhe. Tarkista verkkoyhteytesi."
             , test "BadStatus returns code in message" <|
                 \_ ->
-                    httpErrorToString (Http.BadStatus 500)
+                    httpErrorToString Lang.Fi (Http.BadStatus 500)
                         |> String.contains "500"
                         |> Expect.equal True
             ]

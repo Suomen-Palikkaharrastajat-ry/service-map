@@ -48,9 +48,11 @@ import File exposing (File)
 import Html exposing (Html)
 import Http
 import Json.Decode
+import Lang exposing (Lang)
 import OpeningHours.Editor
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
+import SiteSettings exposing (SiteSettings)
 import Time
 import Url exposing (Url)
 
@@ -266,6 +268,8 @@ type alias Flags =
     , eventsFilter : String
     , isEmbed : Bool
     , platform : String
+    , siteConfig : Json.Decode.Value
+    , requestedLang : Maybe String
     }
 
 
@@ -416,6 +420,8 @@ type alias Model =
     , now : Time.Posix
     , toasts : List Toast
     , nextToastId : Int
+    , site : SiteSettings
+    , lang : Lang
     }
 
 

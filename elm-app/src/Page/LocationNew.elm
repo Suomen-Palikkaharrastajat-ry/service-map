@@ -9,6 +9,7 @@ import FinnishTime
 import Html exposing (Html, div, h2, text)
 import Html.Attributes exposing (class)
 import I18n exposing (MsgKey(..), t)
+import Lang exposing (Lang)
 import Time exposing (Posix)
 import Types exposing (FormStatus(..), LocationNewPage, Msg(..), emptyLocationFormData)
 import View.LocationForm
@@ -36,10 +37,10 @@ init now =
     )
 
 
-view : LocationNewPage -> Html Msg
-view page =
+view : Lang -> LocationNewPage -> Html Msg
+view lang page =
     div [ class "max-w-2xl mx-auto p-4 w-full" ]
-        [ h2 [ class "type-h3 mb-4" ] [ text (t LocationListNew) ]
+        [ h2 [ class "type-h3 mb-4" ] [ text (t lang LocationListNew) ]
         , div [ class "mb-6 p-4 border rounded bg-bg-subtle" ]
-            [ View.LocationForm.view page.form page.startDatePicker page.endDatePicker page.formStatus page.mapStyle ]
+            [ View.LocationForm.view lang page.form page.startDatePicker page.endDatePicker page.formStatus page.mapStyle ]
         ]

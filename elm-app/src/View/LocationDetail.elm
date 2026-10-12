@@ -12,28 +12,29 @@ import Html exposing (Html, a, div, h1, img, p, span, text)
 import Html.Attributes exposing (alt, class, href, src, target)
 import Html.Events exposing (onClick)
 import I18n exposing (t)
+import Lang exposing (Lang)
 import Route exposing (Route(..), toHref)
 import Types exposing (AuthState(..), LocationDetailPage, Msg(..), isAuthenticated)
 import View.Icons exposing (featherIcon)
 
 
-view : String -> Bool -> String -> AuthState -> String -> LocationDetailPage -> Html Msg
-view pbBaseUrl isEmbed platform authState _ detPage =
+view : Lang -> String -> Bool -> String -> AuthState -> String -> LocationDetailPage -> Html Msg
+view lang pbBaseUrl isEmbed platform authState _ detPage =
     div [ class "max-w-2xl mx-auto p-4 w-full" ]
-        [ backButton RouteLocations
+        [ backButton lang RouteLocations
         , LoadState.view
-            { loadingLabel = t I18n.Loading
-            , errorMessage = \_ -> t I18n.ErrorUnknown
+            { loadingLabel = t lang I18n.Loading
+            , errorMessage = \_ -> t lang I18n.ErrorUnknown
             , onRetry = Nothing
             , retryLabel = ""
             }
             (Types.fromRemoteData detPage.location)
-            (viewLocationContent pbBaseUrl isEmbed platform authState detPage)
+            (viewLocationContent lang pbBaseUrl isEmbed platform authState detPage)
         ]
 
 
-viewLocationContent : String -> Bool -> String -> AuthState -> LocationDetailPage -> Types.Location -> Html Msg
-viewLocationContent pbBaseUrl isEmbed platform authState detPage loc =
+viewLocationContent : Lang -> String -> Bool -> String -> AuthState -> LocationDetailPage -> Types.Location -> Html Msg
+viewLocationContent lang pbBaseUrl isEmbed platform authState detPage loc =
     div []
         [ div [ class "flex justify-between items-start mb-2" ]
             [ h1 [ class "type-h1 flex items-center gap-2" ]
@@ -42,11 +43,11 @@ viewLocationContent pbBaseUrl isEmbed platform authState detPage loc =
                 ]
             , if isAuthenticated authState then
                 div [ class "flex gap-2 ml-4 shrink-0" ]
-                    [ Button.new { label = t I18n.DetailEdit, onClick = NavigateTo (RouteLocationEdit loc.id) }
+                    [ Button.new { label = t lang I18n.DetailEdit, onClick = NavigateTo (RouteLocationEdit loc.id) }
                         |> Button.withVariant Button.Secondary
                         |> Button.withSize Button.Small
                         |> Button.toHtml
-                    , Button.new { label = t I18n.DetailDelete, onClick = DetailDelete }
+                    , Button.new { label = t lang I18n.DetailDelete, onClick = DetailDelete }
                         |> Button.withVariant Button.Danger
                         |> Button.withSize Button.Small
                         |> Button.withDisabled detPage.deleteConfirm
@@ -58,13 +59,13 @@ viewLocationContent pbBaseUrl isEmbed platform authState detPage loc =
             ]
         , if detPage.deleteConfirm then
             div [ class "mb-4 p-4 bg-bg-subtle border-2 border-brand-red rounded-md shadow-sm" ]
-                [ p [ class "type-body text-brand-red font-medium mb-3" ] [ text "Oletko varma, että haluat poistaa tämän kohteen?" ]
+                [ p [ class "type-body text-brand-red font-medium mb-3" ] [ text (t lang I18n.DetailDeleteQuestion) ]
                 , div [ class "flex gap-3" ]
-                    [ Button.new { label = t I18n.DetailDeleteConfirm, onClick = DetailDeleteConfirm }
+                    [ Button.new { label = t lang I18n.DetailDeleteConfirm, onClick = DetailDeleteConfirm }
                         |> Button.withVariant Button.Danger
                         |> Button.withSize Button.Medium
                         |> Button.toHtml
-                    , Button.new { label = t I18n.DetailDeleteCancel, onClick = DetailDeleteCancel }
+                    , Button.new { label = t lang I18n.DetailDeleteCancel, onClick = DetailDeleteCancel }
                         |> Button.withVariant Button.Secondary
                         |> Button.withSize Button.Medium
                         |> Button.toHtml
@@ -73,7 +74,7 @@ viewLocationContent pbBaseUrl isEmbed platform authState detPage loc =
 
           else
             text ""
-        , case DateUtils.formatLocationDateDisplay { startDate = loc.startDate, endDate = loc.endDate } of
+        , case DateUtils.formatLocationDateDisplay lang { startDate = loc.startDate, endDate = loc.endDate } of
             Nothing ->
                 text ""
 
@@ -154,21 +155,21 @@ viewLocationContent pbBaseUrl isEmbed platform authState detPage loc =
                             )
                         , class "text-brand hover:underline inline-flex items-center gap-1 type-caption"
                         ]
-                        [ text (t I18n.DetailMoreInfo)
+                        [ text (t lang I18n.DetailMoreInfo)
                         , featherIcon FeatherIcons.externalLink 14
                         ]
                     ]
         ]
 
 
-backButton : Route -> Html Msg
-backButton route =
+backButton : Lang -> Route -> Html Msg
+backButton lang route =
     a
         [ href (toHref route)
         , onClick (NavigateTo route)
         , class "flex items-center gap-1 type-caption text-brand hover:underline mb-4"
         ]
-        [ featherIcon FeatherIcons.arrowLeft 14, text (t I18n.DetailBack) ]
+        [ featherIcon FeatherIcons.arrowLeft 14, text (t lang I18n.DetailBack) ]
 
 
 getMarkerIcon : Types.Location -> FeatherIcons.Icon

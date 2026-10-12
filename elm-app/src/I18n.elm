@@ -1,15 +1,15 @@
-module I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
+module I18n exposing (MsgKey(..), eventFilterLabel, locale, stateLabel, t)
 
-{-| Internationalization and localization strings for Finnish UI text.
+{-| UI strings per language, keyed by MsgKey, plus state and filter labels.
 -}
 
+import Lang exposing (Lang(..))
+import Locale exposing (Locale)
 import Types exposing (EventFilter(..), LocationState(..))
 
 
 type MsgKey
-    = AppTitle
-    | NavbarTitle
-    | NavHome
+    = NavHome
     | NavLocations
     | NavLogin
     | NavLogout
@@ -102,21 +102,54 @@ type MsgKey
     | A11yOpenExternal
     | A11yPresentationStart
     | A11yPresentationStop
-    | A11yMenuOpen
-    | A11yMenuClose
-    | A11yNavPrimary
-    | A11yNavMobile
+    | LoggedInAs
+    | FeedsLabel
+    | FeedsTitle
+    | FeedsDescription
+    | DetailDeleteQuestion
+    | FormUsePreciseMap
+    | ErrBadUrl
+    | ErrTimeout
+    | ErrNetwork
+    | ErrBadRequest
+    | ErrUnauthorized
+    | ErrForbidden
+    | ErrNotFound
+    | ErrServerPrefix
+    | ErrServerSuffix
+    | ErrBadBody
+    | LoginRequired
+    | LoginSuccess
+    | LoginFailed
+    | LocationSaved
+    | LocationDeleted
+    | KmlParseFailed
+    | KmlParseError
+    | ImportedPrefix
+    | ImportedSuffix
+    | PageNotFoundText
+    | DateAtTime
 
 
-t : MsgKey -> String
-t key =
+{-| The text of a key in a language.
+
+English is not translated yet: the site declares only Finnish in its
+`config.toml`, so English falls back to Finnish until it is.
+
+-}
+t : Lang -> MsgKey -> String
+t lang key =
+    case lang of
+        Fi ->
+            fi key
+
+        En ->
+            fi key
+
+
+fi : MsgKey -> String
+fi key =
     case key of
-        AppTitle ->
-            "Palikkakartta | Suomen Palikkaharrastajat ry"
-
-        NavbarTitle ->
-            "Palikkakartta"
-
         NavHome ->
             "Kartta"
 
@@ -393,43 +426,119 @@ t key =
         A11yPresentationStop ->
             "Pysäytä esitystila"
 
-        A11yMenuOpen ->
-            "Avaa valikko"
+        LoggedInAs ->
+            "Kirjautunut: "
 
-        A11yMenuClose ->
-            "Sulje valikko"
+        FeedsLabel ->
+            "Syötteet ja vienti"
 
-        A11yNavPrimary ->
-            "Päävalikko"
+        FeedsTitle ->
+            "Syötteet"
 
-        A11yNavMobile ->
-            "Mobiilivalikko"
+        FeedsDescription ->
+            "Syötteet integroivat kohteet muihin palveluihin."
+
+        DetailDeleteQuestion ->
+            "Oletko varma, että haluat poistaa tämän kohteen?"
+
+        FormUsePreciseMap ->
+            "Käytä tarkkaa karttaa (OSM)"
+
+        ErrBadUrl ->
+            "Virheellinen URL: "
+
+        ErrTimeout ->
+            "Pyyntö aikakatkaistiin. Tarkista verkkoyhteytesi."
+
+        ErrNetwork ->
+            "Verkkovirhe. Tarkista verkkoyhteytesi."
+
+        ErrBadRequest ->
+            "Virheellinen pyyntö."
+
+        ErrUnauthorized ->
+            "Ei oikeuksia. Kirjaudu sisään uudelleen."
+
+        ErrForbidden ->
+            "Ei oikeuksia toimintoon."
+
+        ErrNotFound ->
+            "Kohdetta ei löytynyt."
+
+        ErrServerPrefix ->
+            "Palvelinvirhe ("
+
+        ErrServerSuffix ->
+            ")."
+
+        ErrBadBody ->
+            "Virhe datan käsittelyssä: "
+
+        LoginRequired ->
+            "Kirjaudu sisään päästäksesi hallintanäkymään"
+
+        LoginSuccess ->
+            "Kirjautuminen onnistui"
+
+        LoginFailed ->
+            "Kirjautuminen epäonnistui"
+
+        LocationSaved ->
+            "Kohde tallennettu"
+
+        LocationDeleted ->
+            "Kohde poistettu"
+
+        KmlParseFailed ->
+            "KML jäsentäminen epäonnistui"
+
+        KmlParseError ->
+            "Jäsennysvirhe"
+
+        ImportedPrefix ->
+            "Tuotiin "
+
+        ImportedSuffix ->
+            " kohdetta"
+
+        PageNotFoundText ->
+            "404 - Sivua ei löytynyt"
+
+        DateAtTime ->
+            " klo "
 
 
-eventFilterLabel : EventFilter -> String
-eventFilterLabel filter =
+eventFilterLabel : Lang -> EventFilter -> String
+eventFilterLabel lang filter =
     case filter of
         AllEvents ->
-            t FilterEventsAll
+            t lang FilterEventsAll
 
         HideCancelled ->
-            t FilterEventsNoCancelled
+            t lang FilterEventsNoCancelled
 
         NoEvents ->
-            t FilterEventsNone
+            t lang FilterEventsNone
 
 
-stateLabel : LocationState -> String
-stateLabel state =
+stateLabel : Lang -> LocationState -> String
+stateLabel lang state =
     case state of
         Draft ->
-            t StateDraft
+            t lang StateDraft
 
         Pending ->
-            t StatePending
+            t lang StatePending
 
         Published ->
-            t StatePublished
+            t lang StatePublished
 
         Deleted ->
-            t StateDeleted
+            t lang StateDeleted
+
+
+{-| The date and time conventions of a language.
+-}
+locale : Lang -> Locale
+locale lang =
+    Locale.forCode (Lang.toString lang)

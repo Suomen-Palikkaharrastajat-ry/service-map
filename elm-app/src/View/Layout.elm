@@ -1,160 +1,192 @@
-module View.Layout exposing (menuButtonId, viewBrandFooter, viewFooter, viewHeader, viewMobileDrawer, viewMobileOverlay)
+module View.Layout exposing (view)
 
-{-| Main layout components: application header, footers, mobile navigation drawer and overlay.
+{-| Page chrome: the shared family shell with this app's navigation, account
+controls, presentation mode, feed links and toasts.
 -}
 
 import Component.Button as Button
 import Component.FeedLinks as FeedLinks
-import Component.Footer as Footer
-import Component.Footer.Family as FooterFamily
-import Component.MobileDrawer as MobileDrawer
-import Component.Navbar as Navbar
+import Component.Layout as Layout
+import Component.Toast as Toast
 import FeatherIcons
-import Html exposing (Html, button, div, nav, span, text, ul)
-import Html.Attributes exposing (attribute, class, id, style)
+import Html exposing (Html, button, div, nav, span, text)
+import Html.Attributes exposing (attribute, class, style)
 import Html.Events exposing (onClick)
 import I18n exposing (MsgKey(..), t)
+import Lang exposing (Lang)
 import Route exposing (Route(..), toHref)
-import Types exposing (AuthState(..), AuthUser, Msg(..), Page(..))
+import SiteSettings exposing (SiteSettings)
+import Types exposing (AuthState(..), AuthUser, Msg(..), Page(..), Toast, ToastKind(..))
+import UiStrings exposing (UiStrings)
 import View.Icons exposing (featherIcon)
 
 
-{-| Id of the hamburger button. `CloseMenu` returns focus here so keyboard users
-land back where they opened the drawer instead of at the top of the document.
+{-| The whole page.
+
+  - `isEmbed` — an embedded map has no header, drawer or footer.
+  - `presentationMode` — the header keeps only the brand and the stop button.
+  - `main` is the app's `<main id="main-content">`; `overlays` are rendered
+    over the page.
+
 -}
-menuButtonId : String
-menuButtonId =
-    "mobile-menu-button"
-
-
-viewHeader : AuthState -> Bool -> Bool -> Page -> Html Msg
-viewHeader authState menuOpen presentationMode activePage =
+view :
+    { site : SiteSettings
+    , lang : Lang
+    , authState : AuthState
+    , menuOpen : Bool
+    , presentationMode : Bool
+    , isEmbed : Bool
+    , activePage : Page
+    , toasts : List Toast
+    , attributes : List (Html.Attribute Msg)
+    , main : Html Msg
+    , overlays : List (Html Msg)
+    }
+    -> List (Html Msg)
+view config =
     let
-        isMapActive =
-            case activePage of
+        lang =
+            config.lang
+
+        strings =
+            UiStrings.forLang lang
+
+        isMapPage =
+            case config.activePage of
                 PageMap ->
                     True
 
                 _ ->
                     False
 
-        isLocationsActive =
-            case activePage of
+        isLocationsPage =
+            case config.activePage of
                 PageLocations _ ->
                     True
 
                 _ ->
                     False
 
-        presentationButton =
-            button
-                [ onClick TogglePresentationMode
-                , class "p-2 rounded-lg text-white hover:bg-white/10"
-                , style "cursor" "pointer"
-                , attribute "aria-label"
-                    (if presentationMode then
-                        t A11yPresentationStop
-
-                     else
-                        t A11yPresentationStart
-                    )
+        showNavigation =
+            not config.isEmbed && not config.presentationMode
+    in
+    Layout.view
+        { site = config.site
+        , strings = strings
+        , attributes = config.attributes
+        , home = { href = toHref RouteMap, onClick = Nothing }
+        , links =
+            if showNavigation then
+                [ { label = t lang NavHome
+                  , href = toHref RouteMap
+                  , mobileOnly = False
+                  , isActive = isMapPage
+                  }
+                , { label = t lang NavLocations
+                  , href = toHref RouteLocations
+                  , mobileOnly = False
+                  , isActive = isLocationsPage
+                  }
                 ]
-                [ featherIcon
-                    (if presentationMode then
-                        FeatherIcons.pause
 
-                     else
-                        FeatherIcons.play
-                    )
-                    24
-                ]
+            else
+                []
+        , headerActions =
+            viewPresentationButton lang config.presentationMode
+                :: (if showNavigation then
+                        [ viewDesktopAuthControls lang config.authState ]
 
-        links =
-            if presentationMode then
+                    else
+                        []
+                   )
+        , showHeader = not config.isEmbed
+        , menu =
+            if showNavigation then
+                Just
+                    { isOpen = config.menuOpen
+                    , onToggle = ToggleMenu
+                    , onClose = CloseMenu
+                    , content =
+                        \links ->
+                            [ nav [ class "p-4", attribute "aria-label" strings.mainNav ] [ links ]
+                            , div [ class "p-4 border-t border-border-default" ]
+                                [ viewMobileAuthControls lang config.authState ]
+                            ]
+                    }
+
+            else
+                Nothing
+        , main = config.main
+        , aboveFooter =
+            if isMapPage then
                 []
 
             else
-                [ { label = t NavHome
-                  , href = toHref RouteMap
-                  , mobileOnly = False
-                  , isActive = isMapActive
-                  }
-                , { label = t NavLocations
-                  , href = toHref RouteLocations
-                  , mobileOnly = False
-                  , isActive = isLocationsActive
-                  }
-                ]
-
-        trailing =
-            presentationButton
-                :: (if presentationMode then
-                        []
-
-                    else
-                        [ viewDesktopAuthControls authState ]
-                   )
-
-        menuToggle =
-            if presentationMode then
+                [ viewFeedLinks lang strings config.site ]
+        , footer =
+            if isMapPage then
                 Nothing
 
             else
-                Just
-                    (span [ id menuButtonId ]
-                        [ Navbar.viewMenuToggle
-                            { isOpen = menuOpen
-                            , onToggle = ToggleMenu
-                            , controls = "mobile-nav"
-                            , openLabel = t A11yMenuOpen
-                            , closeLabel = t A11yMenuClose
-                            }
-                        ]
-                    )
-    in
-    Navbar.viewAppHeader
-        { brand =
-            Navbar.viewBrand
-                { href = toHref RouteMap
-                , iconSrc = "/logo/square/square-smile.svg"
-                , title = t NavbarTitle
-                , onClick = Nothing
-                }
-        , navLabel = t A11yNavPrimary
-        , links = links
-        , trailing = trailing
-        , menuToggle = menuToggle
-        , sticky = True
+                Just { topMargin = False, extra = [] }
+        , scrollToTop = Nothing
+        , toasts = Just (List.map toSharedToast config.toasts)
+        , overlays = config.overlays
         }
 
 
-viewDesktopAuthControls : AuthState -> Html Msg
-viewDesktopAuthControls authState =
+viewPresentationButton : Lang -> Bool -> Html Msg
+viewPresentationButton lang presentationMode =
+    button
+        [ onClick TogglePresentationMode
+        , class "p-2 rounded-lg text-white hover:bg-white/10"
+        , style "cursor" "pointer"
+        , attribute "aria-label"
+            (if presentationMode then
+                t lang A11yPresentationStop
+
+             else
+                t lang A11yPresentationStart
+            )
+        ]
+        [ featherIcon
+            (if presentationMode then
+                FeatherIcons.pause
+
+             else
+                FeatherIcons.play
+            )
+            24
+        ]
+
+
+viewDesktopAuthControls : Lang -> AuthState -> Html Msg
+viewDesktopAuthControls lang authState =
     case authState of
         NotAuthenticated ->
             div [ class "hidden md:flex gap-2 items-center" ]
-                [ authButton LoginClicked (t NavLogin) ]
+                [ authButton LoginClicked (t lang NavLogin) ]
 
         Authenticated user ->
             div [ class "hidden md:flex gap-2 items-center" ]
                 [ span [ class "type-caption text-white/80" ] [ text user.name ]
-                , span [ attribute "title" (userTooltip user), class "inline-flex" ]
-                    [ authButton LogOut (t NavLogout) ]
+                , span [ attribute "title" (userTooltip lang user), class "inline-flex" ]
+                    [ authButton LogOut (t lang NavLogout) ]
                 ]
 
 
-viewMobileAuthControls : AuthState -> Html Msg
-viewMobileAuthControls authState =
+viewMobileAuthControls : Lang -> AuthState -> Html Msg
+viewMobileAuthControls lang authState =
     case authState of
         NotAuthenticated ->
             div [ class "flex" ]
-                [ authButton LoginClicked (t NavLogin) ]
+                [ authButton LoginClicked (t lang NavLogin) ]
 
         Authenticated user ->
             div [ class "flex flex-col items-start gap-3" ]
                 [ span [ class "type-caption text-text-muted" ] [ text user.name ]
-                , span [ attribute "title" (userTooltip user), class "inline-flex" ]
-                    [ authButton LogOut (t NavLogout) ]
+                , span [ attribute "title" (userTooltip lang user), class "inline-flex" ]
+                    [ authButton LogOut (t lang NavLogout) ]
                 ]
 
 
@@ -166,8 +198,8 @@ authButton msg label =
         |> Button.toHtml
 
 
-userTooltip : AuthUser -> String
-userTooltip user =
+userTooltip : Lang -> AuthUser -> String
+userTooltip lang user =
     let
         namePart =
             String.trim user.name
@@ -176,88 +208,54 @@ userTooltip user =
             String.trim user.email
     in
     if String.isEmpty namePart then
-        "Kirjautunut: " ++ emailPart
+        t lang LoggedInAs ++ emailPart
 
     else if String.isEmpty emailPart then
-        "Kirjautunut: " ++ namePart
+        t lang LoggedInAs ++ namePart
 
     else
-        "Kirjautunut: " ++ namePart ++ " (" ++ emailPart ++ ")"
+        t lang LoggedInAs ++ namePart ++ " (" ++ emailPart ++ ")"
 
 
-viewMobileOverlay : Bool -> Html Msg
-viewMobileOverlay menuOpen =
-    MobileDrawer.viewOverlay { isOpen = menuOpen, onClose = CloseMenu, breakpoint = MobileDrawer.Md }
-
-
-viewMobileDrawer : Bool -> Page -> AuthState -> Html Msg
-viewMobileDrawer menuOpen activePage authState =
-    let
-        isMapActive =
-            case activePage of
-                PageMap ->
-                    True
-
-                _ ->
-                    False
-
-        isLocationsActive =
-            case activePage of
-                PageLocations _ ->
-                    True
-
-                _ ->
-                    False
-    in
-    MobileDrawer.view
-        { isOpen = menuOpen
-        , id = "mobile-nav"
-        , label = t A11yNavMobile
-        , onClose = CloseMenu
-        , breakpoint = MobileDrawer.Md
-        , content =
-            [ nav [ class "p-4", attribute "aria-label" (t A11yNavMobile) ]
-                [ ul [ class "flex flex-col gap-1 list-none m-0 p-0" ]
-                    [ MobileDrawer.viewNavLink { href = toHref RouteMap, label = t NavHome, isActive = isMapActive, onClose = CloseMenu }
-                    , MobileDrawer.viewNavLink { href = toHref RouteLocations, label = t NavLocations, isActive = isLocationsActive, onClose = CloseMenu }
-                    ]
-                ]
-            , div [ class "p-4 border-t border-border-default" ]
-                [ viewMobileAuthControls authState ]
-            ]
-        }
-
-
-viewFooter : Html Msg
-viewFooter =
+viewFeedLinks : Lang -> UiStrings -> SiteSettings -> Html Msg
+viewFeedLinks lang strings site =
     let
         siteUrl =
-            "https://kartta.palikkaharrastajat.fi"
+            site.site.url
     in
     FeedLinks.view
-        { label = "Syötteet ja vienti"
+        { label = t lang FeedsLabel
         , cards = []
         , feeds =
             Just
                 { icon = FeatherIcons.rss
-                , title = "Syötteet"
-                , description = "Syötteet integroivat kohteet muihin palveluihin."
+                , title = t lang FeedsTitle
+                , description = t lang FeedsDescription
                 , links =
-                    [ { label = t FeedAtom, href = siteUrl ++ "/kartta.atom" }
-                    , { label = t FeedRss, href = siteUrl ++ "/kartta.rss" }
-                    , { label = t FeedJson, href = siteUrl ++ "/kartta.json" }
-                    , { label = t FeedGeoJson, href = siteUrl ++ "/kartta.geo.json" }
+                    [ { label = t lang FeedAtom, href = siteUrl ++ "/kartta.atom" }
+                    , { label = t lang FeedRss, href = siteUrl ++ "/kartta.rss" }
+                    , { label = t lang FeedJson, href = siteUrl ++ "/kartta.json" }
+                    , { label = t lang FeedGeoJson, href = siteUrl ++ "/kartta.geo.json" }
                     ]
                 }
-        , newTabHint = "(avautuu uuteen välilehteen)"
+        , newTabHint = strings.newTabHint
         }
 
 
-viewBrandFooter : Html Msg
-viewBrandFooter =
-    FooterFamily.view
-        { currentSite = "https://kartta.palikkaharrastajat.fi"
-        , year = 2026
-        , topMargin = False
-        , extra = []
-        }
+toSharedToast : Toast -> Toast.Toast Msg
+toSharedToast toast =
+    { id = String.fromInt toast.id
+    , title = Nothing
+    , body = toast.message
+    , variant =
+        case toast.kind of
+            ToastInfo ->
+                Toast.Default
+
+            ToastSuccess ->
+                Toast.Success
+
+            ToastError ->
+                Toast.Danger
+    , onClose = Just (DismissToast toast.id)
+    }

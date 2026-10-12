@@ -30,6 +30,24 @@ vendor: ## Init and update all git submodules to their pinned commits
 shell: ## Enter devenv shell
 	devenv shell
 
+# ── Site configuration ────────────────────────────────────────────────────────
+
+# config.toml is the single source of the site's URL, title, text and settings
+# (see vendor/master-builder/docs/site-config.md). Vite reads it directly; the
+# files below are derived from it and committed.
+SITE_CONFIG := vendor/master-builder/packages/site-config
+
+.PHONY: site-config
+site-config: ## Regenerate the files derived from config.toml
+	node $(SITE_CONFIG)/gen-fixture.mjs --config config.toml --out elm-app/tests/SiteFixture.elm
+	node $(SITE_CONFIG)/gen-haskell.mjs --config config.toml --out statics/src/SiteConfig.hs
+
+.PHONY: site-config-check
+site-config-check: ## Check config.toml, its derived files, and that display text stays in translations
+	node $(SITE_CONFIG)/gen-fixture.mjs --config config.toml --out elm-app/tests/SiteFixture.elm --check
+	node $(SITE_CONFIG)/gen-haskell.mjs --config config.toml --out statics/src/SiteConfig.hs --check
+	node vendor/master-builder/script/check-i18n.mjs elm-app/src elm-app/main.js statics/src statics/app
+
 # ── Elm frontend ──────────────────────────────────────────────────────────────
 
 .PHONY: elm-dev
@@ -51,7 +69,7 @@ elm-app/.elm-tailwind/.stamp: elm-app/elm.json elm-app/vite.config.mjs elm-app/m
 	mkdir -p elm-app/.elm-tailwind
 	touch $@
 
-dist/.elm-stamp: elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css
+dist/.elm-stamp: elm-app/.elm-tailwind/.stamp $(ELM_APP_SOURCES) $(ELM_PACKAGE_SOURCES) elm-app/elm.json elm-app/vite.config.mjs elm-app/main.js elm-app/main.css elm-app/index.html elm-app/embed.html config.toml
 	cd elm-app && vite build $(VITE_FLAGS)
 	touch $@
 
@@ -71,7 +89,7 @@ js-test: ## Run the plain-JS tests in elm-app/tests (node + jsdom)
 	node elm-app/tests/popup-pane-opener.test.mjs
 
 .PHONY: elm-check
-elm-check: ## Check Elm formatting + elm-review (no changes)
+elm-check: site-config-check ## Check Elm formatting + elm-review (no changes)
 	cd elm-app && elm-format --validate src/ tests/
 	$(MAKE) elm-review
 

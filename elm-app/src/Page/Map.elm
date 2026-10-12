@@ -13,6 +13,7 @@ import Html.Attributes exposing (attribute, checked, class, for, href, id, prope
 import Html.Events exposing (onCheck, onClick)
 import I18n exposing (MsgKey(..), eventFilterLabel, t)
 import Json.Encode as Encode
+import Lang exposing (Lang)
 import OpeningHours.I18n as OHI18n
 import OpeningHours.Parser as OHParser
 import OpeningHours.Viewer as OHViewer
@@ -26,8 +27,8 @@ import View.Icons exposing (featherIcon)
 import View.MapOverlay as MapOverlay
 
 
-view : Model -> Html Msg
-view model =
+view : Lang -> Model -> Html Msg
+view lang model =
     div
         [ class "flex-1 w-full relative overflow-hidden flex flex-col" ]
         [ div
@@ -35,23 +36,23 @@ view model =
             , class "flex-1 w-full"
             ]
             []
-        , viewStatusBadge model
-        , viewToggles model
-        , viewPanel model
+        , viewStatusBadge lang model
+        , viewToggles lang model
+        , viewPanel lang model
         ]
 
 
-viewStatusBadge : Model -> Html Msg
-viewStatusBadge model =
+viewStatusBadge : Lang -> Model -> Html Msg
+viewStatusBadge lang model =
     LoadState.badge
-        { loadingLabel = t MapLoading
-        , errorMessage = \_ -> t MapLoadError
+        { loadingLabel = t lang MapLoading
+        , errorMessage = \_ -> t lang MapLoadError
         }
         (Types.fromRemoteData model.locations)
 
 
-viewToggles : Model -> Html Msg
-viewToggles model =
+viewToggles : Lang -> Model -> Html Msg
+viewToggles lang model =
     let
         allTags =
             case model.locations of
@@ -68,19 +69,19 @@ viewToggles model =
         localizeTag tag =
             case tag of
                 "exhibition" ->
-                    t TagExhibition
+                    t lang TagExhibition
 
                 "store" ->
-                    t TagStore
+                    t lang TagStore
 
                 "fleamarket" ->
-                    t TagFleamarket
+                    t lang TagFleamarket
 
                 "museum" ->
-                    t TagMuseum
+                    t lang TagMuseum
 
                 "other" ->
-                    t TagOther
+                    t lang TagOther
 
                 _ ->
                     tag
@@ -91,10 +92,10 @@ viewToggles model =
     else
         MapOverlay.panel
             { position = MapOverlay.BottomLeft
-            , label = Just (t FilterPanelTitle)
+            , label = Just (t lang FilterPanelTitle)
             }
             [ MapOverlay.filterGroup
-                { legend = t FilterGroupLegend }
+                { legend = t lang FilterGroupLegend }
                 ((allTags
                     |> List.map
                         (\tag ->
@@ -119,7 +120,7 @@ viewToggles model =
                                 ]
                         )
                  )
-                    ++ [ viewEventFilterToggle model ]
+                    ++ [ viewEventFilterToggle lang model ]
                 )
             ]
 
@@ -128,8 +129,8 @@ viewToggles model =
 (none). `indeterminate` is a DOM property rather than an attribute, and the visible label
 always names the current state so the meaning never rests on the glyph alone.
 -}
-viewEventFilterToggle : Model -> Html Msg
-viewEventFilterToggle model =
+viewEventFilterToggle : Lang -> Model -> Html Msg
+viewEventFilterToggle lang model =
     let
         ariaChecked =
             case model.eventFilter of
@@ -146,7 +147,7 @@ viewEventFilterToggle model =
         [ label
             [ for "event-filter-toggle"
             , class "flex items-center gap-2 cursor-pointer type-body-small"
-            , title (t FilterEvents ++ ": " ++ eventFilterLabel model.eventFilter)
+            , title (t lang FilterEvents ++ ": " ++ eventFilterLabel lang model.eventFilter)
             ]
             [ input
                 [ type_ "checkbox"
@@ -159,8 +160,8 @@ viewEventFilterToggle model =
                 ]
                 []
             , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-            , text (t FilterEvents)
-            , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel model.eventFilter) ]
+            , text (t lang FilterEvents)
+            , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel lang model.eventFilter) ]
             ]
         ]
 
@@ -192,27 +193,27 @@ filterCheckboxClass =
     "rounded border border-border-brand text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
 
 
-viewPanel : Model -> Html Msg
-viewPanel model =
+viewPanel : Lang -> Model -> Html Msg
+viewPanel lang model =
     case model.selectedMarker of
         Nothing ->
             text ""
 
         Just (Types.SelectedLocation loc) ->
-            viewLocationPanel model loc
+            viewLocationPanel lang model loc
 
         Just (Types.SelectedEvent ev) ->
-            viewEventPanel model ev
+            viewEventPanel lang model ev
 
 
-viewLocationPanel : Model -> Location -> Html Msg
-viewLocationPanel model loc =
+viewLocationPanel : Lang -> Model -> Location -> Html Msg
+viewLocationPanel lang model loc =
     let
         headerActions =
             if Types.isAuthenticated model.authState then
                 [ a
                     [ href (Route.toHref (Route.RouteLocationEdit loc.id))
-                    , attribute "aria-label" (t A11yPanelEdit)
+                    , attribute "aria-label" (t lang A11yPanelEdit)
                     , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
                     ]
                     [ featherIcon FeatherIcons.edit2 20 ]
@@ -224,13 +225,13 @@ viewLocationPanel model loc =
     MapOverlay.detailPanelWithHeaderActions
         { isOpen = True
         , onClose = ClosePanel
-        , closeLabel = t A11yPanelClose
+        , closeLabel = t lang A11yPanelClose
         , title = loc.title
         , headerActions = headerActions
         }
         [ case loc.startDate of
             Just _ ->
-                case DateUtils.formatLocationDateDisplay { startDate = loc.startDate, endDate = loc.endDate } of
+                case DateUtils.formatLocationDateDisplay lang { startDate = loc.startDate, endDate = loc.endDate } of
                     Just dateStr ->
                         viewField FeatherIcons.calendar dateStr
 
@@ -249,7 +250,7 @@ viewLocationPanel model loc =
                         Ok parsed ->
                             div [ class "flex items-start gap-2 type-caption text-text-muted" ]
                                 [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.clock 16 ]
-                                , OHViewer.view OHI18n.finnish parsed
+                                , OHViewer.view (OHI18n.forCode (Lang.toString lang)) parsed
                                 ]
 
                         Err _ ->
@@ -277,7 +278,7 @@ viewLocationPanel model loc =
             text ""
 
           else
-            viewField FeatherIcons.tag (String.join ", " (List.map translateTag loc.tags))
+            viewField FeatherIcons.tag (String.join ", " (List.map (translateTag lang) loc.tags))
         , case loc.description of
             Just desc ->
                 p [ class "type-caption text-text-primary leading-relaxed mt-4 whitespace-pre-line" ] [ text desc ]
@@ -286,10 +287,10 @@ viewLocationPanel model loc =
                 text ""
         , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
             [ div [ class "flex items-center gap-2" ]
-                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t lang A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                 , case loc.url of
                     Just url ->
-                        Button.link { label = t PanelMoreInfo, href = url }
+                        Button.link { label = t lang PanelMoreInfo, href = url }
                             |> Button.withVariant Button.Primary
                             |> Button.withSize Button.Small
                             |> Button.withTarget
@@ -305,11 +306,11 @@ viewLocationPanel model loc =
                         text ""
                 ]
             , div [ class "ml-auto flex items-center gap-2" ]
-                [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                [ Button.new { label = t lang PanelClose, onClick = ClosePanel }
                     |> Button.withVariant Button.Secondary
                     |> Button.withSize Button.Small
                     |> Button.toHtml
-                , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                , button [ onClick SelectNextMarker, attribute "aria-label" (t lang A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                 ]
             ]
         , if model.presentationMode then
@@ -343,8 +344,8 @@ eventEditUrl id =
     "https://kalenteri.palikkaharrastajat.fi/#/events/" ++ id ++ "/edit"
 
 
-viewEventPanel : Model -> Types.Event -> Html Msg
-viewEventPanel model ev =
+viewEventPanel : Lang -> Model -> Types.Event -> Html Msg
+viewEventPanel lang model ev =
     let
         headerActions =
             if Types.isAuthenticated model.authState then
@@ -352,7 +353,7 @@ viewEventPanel model ev =
                     [ href (eventEditUrl ev.id)
                     , target "_blank"
                     , rel "noopener noreferrer"
-                    , attribute "aria-label" (t A11yPanelEdit)
+                    , attribute "aria-label" (t lang A11yPanelEdit)
                     , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
                     ]
                     [ featherIcon FeatherIcons.edit2 20 ]
@@ -365,7 +366,7 @@ viewEventPanel model ev =
             if ev.cancelled then
                 div [ class "event-cancelled-indicator mb-2" ]
                     [ span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5" ]
-                        [ text (t EventCancelled) ]
+                        [ text (t lang EventCancelled) ]
                     ]
 
             else
@@ -374,12 +375,12 @@ viewEventPanel model ev =
     MapOverlay.detailPanelWithHeaderActions
         { isOpen = True
         , onClose = ClosePanel
-        , closeLabel = t A11yPanelClose
+        , closeLabel = t lang A11yPanelClose
         , title = ev.title
         , headerActions = headerActions
         }
         [ cancelledBadge
-        , case DateUtils.formatEventDateDisplay ev of
+        , case DateUtils.formatEventDateDisplay lang ev of
             Just dateStr ->
                 viewField FeatherIcons.calendar dateStr
 
@@ -409,10 +410,10 @@ viewEventPanel model ev =
                 text ""
         , div [ class "flex items-center mt-4 gap-2 w-full justify-between" ]
             [ div [ class "flex items-center gap-2" ]
-                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
+                [ button [ onClick SelectPrevMarker, attribute "aria-label" (t lang A11yPrevMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronLeft 20 ]
                 , case ev.url of
                     Just url ->
-                        Button.link { label = t PanelMoreInfo, href = url }
+                        Button.link { label = t lang PanelMoreInfo, href = url }
                             |> Button.withVariant Button.Primary
                             |> Button.withSize Button.Small
                             |> Button.withTarget
@@ -428,11 +429,11 @@ viewEventPanel model ev =
                         text ""
                 ]
             , div [ class "ml-auto flex items-center gap-2" ]
-                [ Button.new { label = t PanelClose, onClick = ClosePanel }
+                [ Button.new { label = t lang PanelClose, onClick = ClosePanel }
                     |> Button.withVariant Button.Secondary
                     |> Button.withSize Button.Small
                     |> Button.toHtml
-                , button [ onClick SelectNextMarker, attribute "aria-label" (t A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
+                , button [ onClick SelectNextMarker, attribute "aria-label" (t lang A11yNextMarker), class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0" ] [ featherIcon FeatherIcons.chevronRight 20 ]
                 ]
             ]
         , if model.presentationMode then
@@ -462,23 +463,23 @@ viewField icon value =
         ]
 
 
-translateTag : String -> String
-translateTag tagStr =
+translateTag : Lang -> String -> String
+translateTag lang tagStr =
     case tagStr of
         "exhibition" ->
-            t TagExhibition
+            t lang TagExhibition
 
         "store" ->
-            t TagStore
+            t lang TagStore
 
         "fleamarket" ->
-            t TagFleamarket
+            t lang TagFleamarket
 
         "museum" ->
-            t TagMuseum
+            t lang TagMuseum
 
         "other" ->
-            t TagOther
+            t lang TagOther
 
         _ ->
             tagStr

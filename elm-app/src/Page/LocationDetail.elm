@@ -5,6 +5,7 @@ module Page.LocationDetail exposing (init, view)
 
 import Api
 import Html exposing (Html)
+import Lang exposing (Lang)
 import RemoteData
 import Types exposing (AuthState, LocationDetailPage, Msg(..))
 import View.LocationDetail
@@ -19,6 +20,6 @@ init pbBaseUrl maybeToken id =
     )
 
 
-view : String -> Bool -> String -> AuthState -> String -> LocationDetailPage -> Html Msg
-view =
-    View.LocationDetail.view
+view : Lang -> String -> Bool -> String -> AuthState -> String -> LocationDetailPage -> Html Msg
+view lang =
+    View.LocationDetail.view lang

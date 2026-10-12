@@ -1,16 +1,22 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
+import siteConfig from 'virtual:site-config'
+import { appSettings, requestedLang, setDocumentLang } from './packages/site-config/browser.mjs'
 
 // ── App init ──────────────────────────────────────────────────────────────────
 
-const pbBaseUrl = import.meta.env.VITE_POCKETBASE_URL || 'https://data.palikkaharrastajat.fi'
+// App settings and the text main.js renders itself come from [app] in ../config.toml.
+const settings = appSettings(siteConfig)
+const strings = settings.strings
+
+const pbBaseUrl = import.meta.env.VITE_POCKETBASE_URL || settings.pocketbase_url
 
 // Vector basemap style, built and served by the service-map-tiles project at
 // tiles.palikkaharrastajat.fi. The style references its PMTiles archives and
 // glyphs with absolute URLs, so the app only needs to point MapLibre at it —
 // nothing tile-related is hosted here anymore. Override with
 // VITE_BASEMAP_STYLE_URL for a staging tiles deployment or a locally served copy.
-const basemapStyleUrl = import.meta.env.VITE_BASEMAP_STYLE_URL || 'https://tiles.palikkaharrastajat.fi/style.json'
+const basemapStyleUrl = import.meta.env.VITE_BASEMAP_STYLE_URL || settings.basemap_style_url
 
 function readStoredAuth() {
   return {
@@ -120,6 +126,8 @@ const flags = {
   eventsFilter: initialFilters.eventsFilter || 'no-cancelled',
   isEmbed: window.location.pathname.endsWith('embed.html'),
   platform: detectPlatform(),
+  siteConfig,
+  requestedLang: requestedLang(),
 }
 
 const app = Elm.Main.init({
@@ -172,6 +180,8 @@ async function ensureMapLibs() {
 }
 
 // ── Nav ports ─────────────────────────────────────────────────────────────────
+
+app.ports.setDocumentLang.subscribe(setDocumentLang)
 
 app.ports.focusMobileNav.subscribe(function () {
   requestAnimationFrame(function () {
@@ -252,10 +262,10 @@ if (app.ports.saveFilterState) {
 const maps = {}
 
 /** Cancelled-event label. Keep in sync with `EventCancelled` in elm-app/src/I18n.elm. */
-const cancelledLabel = 'PERUTTU'
+const cancelledLabel = strings.cancelled
 
-/** Accessible name for a cluster pin. Finnish, to match the rest of the UI (`lang="fi"`). */
-const clusterLabel = (count) => `${count} kohdetta, avaa ryhmä`
+/** Accessible name for a cluster pin. */
+const clusterLabel = (count) => strings.cluster.replace('{count}', String(count))
 
 /**
  * Zoom level from which marker tooltips open by themselves.
@@ -746,12 +756,12 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
       // contributors / Natural Earth, and the raster `osm` picker style's own.
       attributionControl: { compact: true },
       locale: {
-        'NavigationControl.ZoomIn': 'Lähennä',
-        'NavigationControl.ZoomOut': 'Loitonna',
-        'NavigationControl.ResetBearing': 'Palauta suunta pohjoiseen',
-        'GeolocateControl.FindMyLocation': 'Näytä sijaintini',
-        'GeolocateControl.LocationNotAvailable': 'Sijainti ei ole saatavilla',
-        'Popup.Close': 'Sulje'
+        'NavigationControl.ZoomIn': strings.zoom_in,
+        'NavigationControl.ZoomOut': strings.zoom_out,
+        'NavigationControl.ResetBearing': strings.reset_bearing,
+        'GeolocateControl.FindMyLocation': strings.find_my_location,
+        'GeolocateControl.LocationNotAvailable': strings.location_not_available,
+        'Popup.Close': strings.close_popup
       }
     }
     if (mapStyle !== 'osm') {
@@ -1043,7 +1053,7 @@ function setupPullToRefresh() {
   ].join(';')
 
   const label = document.createElement('span')
-  label.textContent = '⟳ Päivitä sivu'
+  label.textContent = strings.refresh
 
   action.appendChild(label)
   indicator.appendChild(action)

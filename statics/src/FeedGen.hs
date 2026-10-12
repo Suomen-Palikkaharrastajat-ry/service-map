@@ -19,9 +19,10 @@ import Data.Time.Format (defaultTimeLocale, formatTime)
 import qualified DescriptionHtml as DH
 import qualified PocketBase as PB
 import System.Directory (getFileSize)
+import qualified SiteConfig as SC
 
 feedTitle :: String
-feedTitle = "Palikkakartta"
+feedTitle = SC.siteTitle SC.defaultLang
 
 feedLink :: String
 feedLink = Config.siteBaseUrl ++ "/"
@@ -30,7 +31,7 @@ feedSelf :: String
 feedSelf = Config.siteBaseUrl ++ "/"
 
 feedDescription :: String
-feedDescription = "Suomen Palikkaharrastajat ry:n palvelukartta"
+feedDescription = SC.staticsFeedDescription SC.defaultLang
 
 feedId :: String
 feedId = Config.siteBaseUrl ++ "/"
@@ -147,7 +148,7 @@ generateRss ctx locs = do
             , "      " ++ xmlEl "url" feedLogoUrl
             , "      " ++ xmlEl "link" feedLink
             , "    </image>"
-            , "    " ++ xmlText "copyright" "Suomen Palikkaharrastajat ry"
+            , "    " ++ xmlText "copyright" (SC.author SC.defaultLang)
             , "    <atom:link href=\""
                 ++ feedSelf
                 ++ "kartta.rss\" rel=\"self\" type=\"application/rss+xml\"/>"
@@ -182,7 +183,7 @@ buildAtomEntry ctx loc = do
             , "    <title type=\"html\">" ++ xmlEscape (feedItemTitle loc) ++ "</title>"
             , "    " ++ xmlText "published" (formatRfc3339 (PB.locationCreated loc))
             , "    " ++ xmlText "updated" (formatRfc3339 (PB.locationUpdated loc))
-            , "    <author><name>Suomen Palikkaharrastajat ry</name></author>"
+            , "    <author><name>" ++ SC.author SC.defaultLang ++ "</name></author>"
             , "    <link rel=\"alternate\" href=\""
                 ++ maybe
                     (Config.siteBaseUrl ++ "/#/locations/" ++ PB.locationId loc)
@@ -209,11 +210,11 @@ generateAtom ctx locs = do
             , "  " ++ xmlText "id" feedId
             , "  " ++ xmlText "subtitle" feedDescription
             , "  " ++ xmlText "updated" (formatRfc3339 now)
-            , "  " ++ xmlText "rights" "Suomen Palikkaharrastajat ry"
+            , "  " ++ xmlText "rights" (SC.author SC.defaultLang)
             , "  " ++ xmlEl "logo" feedLogoUrl
             , "  " ++ xmlEl "icon" (Config.siteBaseUrl ++ "/favicon.ico")
             , "  " ++ xmlText "generator" "Emmet"
-            , "  <author><name>Suomen Palikkaharrastajat ry</name><email>palikkaharrastajatry@outlook.com</email><uri>https://palikkaharrastajat.fi/</uri></author>"
+            , "  <author><name>" ++ SC.author SC.defaultLang ++ "</name><email>" ++ SC.appContactEmail SC.defaultLang ++ "</email><uri>" ++ SC.appOrganisationUrl SC.defaultLang ++ "</uri></author>"
             , concat entries
             , "</feed>"
             ]
@@ -228,7 +229,7 @@ jsonFeedItem loc =
             , "content_html" .= contentHtml
             , "date_published" .= formatRfc3339Ms (PB.locationCreated loc)
             , "date_modified" .= formatRfc3339Ms (PB.locationUpdated loc)
-            , "author" .= object ["name" .= ("Suomen Palikkaharrastajat ry" :: String)]
+            , "author" .= object ["name" .= SC.author SC.defaultLang]
             ]
         urlField = case PB.locationUrl loc of
             Just u -> ["url" .= T.unpack u]
@@ -252,8 +253,8 @@ generateJsonFeed locs =
                         , "icon" .= feedLogoUrl
                         , "author"
                             .= object
-                                [ "name" .= ("Suomen Palikkaharrastajat ry" :: String)
-                                , "url" .= ("https://palikkaharrastajat.fi/" :: String)
+                                [ "name" .= SC.author SC.defaultLang
+                                , "url" .= SC.appOrganisationUrl SC.defaultLang
                                 ]
                         , "items" .= map jsonFeedItem locs
                         ]

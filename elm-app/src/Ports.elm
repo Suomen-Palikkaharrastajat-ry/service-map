@@ -19,6 +19,7 @@ port module Ports exposing
     , restoreMapView
     , saveAuthToken
     , saveFilterState
+    , setDocumentLang
     , setMapMarker
     , setMapStyle
     )
@@ -66,6 +67,11 @@ port markerClicked : (String -> msg) -> Sub msg
 
 
 port focusMobileNav : () -> Cmd msg
+
+
+{-| Sets the document's `lang` attribute to the language being shown.
+-}
+port setDocumentLang : String -> Cmd msg
 
 
 {-| Move focus to an element by id. Used to return focus to the control that

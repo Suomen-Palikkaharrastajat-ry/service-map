@@ -6,6 +6,8 @@ module DateUtilsTest exposing (suite)
 import DateUtils exposing (..)
 import Expect
 import FinnishTime exposing (..)
+import Lang
+import Locale
 import Test exposing (Test, describe, test)
 import Time
 
@@ -83,46 +85,46 @@ suite =
             ]
         , describe "finnishMonthName"
             [ test "January" <|
-                \_ -> finnishMonthName 1 |> Expect.equal "Tammikuu"
+                \_ -> monthName Locale.fi 1 |> Expect.equal "Tammikuu"
             , test "December" <|
-                \_ -> finnishMonthName 12 |> Expect.equal "Joulukuu"
+                \_ -> monthName Locale.fi 12 |> Expect.equal "Joulukuu"
             ]
         , describe "Finnish/ISO date input conversion"
             [ test "ISO date formats to Finnish display" <|
                 \_ ->
-                    isoDateToFinnishDateInput "2026-03-09"
+                    isoDateToDateInput Locale.fi "2026-03-09"
                         |> Expect.equal "09.03.2026"
             , test "Finnish display parses to ISO date" <|
                 \_ ->
-                    finnishDateInputToIsoDate "09.03.2026"
+                    dateInputToIsoDate Locale.fi "09.03.2026"
                         |> Expect.equal (Just "2026-03-09")
             , test "round-trips a leap-day date" <|
                 \_ ->
                     "2024-02-29"
-                        |> isoDateToFinnishDateInput
-                        |> finnishDateInputToIsoDate
+                        |> isoDateToDateInput Locale.fi
+                        |> dateInputToIsoDate Locale.fi
                         |> Expect.equal (Just "2024-02-29")
             , test "invalid Finnish date returns Nothing" <|
                 \_ ->
-                    finnishDateInputToIsoDate "31.02.2026"
+                    dateInputToIsoDate Locale.fi "31.02.2026"
                         |> Expect.equal Nothing
             ]
         , describe "formatLocationDateDisplay"
             [ test "missing start → Nothing" <|
                 \_ ->
-                    formatLocationDateDisplay { startDate = Nothing, endDate = Just "2026-05-05T14:00:00.000Z" }
+                    formatLocationDateDisplay Lang.Fi { startDate = Nothing, endDate = Just "2026-05-05T14:00:00.000Z" }
                         |> Expect.equal Nothing
             , test "start only" <|
                 \_ ->
-                    formatLocationDateDisplay { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Nothing }
+                    formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Nothing }
                         |> Expect.equal (Just "ti 5.5. klo 14.00")
             , test "start and end on same day" <|
                 \_ ->
-                    formatLocationDateDisplay { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-05T14:00:00.000Z" }
+                    formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-05T14:00:00.000Z" }
                         |> Expect.equal (Just "ti 5.5. klo 14.00–17.00")
             , test "start and end on different days" <|
                 \_ ->
-                    formatLocationDateDisplay { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-08T14:00:00.000Z" }
+                    formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-08T14:00:00.000Z" }
                         |> Expect.equal (Just "ti 5.5. klo 14.00 – pe 8.5. klo 17.00")
             ]
         ]
