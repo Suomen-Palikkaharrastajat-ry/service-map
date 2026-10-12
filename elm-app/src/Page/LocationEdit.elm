@@ -6,7 +6,7 @@ module Page.LocationEdit exposing (init, view)
 import Api
 import Date
 import DatePicker
-import DateUtils
+import FinnishTime
 import Html exposing (Html)
 import RemoteData
 import Time exposing (Posix)
@@ -18,7 +18,7 @@ init : Time.Posix -> String -> Maybe String -> String -> ( LocationEditPage, Cmd
 init now pbBaseUrl maybeToken id =
     let
         currentDate =
-            Date.fromPosix (DateUtils.helsinkiZone now) now
+            Date.fromPosix (FinnishTime.helsinkiZone now) now
 
         startDatePicker =
             DatePicker.initFromDate currentDate

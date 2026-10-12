@@ -5,6 +5,7 @@ module DateUtilsTest exposing (suite)
 
 import DateUtils exposing (..)
 import Expect
+import FinnishTime exposing (..)
 import Test exposing (Test, describe, test)
 import Time
 

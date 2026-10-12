@@ -5,7 +5,7 @@ module Page.LocationNew exposing (init, view)
 
 import Date
 import DatePicker
-import DateUtils
+import FinnishTime
 import Html exposing (Html, div, h2, text)
 import Html.Attributes exposing (class)
 import I18n exposing (MsgKey(..), t)
@@ -18,7 +18,7 @@ init : Posix -> ( LocationNewPage, Cmd Msg )
 init now =
     let
         currentDate =
-            Date.fromPosix (DateUtils.helsinkiZone now) now
+            Date.fromPosix (FinnishTime.helsinkiZone now) now
 
         startDatePicker =
             DatePicker.initFromDate currentDate

@@ -3,8 +3,8 @@ module Api exposing (createLocation, decodeEvent, decodeLocation, fetchEvents, f
 {-| PocketBase API client for fetching and updating locations and events.
 -}
 
-import DateUtils exposing (formDateTimeToUtc)
 import File
+import FinnishTime exposing (formDateTimeToUtc)
 import Http
 import Json.Decode as Json exposing (Decoder)
 import Json.Encode as Encode
