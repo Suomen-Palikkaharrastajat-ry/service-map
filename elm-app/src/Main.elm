@@ -127,6 +127,10 @@ init flags url key =
       , nextToastId = 0
       , site = site
       , lang = lang
+      , calendarUrl =
+            flags.siteConfig
+                |> Decode.decodeValue (SiteSettings.appDecoder lang (Decode.field "calendar_url" Decode.string))
+                |> Result.withDefault ""
       }
     , Cmd.batch
         [ Ports.setDocumentLang (Lang.toString lang)
@@ -283,6 +287,9 @@ update msg model =
 
                 Browser.External href ->
                     ( model, Nav.load href )
+
+        NoOp ->
+            ( model, Cmd.none )
 
         NavigateTo route ->
             ( model, Nav.pushUrl model.key (Route.toHref route) )
@@ -574,16 +581,16 @@ update msg model =
 
         ToggleMenu ->
             if model.menuOpen then
-                ( { model | menuOpen = False }, Ports.focusElement Component.Layout.menuButtonId )
+                ( { model | menuOpen = False }, Component.Layout.onMenuClosed NoOp )
 
             else
-                ( { model | menuOpen = True }, Ports.focusMobileNav () )
+                ( { model | menuOpen = True }, Component.Layout.onMenuOpened NoOp )
 
         CloseMenu ->
             -- The drawer becomes `inert` when it closes, so the browser drops
             -- focus to <body>. Put it back on the button that opened it.
             if model.menuOpen then
-                ( { model | menuOpen = False }, Ports.focusElement Component.Layout.menuButtonId )
+                ( { model | menuOpen = False }, Component.Layout.onMenuClosed NoOp )
 
             else
                 ( model, Cmd.none )
@@ -1598,19 +1605,6 @@ escapeToLocationsDecoder =
             )
 
 
-escapeToCloseMenuDecoder : Decode.Decoder Msg
-escapeToCloseMenuDecoder =
-    Decode.field "key" Decode.string
-        |> Decode.andThen
-            (\key ->
-                if key == "Escape" then
-                    Decode.succeed CloseMenu
-
-                else
-                    Decode.fail "Not Escape"
-            )
-
-
 ctrlEnterDecoder : Msg -> Decode.Decoder Msg
 ctrlEnterDecoder msg =
     Decode.map2 (\key ctrl -> { key = key, ctrl = ctrl })
@@ -1658,11 +1652,7 @@ subscriptions model =
                     []
 
         menuEscSub =
-            if model.menuOpen then
-                [ Browser.Events.onKeyDown escapeToCloseMenuDecoder ]
-
-            else
-                []
+            [ Component.Layout.subscriptions { isOpen = model.menuOpen, onClose = CloseMenu } ]
 
         presentationSub =
             if model.presentationMode then

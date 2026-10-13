@@ -422,6 +422,7 @@ type alias Model =
     , nextToastId : Int
     , site : SiteSettings
     , lang : Lang
+    , calendarUrl : String
     }
 
 
@@ -466,7 +467,8 @@ decodeKmlPlacemark =
 
 
 type Msg
-    = UrlChanged Url
+    = NoOp
+    | UrlChanged Url
     | LinkClicked Browser.UrlRequest
     | NavigateTo Route
     | LocationsLoaded (Result Http.Error (List Location))

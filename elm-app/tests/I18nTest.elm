@@ -28,10 +28,6 @@ suite =
                 \_ -> t Lang.Fi NavHome |> String.isEmpty |> Expect.equal False
             , test "NavLocations is non-empty" <|
                 \_ -> t Lang.Fi NavLocations |> String.isEmpty |> Expect.equal False
-            , test "NavLogin is non-empty" <|
-                \_ -> t Lang.Fi NavLogin |> String.isEmpty |> Expect.equal False
-            , test "NavLogout is non-empty" <|
-                \_ -> t Lang.Fi NavLogout |> String.isEmpty |> Expect.equal False
             , test "StateDraft is non-empty" <|
                 \_ -> t Lang.Fi StateDraft |> String.isEmpty |> Expect.equal False
             , test "StatePending is non-empty" <|

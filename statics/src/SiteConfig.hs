@@ -18,6 +18,7 @@ module SiteConfig (
     appPocketbaseUrl,
     appBasemapStyleUrl,
     appContactEmail,
+    appCalendarUrl,
     appOrganisationUrl,
     staticsFeedDescription,
 ) where
@@ -78,6 +79,11 @@ appBasemapStyleUrl En = "https://tiles.palikkaharrastajat.fi/style.json"
 appContactEmail :: Lang -> String
 appContactEmail Fi = "palikkaharrastajatry@outlook.com"
 appContactEmail En = "palikkaharrastajatry@outlook.com"
+
+-- | @[app] calendar_url@.
+appCalendarUrl :: Lang -> String
+appCalendarUrl Fi = "https://kalenteri.palikkaharrastajat.fi"
+appCalendarUrl En = "https://kalenteri.palikkaharrastajat.fi"
 
 -- | @[app] organisation_url@.
 appOrganisationUrl :: Lang -> String

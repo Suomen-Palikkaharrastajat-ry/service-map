@@ -12,8 +12,6 @@ import Types exposing (EventFilter(..), LocationState(..))
 type MsgKey
     = NavHome
     | NavLocations
-    | NavLogin
-    | NavLogout
     | StateDraft
     | StatePending
     | StatePublished
@@ -82,7 +80,6 @@ type MsgKey
     | A11yOpenExternal
     | A11yPresentationStart
     | A11yPresentationStop
-    | LoggedInAs
     | FeedsLabel
     | FeedsTitle
     | FeedsDescription
@@ -129,12 +126,6 @@ fi key =
 
         NavLocations ->
             "Kohteet"
-
-        NavLogin ->
-            "Kirjaudu sisään"
-
-        NavLogout ->
-            "Kirjaudu ulos"
 
         StateDraft ->
             "Luonnos"
@@ -337,9 +328,6 @@ fi key =
         A11yPresentationStop ->
             "Pysäytä esitystila"
 
-        LoggedInAs ->
-            "Kirjautunut: "
-
         FeedsLabel ->
             "Syötteet ja vienti"
 
@@ -421,12 +409,6 @@ en key =
 
         NavLocations ->
             "Places"
-
-        NavLogin ->
-            "Sign in"
-
-        NavLogout ->
-            "Sign out"
 
         StateDraft ->
             "Draft"
@@ -628,9 +610,6 @@ en key =
 
         A11yPresentationStop ->
             "Stop presentation mode"
-
-        LoggedInAs ->
-            "Signed in: "
 
         FeedsLabel ->
             "Feeds and export"

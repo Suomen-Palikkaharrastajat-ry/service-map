@@ -33,6 +33,8 @@ pocketbase_url    = "https://data.palikkaharrastajat.fi"
 # The style references its PMTiles archives and glyphs by absolute URL.
 basemap_style_url = "https://tiles.palikkaharrastajat.fi/style.json"
 contact_email     = "palikkaharrastajatry@outlook.com"
+# Events shown on the map are edited in the event calendar.
+calendar_url      = "https://kalenteri.palikkaharrastajat.fi"
 organisation_url  = "https://palikkaharrastajat.fi/"
 
 # Text rendered by main.js (map controls and markers).

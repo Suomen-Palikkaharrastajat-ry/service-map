@@ -130,7 +130,7 @@ suite =
                         |> Query.find [ Selector.tag "footer" ]
                         |> Query.find [ Selector.tag "ul" ]
                         |> Expect.all
-                            [ Query.findAll [ Selector.tag "a" ] >> Query.count (Expect.equal 7)
+                            [ Query.findAll [ Selector.tag "a" ] >> Query.count (Expect.equal 8)
                             , Query.has [ Selector.attribute (Attr.href "https://kalenteri.palikkaharrastajat.fi") ]
                             , Query.hasNot [ Selector.attribute (Attr.href "https://kartta.palikkaharrastajat.fi") ]
                             ]

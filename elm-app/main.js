@@ -185,13 +185,6 @@ async function ensureMapLibs() {
 app.ports.setDocumentLang.subscribe((lang) => showLanguage(siteConfig, lang))
 app.ports.reportError.subscribe((problem) => console.error(problem))
 
-app.ports.focusMobileNav.subscribe(function () {
-  requestAnimationFrame(function () {
-    const el = document.getElementById('mobile-nav-active') || document.querySelector('#mobile-nav a')
-    if (el) el.focus({ focusVisible: true })
-  })
-})
-
 app.ports.focusElement.subscribe(function (id) {
   requestAnimationFrame(function () {
     const el = document.getElementById(id)

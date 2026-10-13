@@ -339,9 +339,9 @@ routes to an in-app edit page — this leaves the app entirely. Opened in a new
 tab so the map and the pane the user came from stay put.
 
 -}
-eventEditUrl : String -> String
-eventEditUrl id =
-    "https://kalenteri.palikkaharrastajat.fi/#/events/" ++ id ++ "/edit"
+eventEditUrl : String -> String -> String
+eventEditUrl calendarUrl id =
+    calendarUrl ++ "/#/events/" ++ id ++ "/edit"
 
 
 viewEventPanel : Lang -> Model -> Types.Event -> Html Msg
@@ -350,7 +350,7 @@ viewEventPanel lang model ev =
         headerActions =
             if Types.isAuthenticated model.authState then
                 [ a
-                    [ href (eventEditUrl ev.id)
+                    [ href (eventEditUrl model.calendarUrl ev.id)
                     , target "_blank"
                     , rel "noopener noreferrer"
                     , attribute "aria-label" (t lang A11yPanelEdit)

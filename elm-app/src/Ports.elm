@@ -7,7 +7,6 @@ port module Ports exposing
     , destroyMap
     , focusElement
     , focusMapOnMarker
-    , focusMobileNav
     , getCallbackParams
     , initMap
     , initiateOAuth
@@ -65,9 +64,6 @@ port addMarkers : List MarkerData -> Cmd msg
 
 
 port markerClicked : (String -> msg) -> Sub msg
-
-
-port focusMobileNav : () -> Cmd msg
 
 
 {-| Sets the document's `lang` attribute to the language being shown.
