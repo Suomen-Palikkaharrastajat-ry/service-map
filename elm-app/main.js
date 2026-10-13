@@ -183,6 +183,7 @@ async function ensureMapLibs() {
 // ── Nav ports ─────────────────────────────────────────────────────────────────
 
 app.ports.setDocumentLang.subscribe((lang) => showLanguage(siteConfig, lang))
+app.ports.reportError.subscribe((problem) => console.error(problem))
 
 app.ports.focusMobileNav.subscribe(function () {
   requestAnimationFrame(function () {

@@ -39,7 +39,7 @@ viewLocationContent lang pbBaseUrl isEmbed platform authState detPage loc =
         [ div [ class "flex justify-between items-start mb-2" ]
             [ h1 [ class "type-h1 flex items-center gap-2" ]
                 [ span [ class "text-brand shrink-0" ] [ featherIcon (getMarkerIcon loc) 24 ]
-                , text loc.title
+                , span (I18n.contentAttrs lang) [ text loc.title ]
                 ]
             , if isAuthenticated authState then
                 div [ class "flex gap-2 ml-4 shrink-0" ]
@@ -124,7 +124,7 @@ viewLocationContent lang pbBaseUrl isEmbed platform authState detPage loc =
                 text ""
 
             Just desc ->
-                div [ class "mb-4 whitespace-pre-line text-text-primary type-body" ] [ text desc ]
+                div [ class "mb-4 whitespace-pre-line text-text-primary type-body" ] [ span (I18n.contentAttrs lang) [ text desc ] ]
         , case loc.image of
             Nothing ->
                 text ""

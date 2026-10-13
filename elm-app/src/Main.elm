@@ -88,19 +88,22 @@ init flags url key =
         now =
             Time.millisToPosix flags.now
 
-        localized =
-            Decode.decodeValue SiteSettings.localizedDecoder flags.siteConfig
+        settings =
+            SiteSettings.fromFlags flags.requestedLang flags.siteConfig
 
         lang =
-            localized
-                |> Result.map (SiteSettings.pickLang flags.requestedLang)
-                |> Result.withDefault Lang.Fi
+            settings.lang
 
         site =
-            localized
-                |> Result.toMaybe
-                |> Maybe.andThen (SiteSettings.forLang lang)
-                |> Maybe.withDefault (SiteSettings.placeholder lang)
+            settings.site
+
+        reportConfigError =
+            case settings.error of
+                Just problem ->
+                    Ports.reportError problem
+
+                Nothing ->
+                    Cmd.none
 
         ( page, cmd ) =
             initPage lang flags.pbBaseUrl key initialRoute authState url now
@@ -127,6 +130,7 @@ init flags url key =
       }
     , Cmd.batch
         [ Ports.setDocumentLang (Lang.toString lang)
+        , reportConfigError
         , case authState of
             Authenticated _ ->
                 Cmd.batch

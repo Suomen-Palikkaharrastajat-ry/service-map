@@ -100,17 +100,17 @@ viewLocationCard lang platform authState loc =
                         [ href (toHref (RouteLocationDetail loc.id))
                         , class "hover:underline"
                         ]
-                        [ text loc.title ]
+                        [ span (I18n.contentAttrs lang) [ text loc.title ] ]
                     ]
                 , case loc.location of
                     Just addr ->
-                        p [ class "type-caption text-text-muted" ] [ text addr ]
+                        p [ class "type-caption text-text-muted" ] [ span (I18n.contentAttrs lang) [ text addr ] ]
 
                     Nothing ->
                         text ""
                 , case loc.description of
                     Just desc ->
-                        p [ class "type-body text-text-primary line-clamp-2 mt-2" ] [ text desc ]
+                        p [ class "type-body text-text-primary line-clamp-2 mt-2" ] [ span (I18n.contentAttrs lang) [ text desc ] ]
 
                     Nothing ->
                         text ""

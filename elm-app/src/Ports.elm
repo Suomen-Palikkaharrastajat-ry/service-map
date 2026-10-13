@@ -16,6 +16,7 @@ port module Ports exposing
     , markerClicked
     , oauthPopupResult
     , parseKml
+    , reportError
     , restoreMapView
     , saveAuthToken
     , saveFilterState
@@ -120,3 +121,9 @@ port focusMapOnMarker : { lat : Float, lon : Float, id : String, title : String,
 
 
 port restoreMapView : () -> Cmd msg
+
+
+{-| Writes a problem the visitor cannot act on (unreadable configuration) to
+the browser console.
+-}
+port reportError : String -> Cmd msg

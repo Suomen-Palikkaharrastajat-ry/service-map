@@ -1,8 +1,9 @@
-module I18n exposing (MsgKey(..), eventFilterLabel, importedCount, locale, stateLabel, t)
+module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount, locale, stateLabel, t)
 
 {-| UI strings per language, keyed by MsgKey, plus state and filter labels.
 -}
 
+import Html
 import Lang exposing (Lang(..))
 import Locale exposing (Locale)
 import Types exposing (EventFilter(..), LocationState(..))
@@ -28,9 +29,7 @@ type MsgKey
     | FormStartDate
     | FormEndDate
     | FormStatus
-    | FormOpeningHours
     | FormTag
-    | TagNone
     | TagExhibition
     | TagStore
     | TagFleamarket
@@ -39,7 +38,6 @@ type MsgKey
     | FormSave
     | FormCancel
     | FormGeocode
-    | FormManualCoords
     | FormLat
     | FormLon
     | DetailEdit
@@ -47,41 +45,25 @@ type MsgKey
     | DetailDeleteConfirm
     | DetailDeleteCancel
     | DetailBack
-    | DetailLocation
     | DetailMoreInfo
     | LocationListTitle
     | LocationListEmpty
     | LocationListNew
     | LocationListEdit
-    | LocationListPage
-    | LocationListOf
     | KmlImport
     | KmlImporting
     | KmlDone
     | KmlError
-    | LoginPrompt
-    | LoginButton
-    | LogoutButton
-    | AuthFailed
     | FeedRss
     | FeedAtom
     | FeedJson
     | FeedGeoJson
     | ErrorNetwork
-    | ErrorNotFound
     | ErrorUnknown
     | Loading
     | Saving
-    | GeocodingSearching
-    | GeocodingNotFound
-    | GeocodingError
-    | SaveSuccess
-    | DeleteSuccess
-    | SubmitByEmailText
-    | SubmitByEmailLinkText
     | MapLoading
     | MapLoadError
-    | MapLocationsOnMap
     | FilterEvents
     | FilterEventsAll
     | FilterEventsNoCancelled
@@ -199,14 +181,8 @@ fi key =
         FormStatus ->
             "Tila"
 
-        FormOpeningHours ->
-            "Aukioloajat"
-
         FormTag ->
             "Tyyppi"
-
-        TagNone ->
-            "Ei mikään"
 
         TagExhibition ->
             "Näyttely"
@@ -232,9 +208,6 @@ fi key =
         FormGeocode ->
             "Hae koordinaatit"
 
-        FormManualCoords ->
-            "Syötä koordinaatit käsin"
-
         FormLat ->
             "Leveysaste"
 
@@ -256,9 +229,6 @@ fi key =
         DetailBack ->
             "Takaisin"
 
-        DetailLocation ->
-            "Sijainti"
-
         DetailMoreInfo ->
             "Lisätietoja"
 
@@ -274,12 +244,6 @@ fi key =
         LocationListEdit ->
             "Muokkaa"
 
-        LocationListPage ->
-            "Sivu"
-
-        LocationListOf ->
-            "/"
-
         KmlImport ->
             "Tuo KML-tiedosto"
 
@@ -291,18 +255,6 @@ fi key =
 
         KmlError ->
             "Tuontivirhe"
-
-        LoginPrompt ->
-            "Etkö ole jäsen? Lähetä kohde sähköpostilla."
-
-        LoginButton ->
-            "Kirjaudu sisään"
-
-        LogoutButton ->
-            "Kirjaudu ulos"
-
-        AuthFailed ->
-            "Kirjautuminen epäonnistui"
 
         FeedRss ->
             "RSS-syöte"
@@ -319,9 +271,6 @@ fi key =
         ErrorNetwork ->
             "Verkkovirhe"
 
-        ErrorNotFound ->
-            "Kohdetta ei löydy"
-
         ErrorUnknown ->
             "Tuntematon virhe"
 
@@ -331,35 +280,11 @@ fi key =
         Saving ->
             "Tallennetaan..."
 
-        GeocodingSearching ->
-            "Haetaan sijaintia..."
-
-        GeocodingNotFound ->
-            "Sijaintia ei löydy"
-
-        GeocodingError ->
-            "Geokoodausvirhe"
-
-        SaveSuccess ->
-            "Kohde tallennettu"
-
-        DeleteSuccess ->
-            "Kohde poistettu"
-
-        SubmitByEmailText ->
-            "Jos et ole Suomen Palikkaharrastajat ry:n jäsen,"
-
-        SubmitByEmailLinkText ->
-            "lähetä kohde meille sähköpostilla."
-
         MapLoading ->
             "Ladataan kohteita..."
 
         MapLoadError ->
             "Kohteiden lataus epäonnistui"
-
-        MapLocationsOnMap ->
-            "kohdetta kartalla"
 
         FilterEvents ->
             "Tapahtumat"
@@ -548,14 +473,8 @@ en key =
         FormStatus ->
             "Status"
 
-        FormOpeningHours ->
-            "Opening hours"
-
         FormTag ->
             "Type"
-
-        TagNone ->
-            "None"
 
         TagExhibition ->
             "Exhibition"
@@ -581,9 +500,6 @@ en key =
         FormGeocode ->
             "Look up coordinates"
 
-        FormManualCoords ->
-            "Enter coordinates manually"
-
         FormLat ->
             "Latitude"
 
@@ -605,9 +521,6 @@ en key =
         DetailBack ->
             "Back"
 
-        DetailLocation ->
-            "Location"
-
         DetailMoreInfo ->
             "More information"
 
@@ -623,12 +536,6 @@ en key =
         LocationListEdit ->
             "Edit"
 
-        LocationListPage ->
-            "Page"
-
-        LocationListOf ->
-            "/"
-
         KmlImport ->
             "Import a KML file"
 
@@ -640,18 +547,6 @@ en key =
 
         KmlError ->
             "Import error"
-
-        LoginPrompt ->
-            "Not a member? Send the place by email."
-
-        LoginButton ->
-            "Sign in"
-
-        LogoutButton ->
-            "Sign out"
-
-        AuthFailed ->
-            "Sign-in failed"
 
         FeedRss ->
             "RSS feed"
@@ -668,9 +563,6 @@ en key =
         ErrorNetwork ->
             "Network error"
 
-        ErrorNotFound ->
-            "Place not found"
-
         ErrorUnknown ->
             "Unknown error"
 
@@ -680,35 +572,11 @@ en key =
         Saving ->
             "Saving..."
 
-        GeocodingSearching ->
-            "Looking up the location..."
-
-        GeocodingNotFound ->
-            "Location not found"
-
-        GeocodingError ->
-            "Geocoding error"
-
-        SaveSuccess ->
-            "Place saved"
-
-        DeleteSuccess ->
-            "Place deleted"
-
-        SubmitByEmailText ->
-            "If you are not a member of Suomen Palikkaharrastajat ry,"
-
-        SubmitByEmailLinkText ->
-            "send us the place by email."
-
         MapLoading ->
             "Loading places..."
 
         MapLoadError ->
             "Loading the places failed"
-
-        MapLocationsOnMap ->
-            "places on the map"
 
         FilterEvents ->
             "Events"
@@ -890,3 +758,12 @@ importedCount lang count =
                     else
                         " places"
                    )
+
+
+{-| Attributes for content the organisers wrote. Events and places are entered
+in Finnish, so inside another interface language they are marked as Finnish for
+screen readers.
+-}
+contentAttrs : Lang -> List (Html.Attribute msg)
+contentAttrs lang =
+    Lang.attributeFor { interface = lang, content = Fi }
