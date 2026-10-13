@@ -49,8 +49,6 @@ close_popup            = "Sulje"
 
 # Text of the generated feeds (statics/).
 [app.statics]
-months           = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kesäkuu", "Heinäkuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"]
-weekdays         = ["ma", "ti", "ke", "to", "pe", "la", "su"]
 feed_description = "Suomen Palikkaharrastajat ry:n palvelukartta"
 
 [app.en.strings]
@@ -65,6 +63,4 @@ location_not_available = "Location not available"
 close_popup            = "Close"
 
 [app.en.statics]
-months           = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-weekdays         = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 feed_description = "Service map of Suomen Palikkaharrastajat ry"

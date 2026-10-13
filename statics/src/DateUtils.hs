@@ -65,11 +65,11 @@ toHelsinki t =
 
 -- | Weekday abbreviation in the site's language (Mon=ma … Sun=su).
 weekdayAbbr :: DayOfWeek -> String
-weekdayAbbr day = SC.staticsWeekdays SC.defaultLang !! (fromEnum day - 1)
+weekdayAbbr day = SC.weekdayAbbrs SC.defaultLang !! (fromEnum day - 1)
 
 -- | Month name in the site's language (1-indexed, January=1).
 monthName :: Int -> String
-monthName m = SC.staticsMonths SC.defaultLang !! (m - 1)
+monthName m = SC.monthNames SC.defaultLang !! (m - 1)
 
 formatDay :: ZonedTime -> String
 formatDay zt = weekdayAbbr (dayOfWeek (localDay (zonedTimeToLocalTime zt)))

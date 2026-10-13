@@ -1,7 +1,7 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
 import siteConfig from 'virtual:site-config'
-import { appSettings, pickLang, requestedLang, setDocumentLang } from './packages/site-config/browser.mjs'
+import { appSettings, pickLang, requestedLang, showLanguage } from './packages/site-config/browser.mjs'
 
 // ── App init ──────────────────────────────────────────────────────────────────
 
@@ -182,7 +182,7 @@ async function ensureMapLibs() {
 
 // ── Nav ports ─────────────────────────────────────────────────────────────────
 
-app.ports.setDocumentLang.subscribe(setDocumentLang)
+app.ports.setDocumentLang.subscribe((lang) => showLanguage(siteConfig, lang))
 
 app.ports.focusMobileNav.subscribe(function () {
   requestAnimationFrame(function () {
