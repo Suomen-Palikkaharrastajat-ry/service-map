@@ -107,6 +107,18 @@ init flags url key =
 
         ( page, cmd ) =
             initPage lang flags.pbBaseUrl key initialRoute authState url now
+
+        calendarUrl =
+            flags.siteConfig
+                |> Decode.decodeValue (SiteSettings.appDecoder lang (Decode.field "calendar_url" Decode.string))
+
+        reportCalendarUrl =
+            case ( settings.error, calendarUrl ) of
+                ( Nothing, Err problem ) ->
+                    Ports.reportError ("[app] calendar_url is missing from config.toml: " ++ Decode.errorToString problem)
+
+                _ ->
+                    Cmd.none
     in
     ( { pbBaseUrl = flags.pbBaseUrl
       , key = key
@@ -127,14 +139,12 @@ init flags url key =
       , nextToastId = 0
       , site = site
       , lang = lang
-      , calendarUrl =
-            flags.siteConfig
-                |> Decode.decodeValue (SiteSettings.appDecoder lang (Decode.field "calendar_url" Decode.string))
-                |> Result.withDefault ""
+      , calendarUrl = Result.withDefault "" calendarUrl
       }
     , Cmd.batch
         [ Ports.setDocumentLang (Lang.toString lang)
         , reportConfigError
+        , reportCalendarUrl
         , case authState of
             Authenticated _ ->
                 Cmd.batch
@@ -271,7 +281,7 @@ update msg model =
                             Cmd.none
             in
             ( newModel
-            , Cmd.batch [ mapCleanupCmd, cmd, extraCmd ]
+            , Cmd.batch [ mapCleanupCmd, cmd, extraCmd, menuClosedCmd model ]
             )
 
         LinkClicked urlRequest ->
@@ -601,7 +611,8 @@ update msg model =
         LogOut ->
             ( { model | authState = NotAuthenticated, menuOpen = False }
             , Cmd.batch
-                [ Ports.clearAuthToken ()
+                [ menuClosedCmd model
+                , Ports.clearAuthToken ()
                 , Nav.pushUrl model.key (Route.toHref RouteMap)
                 , Api.fetchGeoJson
                 ]
@@ -1631,7 +1642,16 @@ subscriptions model =
             , Ports.kmlParsed LocationKmlParsed
             ]
 
+        -- While the menu is open, Escape belongs to the menu alone: the page's
+        -- own shortcuts (close panel, leave the form) stay off.
         escSub =
+            if model.menuOpen then
+                []
+
+            else
+                pageKeySubs
+
+        pageKeySubs =
             case ( model.page, model.selectedMarker ) of
                 ( Types.PageMap, Just _ ) ->
                     [ Browser.Events.onKeyDown escapeDecoder
@@ -1759,6 +1779,19 @@ view model =
                 ]
             }
     }
+
+
+{-| Returns focus to the menu button when a message closes an open menu as a
+side effect (navigation, signing out). Otherwise focus is left inside the
+closed, inert drawer and drops to the top of the page.
+-}
+menuClosedCmd : Model -> Cmd Msg
+menuClosedCmd model =
+    if model.menuOpen then
+        Component.Layout.onMenuClosed NoOp
+
+    else
+        Cmd.none
 
 
 main : Program Flags Model Msg
