@@ -118,6 +118,10 @@ suite =
                 \_ ->
                     formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Nothing }
                         |> Expect.equal (Just "ti 5.5. klo 14.00")
+            , test "start only, in English" <|
+                \_ ->
+                    formatLocationDateDisplay Lang.En { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Nothing }
+                        |> Expect.equal (Just "Tue 5/5 at 14:00")
             , test "start and end on same day" <|
                 \_ ->
                     formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-05T14:00:00.000Z" }

@@ -160,8 +160,6 @@ suite =
                 \_ -> t Lang.Fi SaveSuccess |> String.isEmpty |> Expect.equal False
             , test "DeleteSuccess is non-empty" <|
                 \_ -> t Lang.Fi DeleteSuccess |> String.isEmpty |> Expect.equal False
-            , test "ImportSuccess is non-empty" <|
-                \_ -> t Lang.Fi ImportSuccess |> String.isEmpty |> Expect.equal False
             , test "SubmitByEmailText is non-empty" <|
                 \_ -> t Lang.Fi SubmitByEmailText |> String.isEmpty |> Expect.equal False
             , test "SubmitByEmailLinkText is non-empty" <|

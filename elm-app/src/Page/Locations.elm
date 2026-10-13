@@ -50,7 +50,7 @@ view lang model locPage =
 
                             Types.KmlDone total ->
                                 span [ class "type-caption text-brand-green flex items-center gap-1" ]
-                                    [ featherIcon FeatherIcons.check 14, text (String.fromInt total ++ " " ++ t lang I18n.ImportSuccess) ]
+                                    [ featherIcon FeatherIcons.check 14, text (I18n.importedCount lang total) ]
 
                             Types.KmlError err ->
                                 span [ class "type-caption text-brand-red flex items-center gap-1" ]

@@ -77,7 +77,6 @@ type MsgKey
     | GeocodingError
     | SaveSuccess
     | DeleteSuccess
-    | ImportSuccess
     | SubmitByEmailText
     | SubmitByEmailLinkText
     | MapLoading
@@ -346,9 +345,6 @@ fi key =
 
         DeleteSuccess ->
             "Kohde poistettu"
-
-        ImportSuccess ->
-            "kohteet tuotu"
 
         SubmitByEmailText ->
             "Jos et ole Suomen Palikkaharrastajat ry:n jäsen,"
@@ -698,9 +694,6 @@ en key =
 
         DeleteSuccess ->
             "Place deleted"
-
-        ImportSuccess ->
-            "places imported"
 
         SubmitByEmailText ->
             "If you are not a member of Suomen Palikkaharrastajat ry,"
