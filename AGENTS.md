@@ -182,4 +182,5 @@ Quick rules that always apply in this repo:
 
 - `config.toml` is the single source of the site URL, title, description, languages and `[app]` settings (see `vendor/master-builder/docs/site-config.md`). After editing it run `make site-config` and commit the regenerated `elm-app/tests/SiteFixture.elm` and `statics/src/SiteConfig.hs`; `make site-config-check` fails in CI otherwise.
 - No display text in views, `main.js` or the Haskell generators: put it in `elm-app/src/I18n.elm` (Finnish and English) or in `config.toml`. `make site-config-check` flags Finnish text elsewhere.
+- English is a hidden language (`[i18n] hidden = ["en"]`): it is not offered to visitors, but keep the `[*.en]` tables in `config.toml` and the English text in `I18n.elm` up to date, because they are still generated and tested.
 - Page chrome comes from the hub's `Component.Layout`; do not assemble header, drawer or footer here.

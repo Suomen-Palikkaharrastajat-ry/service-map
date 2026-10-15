@@ -81,7 +81,11 @@ on the family defaults of the hub; the format is documented in
   `Lang` and contain no text of their own; the same check fails on Finnish
   text outside translations. To add a string, add a key (or a function, when
   the wording depends on a number) with its Finnish and English text.
-- A visitor switches language with the footer link or `?lang=en`.
+- English is listed in `[i18n] hidden`: it is built and tested but not
+  offered to visitors (no footer link, `?lang=en` is ignored, no
+  alternate-locale tag). `make elm-dev` still shows it for previewing. To
+  publish it, remove `en` from `hidden`; a visitor then switches language with
+  the footer link or `?lang=en`.
 - The family's icons, social image and logos are not kept here: the Vite
   plugin serves them from the hub's `public/`. `elm-app/public` holds only what
   is this app's own.
