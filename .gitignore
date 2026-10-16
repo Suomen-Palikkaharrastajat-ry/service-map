@@ -30,6 +30,8 @@ assets/kartta.geo.json
 assets/*.rss
 assets/*.atom
 assets/images/
+elm-app/public/kartta.geo.json
+elm-app/public/kartta.json
 
 # --- Logs / local test artifacts ---
 *.log

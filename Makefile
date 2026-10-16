@@ -137,8 +137,15 @@ cabal-check: ## Check the package for common errors
 
 # ── Combined targets ──────────────────────────────────────────────────────────
 
+.PHONY: statics-run
+statics-run: ## Regenerate static files with fresh PocketBase data
+	rm -f dist/.statics-stamp
+	$(MAKE) statics
+
 .PHONY: watch
-watch: elm-dev ## Start development server
+watch: ## Start development server with freshly generated statics (falls back to existing ones)
+	-$(MAKE) statics-run
+	$(MAKE) elm-dev
 
 dist/.statics-stamp-nix:
 	mkdir -p dist

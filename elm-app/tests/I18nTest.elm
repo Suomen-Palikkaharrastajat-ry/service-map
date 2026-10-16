@@ -138,6 +138,16 @@ suite =
                 \_ -> t Lang.Fi FilterEventsNoCancelled |> String.isEmpty |> Expect.equal False
             , test "FilterEventsNone is non-empty" <|
                 \_ -> t Lang.Fi FilterEventsNone |> String.isEmpty |> Expect.equal False
+            , test "EventsModalTitle is non-empty" <|
+                \_ -> t Lang.Fi EventsModalTitle |> String.isEmpty |> Expect.equal False
+            , test "EventsModalEmpty is non-empty" <|
+                \_ -> t Lang.Fi EventsModalEmpty |> String.isEmpty |> Expect.equal False
+            , test "EventsModalOpen is non-empty" <|
+                \_ -> t Lang.Fi EventsModalOpen |> String.isEmpty |> Expect.equal False
+            , test "EventsModalShowOnMap is non-empty" <|
+                \_ -> t Lang.Fi EventsModalShowOnMap |> String.isEmpty |> Expect.equal False
+            , test "A11yEventsModalClose is non-empty" <|
+                \_ -> t Lang.Fi A11yEventsModalClose |> String.isEmpty |> Expect.equal False
             , test "FilterPanelTitle is non-empty" <|
                 \_ -> t Lang.Fi FilterPanelTitle |> String.isEmpty |> Expect.equal False
             , test "FilterGroupLegend is non-empty" <|

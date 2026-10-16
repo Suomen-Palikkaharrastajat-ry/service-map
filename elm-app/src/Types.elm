@@ -35,6 +35,8 @@ module Types exposing
     , locationStateToString
     , mapLink
     , mapLinkTarget
+    , upcomingEvents
+    , visibleEvents
     )
 
 {-| Core types, models, messages, and state representations for Palikkakartta.
@@ -66,6 +68,37 @@ type alias GeoPoint =
 hasValidCoordinates : GeoPoint -> Bool
 hasValidCoordinates point =
     not (point.lat == 0 && point.lon == 0)
+
+
+{-| Events the current filter lets through, with unlocated ones dropped. Shared by
+marker rendering and keyboard marker navigation so all three stay in agreement. Takes an
+extensible record rather than the `Model` so it is reachable from tests, which cannot
+construct a `Nav.Key`.
+-}
+visibleEvents : { a | eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> List Event
+visibleEvents model =
+    case ( model.eventFilter, model.events ) of
+        ( NoEvents, _ ) ->
+            []
+
+        ( filter, RemoteData.Success evts ) ->
+            evts
+                |> List.filter
+                    (\e ->
+                        hasValidCoordinates e.point
+                            && (filter == AllEvents || not e.cancelled)
+                    )
+
+        _ ->
+            []
+
+
+{-| The events dialog's list: the visible events in start-date order.
+-}
+upcomingEvents : { a | eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> List Event
+upcomingEvents model =
+    visibleEvents model
+        |> List.sortBy .startDate
 
 
 {-| Where a coordinate should link to, given the platform from `Flags`.
@@ -414,6 +447,7 @@ type alias Model =
     , selectedMarker : Maybe SelectedMarker
     , hiddenTags : List String
     , eventFilter : EventFilter
+    , eventsModalOpen : Bool
     , isEmbed : Bool
     , platform : String
     , presentationMode : Bool
@@ -531,6 +565,9 @@ type Msg
     | MapMarkerMoved Float Float
     | ToggleTagVisibility String Bool
     | CycleEventFilter
+    | ToggleEventsModal
+    | CloseEventsModal
+    | EventModalItemClicked String
       -- KML Import
     | LocationKmlFileSelected File
     | LocationKmlGotContent String

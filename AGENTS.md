@@ -86,7 +86,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 | `make check` | Validate all formatting without changes |
 | `make clean` | Remove `dist/` |
 | `make elm-tailwind-gen` | Run Tailwind generation for Elm |
-| `make watch` | Run watch mode for development |
+| `make watch` | Regenerate statics from PocketBase (`statics-run`, failure tolerated), then start the dev server |
 
 **First-time Haskell setup** — run `cabal update` before the first `cabal build statics` in a fresh environment.
 
@@ -118,6 +118,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 - **(0,0) coordinates must be filtered** out.
 - **Basemap is external** — served by the `service-map-tiles` project, not built here. If the map is blank, check `VITE_BASEMAP_STYLE_URL` and that `https://tiles.palikkaharrastajat.fi/style.json` is reachable.
 - **node_modules symlinks are read-only Nix store** — never `npm install` inside `elm-app/`.
+- **Dev data comes from `assets/`** — `kartta.geo.json` and the feeds are no longer committed under `elm-app/public/`; the Vite dev server serves them from `assets/`. On a fresh checkout run `make statics` (or `make watch`) first, or the signed-out map is empty.
 - **GHC pinned to 9.6**.
 - Run `cabal update` before the first `cabal build`.
 

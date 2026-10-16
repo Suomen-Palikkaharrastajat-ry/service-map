@@ -66,6 +66,11 @@ type MsgKey
     | FilterEventsAll
     | FilterEventsNoCancelled
     | FilterEventsNone
+    | EventsModalTitle
+    | EventsModalEmpty
+    | EventsModalOpen
+    | EventsModalShowOnMap
+    | A11yEventsModalClose
     | FilterPanelTitle
     | FilterGroupLegend
     | EventCancelled
@@ -288,6 +293,21 @@ fi key =
 
         FilterEventsNone ->
             "piilotettu"
+
+        EventsModalTitle ->
+            "Tulevat tapahtumat"
+
+        EventsModalEmpty ->
+            "Ei tulevia tapahtumia"
+
+        EventsModalOpen ->
+            "Näytä tapahtumalista"
+
+        EventsModalShowOnMap ->
+            "Näytä kartalla"
+
+        A11yEventsModalClose ->
+            "Sulje tapahtumalista"
 
         FilterPanelTitle ->
             "Suodattimet"
@@ -571,6 +591,21 @@ en key =
 
         FilterEventsNone ->
             "hidden"
+
+        EventsModalTitle ->
+            "Upcoming events"
+
+        EventsModalEmpty ->
+            "No upcoming events"
+
+        EventsModalOpen ->
+            "View event list"
+
+        EventsModalShowOnMap ->
+            "Show on map"
+
+        A11yEventsModalClose ->
+            "Close event list"
 
         FilterPanelTitle ->
             "Filters"

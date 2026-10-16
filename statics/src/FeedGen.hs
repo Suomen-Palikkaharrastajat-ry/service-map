@@ -18,8 +18,8 @@ import Data.Time (UTCTime, getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import qualified DescriptionHtml as DH
 import qualified PocketBase as PB
-import System.Directory (getFileSize)
 import qualified SiteConfig as SC
+import System.Directory (getFileSize)
 
 feedTitle :: String
 feedTitle = SC.siteTitle SC.defaultLang
@@ -214,7 +214,11 @@ generateAtom ctx locs = do
             , "  " ++ xmlEl "logo" feedLogoUrl
             , "  " ++ xmlEl "icon" (Config.siteBaseUrl ++ "/favicon.ico")
             , "  " ++ xmlText "generator" "Emmet"
-            , "  <author>" ++ xmlText "name" (SC.author SC.defaultLang) ++ xmlText "email" (SC.appContactEmail SC.defaultLang) ++ xmlText "uri" (SC.appOrganisationUrl SC.defaultLang) ++ "</author>"
+            , "  <author>"
+                ++ xmlText "name" (SC.author SC.defaultLang)
+                ++ xmlText "email" (SC.appContactEmail SC.defaultLang)
+                ++ xmlText "uri" (SC.appOrganisationUrl SC.defaultLang)
+                ++ "</author>"
             , concat entries
             , "</feed>"
             ]

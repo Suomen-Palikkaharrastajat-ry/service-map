@@ -38,6 +38,7 @@ view lang model =
             []
         , viewStatusBadge lang model
         , viewToggles lang model
+        , viewEventsModal lang model
         , viewPanel lang model
         ]
 
@@ -142,11 +143,21 @@ viewEventFilterToggle lang model =
 
                 Types.NoEvents ->
                     "false"
+
+        eventCount =
+            List.length (Types.visibleEvents model)
+
+        countSuffix =
+            if model.eventFilter == Types.NoEvents then
+                ""
+
+            else
+                " (" ++ String.fromInt eventCount ++ ")"
     in
-    div [ class "flex items-center gap-2 cursor-pointer type-body-small" ]
+    div [ class "flex items-center justify-between gap-2 type-body-small w-full" ]
         [ label
             [ for "event-filter-toggle"
-            , class "flex items-center gap-2 cursor-pointer type-body-small"
+            , class "flex items-center gap-2 cursor-pointer type-body-small flex-1 min-w-0"
             , title (t lang FilterEvents ++ ": " ++ eventFilterLabel lang model.eventFilter)
             ]
             [ input
@@ -160,8 +171,135 @@ viewEventFilterToggle lang model =
                 ]
                 []
             , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-            , text (t lang FilterEvents)
+            , text (t lang FilterEvents ++ countSuffix)
             , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel lang model.eventFilter) ]
+            ]
+        , if eventCount > 0 then
+            button
+                [ type_ "button"
+                , id "events-modal-open"
+                , onClick ToggleEventsModal
+                , title (t lang EventsModalOpen)
+                , attribute "aria-label" (t lang EventsModalOpen)
+                , class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+                ]
+                [ featherIcon FeatherIcons.list 14 ]
+
+          else
+            text ""
+        ]
+
+
+viewEventsModal : Lang -> Model -> Html Msg
+viewEventsModal lang model =
+    if not model.eventsModalOpen then
+        text ""
+
+    else
+        let
+            evts =
+                Types.upcomingEvents model
+        in
+        div []
+            [ -- Backdrop
+              div
+                [ class "fixed inset-0 z-[1049] bg-black/40"
+                , onClick CloseEventsModal
+                ]
+                []
+            , -- Dialog container
+              div
+                [ class "fixed inset-0 z-[1050] pointer-events-none flex items-center justify-center p-4" ]
+                [ div
+                    [ class "pointer-events-auto bg-bg-page text-text-primary rounded shadow-xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden border border-border-default"
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" (t lang EventsModalTitle)
+                    ]
+                    [ -- Header
+                      div
+                        [ class "flex items-center justify-between p-4 border-b border-border-default bg-bg-surface" ]
+                        [ div [ class "flex items-center gap-2" ]
+                            [ span [ class "text-brand" ] [ featherIcon FeatherIcons.calendar 18 ]
+                            , span [ class "type-h3" ] [ text (t lang EventsModalTitle) ]
+                            ]
+                        , button
+                            [ type_ "button"
+                            , id "events-modal-close"
+                            , onClick CloseEventsModal
+                            , attribute "aria-label" (t lang A11yEventsModalClose)
+                            , class "text-text-subtle hover:text-brand p-1 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+                            ]
+                            [ featherIcon FeatherIcons.x 20 ]
+                        ]
+                    , -- Body (Event list)
+                      div [ class "p-4 overflow-y-auto flex flex-col gap-3" ]
+                        (if List.isEmpty evts then
+                            [ div [ class "type-body-small text-text-muted py-6 text-center" ]
+                                [ text (t lang EventsModalEmpty) ]
+                            ]
+
+                         else
+                            List.map (viewModalEventItem lang) evts
+                        )
+                    ]
+                ]
+            ]
+
+
+viewModalEventItem : Lang -> Types.Event -> Html Msg
+viewModalEventItem lang ev =
+    let
+        dateStr =
+            DateUtils.formatEventDateDisplay lang ev
+                |> Maybe.withDefault ""
+
+        cancelledBadge =
+            if ev.cancelled then
+                span [ class "type-overline text-text-on-dark bg-brand rounded px-1.5 py-0.5" ]
+                    [ text (t lang EventCancelled) ]
+
+            else
+                text ""
+    in
+    button
+        [ type_ "button"
+        , class "text-left w-full p-3 rounded border border-border-default hover:border-border-brand hover:bg-bg-surface/50 transition-colors flex flex-col gap-1 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        , onClick (EventModalItemClicked ev.id)
+        ]
+        [ div [ class "flex items-center justify-between gap-2" ]
+            [ span
+                [ class
+                    (if ev.cancelled then
+                        "type-body font-bold group-hover:text-brand line-through"
+
+                     else
+                        "type-body font-bold group-hover:text-brand"
+                    )
+                ]
+                [ text ev.title ]
+            , cancelledBadge
+            ]
+        , if String.isEmpty dateStr then
+            text ""
+
+          else
+            div [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+                [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
+                , text dateStr
+                ]
+        , case ev.location of
+            Just loc ->
+                div [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+                    [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.mapPin 14 ]
+                    , text loc
+                    ]
+
+            Nothing ->
+                text ""
+        , div [ class "mt-1 flex items-center gap-1 type-caption text-brand font-medium" ]
+            [ text (t lang EventsModalShowOnMap)
+            , featherIcon FeatherIcons.arrowRight 12
             ]
         ]
 

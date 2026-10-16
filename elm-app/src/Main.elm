@@ -1,4 +1,4 @@
-module Main exposing (applyFormDate, applyFormField, main, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)
+module Main exposing (applyFormDate, applyFormField, filterSelectedMarker, isMarkerVisible, main, nextEventFilter, refreshLocationsOnMutationResult)
 
 {-| Main application module: routing, state management, and top-level view.
 -}
@@ -131,6 +131,7 @@ init flags url key =
       , selectedMarker = Nothing
       , hiddenTags = flags.hiddenTags
       , eventFilter = Maybe.withDefault HideCancelled (Types.eventFilterFromString flags.eventsFilter)
+      , eventsModalOpen = False
       , isEmbed = flags.isEmbed
       , platform = flags.platform
       , presentationMode = False
@@ -400,7 +401,7 @@ update msg model =
                         _ ->
                             []
                     )
-                        ++ (visibleEvents model
+                        ++ (Types.visibleEvents model
                                 |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
                            )
 
@@ -479,7 +480,7 @@ update msg model =
                         _ ->
                             []
                     )
-                        ++ (visibleEvents model
+                        ++ (Types.visibleEvents model
                                 |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
                            )
 
@@ -587,7 +588,7 @@ update msg model =
                 ( model, Cmd.none )
 
         ClosePanel ->
-            ( { model | selectedMarker = Nothing }, Ports.restoreMapView () )
+            ( { model | selectedMarker = Nothing, eventsModalOpen = False }, Ports.restoreMapView () )
 
         ToggleMenu ->
             if model.menuOpen then
@@ -1331,18 +1332,43 @@ update msg model =
 
                     else
                         List.filter (\t -> t /= tag) model.hiddenTags
-
-                newModel =
-                    { model | hiddenTags = newHiddenTags }
             in
-            ( newModel, Cmd.batch [ updateMarkers newModel, saveFilters newModel ] )
+            applyFilterChange { model | hiddenTags = newHiddenTags }
 
         CycleEventFilter ->
-            let
-                newModel =
-                    { model | eventFilter = nextEventFilter model.eventFilter }
-            in
-            ( newModel, Cmd.batch [ updateMarkers newModel, saveFilters newModel ] )
+            applyFilterChange { model | eventFilter = nextEventFilter model.eventFilter }
+
+        ToggleEventsModal ->
+            if model.eventsModalOpen then
+                ( { model | eventsModalOpen = False }, Ports.focusElement "events-modal-open" )
+
+            else
+                ( { model | eventsModalOpen = True }, Ports.focusElement "events-modal-close" )
+
+        CloseEventsModal ->
+            ( { model | eventsModalOpen = False }, Ports.focusElement "events-modal-open" )
+
+        EventModalItemClicked eventId ->
+            update (MarkerClicked eventId) { model | eventsModalOpen = False }
+
+
+{-| Re-render markers and persist filters after a filter change, dropping (and
+un-zooming from) the selected marker if the new filters hide it.
+-}
+applyFilterChange : Model -> ( Model, Cmd Msg )
+applyFilterChange filtered =
+    let
+        newModel =
+            { filtered | selectedMarker = filterSelectedMarker filtered }
+
+        restoreCmd =
+            if filtered.selectedMarker /= Nothing && newModel.selectedMarker == Nothing then
+                Ports.restoreMapView ()
+
+            else
+                Cmd.none
+    in
+    ( newModel, Cmd.batch [ updateMarkers newModel, saveFilters newModel, restoreCmd ] )
 
 
 saveFilters : Model -> Cmd Msg
@@ -1531,27 +1557,31 @@ eventToMarker lang ev =
     }
 
 
-{-| Events the current filter lets through, with unlocated ones dropped. Shared by
-marker rendering and keyboard marker navigation so all three stay in agreement. Takes an
-extensible record rather than the `Model` so it is reachable from tests, which cannot
-construct a `Nav.Key`.
+{-| Whether a selected marker is still visible under current tag and event filters.
 -}
-visibleEvents : { a | eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> List Event
-visibleEvents model =
-    case ( model.eventFilter, model.events ) of
-        ( NoEvents, _ ) ->
-            []
+isMarkerVisible : { a | hiddenTags : List String, eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> Types.SelectedMarker -> Bool
+isMarkerVisible model marker =
+    case marker of
+        Types.SelectedLocation loc ->
+            not (List.any (\tag -> List.member tag model.hiddenTags) loc.tags)
 
-        ( filter, Success evts ) ->
-            evts
-                |> List.filter
-                    (\e ->
-                        Types.hasValidCoordinates e.point
-                            && (filter == AllEvents || not e.cancelled)
-                    )
+        Types.SelectedEvent ev ->
+            List.any (\e -> e.id == ev.id) (Types.visibleEvents model)
 
-        _ ->
-            []
+
+{-| Keeps the selected marker only if it remains visible; otherwise drops it.
+-}
+filterSelectedMarker : { a | hiddenTags : List String, eventFilter : EventFilter, events : RemoteData Http.Error (List Event), selectedMarker : Maybe Types.SelectedMarker } -> Maybe Types.SelectedMarker
+filterSelectedMarker model =
+    model.selectedMarker
+        |> Maybe.andThen
+            (\marker ->
+                if isMarkerVisible model marker then
+                    Just marker
+
+                else
+                    Nothing
+            )
 
 
 {-| Cycle order of the tri-state events filter control.
@@ -1584,7 +1614,7 @@ updateMarkers model =
                     []
 
         evtMarkers =
-            visibleEvents model
+            Types.visibleEvents model
                 |> List.map (eventToMarker model.lang)
     in
     Ports.addMarkers (locMarkers ++ evtMarkers)
@@ -1597,6 +1627,19 @@ escapeDecoder =
             (\key ->
                 if key == "Escape" then
                     Decode.succeed ClosePanel
+
+                else
+                    Decode.fail "Not Escape"
+            )
+
+
+eventsModalEscapeDecoder : Decode.Decoder Msg
+eventsModalEscapeDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed CloseEventsModal
 
                 else
                     Decode.fail "Not Escape"
@@ -1652,18 +1695,27 @@ subscriptions model =
                 pageKeySubs
 
         pageKeySubs =
-            case ( model.page, model.selectedMarker ) of
-                ( Types.PageMap, Just _ ) ->
-                    [ Browser.Events.onKeyDown escapeDecoder
-                    , Browser.Events.onKeyDown (Decode.map KeyDown (Decode.field "key" Decode.string))
-                    ]
+            case model.page of
+                -- The events dialog is modal: Escape closes it alone, and marker
+                -- navigation stays off behind it.
+                Types.PageMap ->
+                    if model.eventsModalOpen then
+                        [ Browser.Events.onKeyDown eventsModalEscapeDecoder ]
 
-                ( Types.PageLocationNew _, _ ) ->
+                    else if model.selectedMarker /= Nothing then
+                        [ Browser.Events.onKeyDown escapeDecoder
+                        , Browser.Events.onKeyDown (Decode.map KeyDown (Decode.field "key" Decode.string))
+                        ]
+
+                    else
+                        []
+
+                Types.PageLocationNew _ ->
                     [ Browser.Events.onKeyDown escapeToLocationsDecoder
                     , Browser.Events.onKeyDown (ctrlEnterDecoder NewFormSubmit)
                     ]
 
-                ( Types.PageLocationEdit _ _, _ ) ->
+                Types.PageLocationEdit _ _ ->
                     [ Browser.Events.onKeyDown escapeToLocationsDecoder
                     , Browser.Events.onKeyDown (ctrlEnterDecoder EditFormSubmit)
                     ]

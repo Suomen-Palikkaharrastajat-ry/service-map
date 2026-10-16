@@ -5,10 +5,10 @@ module MainTest exposing (suite)
 
 import Expect
 import Http
-import Main exposing (applyFormDate, applyFormField, nextEventFilter, refreshLocationsOnMutationResult, visibleEvents)
+import Main exposing (applyFormDate, applyFormField, filterSelectedMarker, isMarkerVisible, nextEventFilter, refreshLocationsOnMutationResult)
 import RemoteData exposing (RemoteData(..))
 import Test exposing (Test, describe, test)
-import Types exposing (EventFilter(..), LocationState(..), emptyLocationFormData)
+import Types exposing (EventFilter(..), LocationState(..), SelectedMarker(..), emptyLocationFormData, upcomingEvents, visibleEvents)
 
 
 testLocation : Types.Location
@@ -214,5 +214,92 @@ suite =
                 \_ ->
                     visibleEvents { eventFilter = AllEvents, events = NotAsked }
                         |> Expect.equal []
+            ]
+        , describe "upcomingEvents"
+            [ test "sorts the visible events by start date" <|
+                \_ ->
+                    upcomingEvents
+                        { eventFilter = AllEvents
+                        , events = Success [ { liveEvent | id = "late", startDate = "2026-12-01" }, { liveEvent | id = "early", startDate = "2026-11-01" } ]
+                        }
+                        |> List.map .id
+                        |> Expect.equal [ "early", "late" ]
+            , test "respects HideCancelled" <|
+                \_ ->
+                    upcomingEvents { eventFilter = HideCancelled, events = Success [ liveEvent, cancelledEvent ] }
+                        |> List.map .id
+                        |> Expect.equal [ "live" ]
+            , test "is empty when events are hidden" <|
+                \_ ->
+                    upcomingEvents { eventFilter = NoEvents, events = Success [ liveEvent, cancelledEvent ] }
+                        |> Expect.equal []
+            , test "drops events at (0,0)" <|
+                \_ ->
+                    upcomingEvents { eventFilter = AllEvents, events = Success [ unlocatedEvent ] }
+                        |> Expect.equal []
+            ]
+        , describe "filterSelectedMarker"
+            [ test "keeps selected location when tags are visible" <|
+                \_ ->
+                    let
+                        loc =
+                            { testLocation | tags = [ "museum" ] }
+                    in
+                    filterSelectedMarker
+                        { hiddenTags = []
+                        , eventFilter = AllEvents
+                        , events = NotAsked
+                        , selectedMarker = Just (SelectedLocation loc)
+                        }
+                        |> Expect.equal (Just (SelectedLocation loc))
+            , test "drops selected location when tag is hidden" <|
+                \_ ->
+                    let
+                        loc =
+                            { testLocation | tags = [ "museum" ] }
+                    in
+                    filterSelectedMarker
+                        { hiddenTags = [ "museum" ]
+                        , eventFilter = AllEvents
+                        , events = NotAsked
+                        , selectedMarker = Just (SelectedLocation loc)
+                        }
+                        |> Expect.equal Nothing
+            , test "keeps selected live event when HideCancelled is active" <|
+                \_ ->
+                    filterSelectedMarker
+                        { hiddenTags = []
+                        , eventFilter = HideCancelled
+                        , events = Success [ liveEvent, cancelledEvent ]
+                        , selectedMarker = Just (SelectedEvent liveEvent)
+                        }
+                        |> Expect.equal (Just (SelectedEvent liveEvent))
+            , test "drops selected cancelled event when HideCancelled is active" <|
+                \_ ->
+                    filterSelectedMarker
+                        { hiddenTags = []
+                        , eventFilter = HideCancelled
+                        , events = Success [ liveEvent, cancelledEvent ]
+                        , selectedMarker = Just (SelectedEvent cancelledEvent)
+                        }
+                        |> Expect.equal Nothing
+            , test "drops selected event when NoEvents is active" <|
+                \_ ->
+                    filterSelectedMarker
+                        { hiddenTags = []
+                        , eventFilter = NoEvents
+                        , events = Success [ liveEvent ]
+                        , selectedMarker = Just (SelectedEvent liveEvent)
+                        }
+                        |> Expect.equal Nothing
+            , test "remains Nothing when no marker is selected" <|
+                \_ ->
+                    filterSelectedMarker
+                        { hiddenTags = []
+                        , eventFilter = AllEvents
+                        , events = Success [ liveEvent ]
+                        , selectedMarker = Nothing
+                        }
+                        |> Expect.equal Nothing
             ]
         ]
