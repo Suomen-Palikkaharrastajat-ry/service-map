@@ -17,6 +17,7 @@ import Lang exposing (Lang)
 import OpeningHours.I18n as OHI18n
 import OpeningHours.Parser as OHParser
 import OpeningHours.Viewer as OHViewer
+import PocketBaseAuth
 import QRCode
 import RemoteData exposing (RemoteData(..))
 import Route
@@ -210,7 +211,7 @@ viewLocationPanel : Lang -> Model -> Location -> Html Msg
 viewLocationPanel lang model loc =
     let
         headerActions =
-            if Types.isAuthenticated model.authState then
+            if PocketBaseAuth.isAuthenticated model.authState then
                 [ a
                     [ href (Route.toHref (Route.RouteLocationEdit loc.id))
                     , attribute "aria-label" (t lang A11yPanelEdit)
@@ -348,7 +349,7 @@ viewEventPanel : Lang -> Model -> Types.Event -> Html Msg
 viewEventPanel lang model ev =
     let
         headerActions =
-            if Types.isAuthenticated model.authState then
+            if PocketBaseAuth.isAuthenticated model.authState then
                 [ a
                     [ href (eventEditUrl model.calendarUrl ev.id)
                     , target "_blank"

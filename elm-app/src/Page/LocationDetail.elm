@@ -6,8 +6,9 @@ module Page.LocationDetail exposing (init, view)
 import Api
 import Html exposing (Html)
 import Lang exposing (Lang)
+import PocketBaseAuth exposing (AuthState)
 import RemoteData
-import Types exposing (AuthState, LocationDetailPage, Msg(..))
+import Types exposing (LocationDetailPage, Msg(..))
 import View.LocationDetail
 
 

@@ -1,7 +1,5 @@
 module Types exposing
-    ( AuthState(..)
-    , AuthUser
-    , Event
+    ( Event
     , EventFilter(..)
     , Flags
     , FormStatus(..)
@@ -27,9 +25,7 @@ module Types exposing
     , eventFilterFromString
     , eventFilterToString
     , fromRemoteData
-    , getToken
     , hasValidCoordinates
-    , isAuthenticated
     , isValidForm
     , locationStateFromString
     , locationStateToString
@@ -50,6 +46,7 @@ import Http
 import Json.Decode
 import Lang exposing (Lang)
 import OpeningHours.Editor
+import PocketBaseAuth exposing (AuthState)
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import SiteSettings exposing (SiteSettings)
@@ -224,39 +221,6 @@ type alias Event =
     , allDay : Bool
     , cancelled : Bool
     }
-
-
-type alias AuthUser =
-    { id : String
-    , name : String
-    , email : String
-    , token : String
-    }
-
-
-type AuthState
-    = NotAuthenticated
-    | Authenticated AuthUser
-
-
-isAuthenticated : AuthState -> Bool
-isAuthenticated authState =
-    case authState of
-        Authenticated _ ->
-            True
-
-        NotAuthenticated ->
-            False
-
-
-getToken : AuthState -> Maybe String
-getToken authState =
-    case authState of
-        Authenticated user ->
-            Just user.token
-
-        NotAuthenticated ->
-            Nothing
 
 
 type alias Flags =

@@ -4,7 +4,6 @@ module Main exposing (applyFormDate, applyFormField, main, nextEventFilter, refr
 -}
 
 import Api
-import Auth
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
@@ -25,7 +24,6 @@ import Html.Keyed
 import Http
 import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Lang exposing (Lang)
 import OpeningHours.Editor
 import OpeningHours.I18n as OHI18n
@@ -36,6 +34,7 @@ import Page.LocationEdit
 import Page.LocationNew
 import Page.Locations
 import Page.Map
+import PocketBaseAuth exposing (AuthState(..), getToken)
 import Ports exposing (MarkerData)
 import RemoteData exposing (RemoteData(..))
 import Route exposing (Route(..), parseUrl)
@@ -44,9 +43,7 @@ import Task
 import Time
 import Types
     exposing
-        ( AuthState(..)
-        , AuthUser
-        , Event
+        ( Event
         , EventFilter(..)
         , Flags
         , FormStatus(..)
@@ -83,7 +80,7 @@ init flags url key =
             parseUrl url
 
         authState =
-            Auth.restoreAuthFromFlags flags.authToken flags.authModel
+            PocketBaseAuth.restoreAuthFromFlags flags.authToken flags.authModel
 
         now =
             Time.millisToPosix flags.now
@@ -619,71 +616,33 @@ update msg model =
             )
 
         OAuthPopupResult data ->
-            if String.isEmpty data.token then
-                let
-                    ( m, c ) =
-                        addToast model Types.ToastError (t model.lang LoginFailed)
-                in
-                ( m, c )
+            case PocketBaseAuth.userFromPopupResult data of
+                Just user ->
+                    let
+                        ( m, c ) =
+                            addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
+                    in
+                    ( m
+                    , Cmd.batch
+                        [ c
+                        , Ports.saveAuthToken { token = data.token, model = data.model }
+                        , Api.fetchLocations model.pbBaseUrl (Just data.token)
+                        ]
+                    )
 
-            else
-                case Decode.decodeString Auth.decodeAuthUser data.model of
-                    Ok user ->
-                        let
-                            authedUser =
-                                { user | token = data.token }
-
-                            ( m, c ) =
-                                addToast { model | authState = Authenticated authedUser } Types.ToastSuccess (t model.lang LoginSuccess)
-                        in
-                        ( m
-                        , Cmd.batch
-                            [ c
-                            , Ports.saveAuthToken { token = data.token, model = data.model }
-                            , Api.fetchLocations model.pbBaseUrl (Just data.token)
-                            ]
-                        )
-
-                    Err _ ->
-                        let
-                            ( m, c ) =
-                                addToast model Types.ToastError (t model.lang LoginFailed)
-                        in
-                        ( m, c )
+                Nothing ->
+                    addToast model Types.ToastError (t model.lang LoginFailed)
 
         AuthCallbackReceived codeVerifier providerState ->
             let
-                queryStr =
-                    model.url.fragment
-                        |> Maybe.withDefault ""
-                        |> String.split "?"
-                        |> List.drop 1
-                        |> List.head
-                        |> Maybe.withDefault ""
-
-                parseParam key =
-                    queryStr
-                        |> String.split "&"
-                        |> List.filterMap
-                            (\pair ->
-                                case String.split "=" pair of
-                                    [ k, v ] ->
-                                        if k == key then
-                                            Just v
-
-                                        else
-                                            Nothing
-
-                                    _ ->
-                                        Nothing
-                            )
-                        |> List.head
+                query =
+                    PocketBaseAuth.callbackQuery model.url
 
                 maybeCode =
-                    parseParam "code"
+                    query.code
 
                 maybeState =
-                    parseParam "state"
+                    query.state
             in
             case ( maybeCode, maybeState ) of
                 ( Just code, Just stateParam ) ->
@@ -696,11 +655,11 @@ update msg model =
 
                     else
                         ( model
-                        , Auth.fetchOAuthToken
+                        , PocketBaseAuth.fetchOAuthToken
                             model.pbBaseUrl
                             code
                             codeVerifier
-                            (urlBase model.url ++ "#/callback")
+                            (PocketBaseAuth.callbackRedirectUrl model.url)
                             providerState
                             GotOAuthToken
                         )
@@ -714,22 +673,13 @@ update msg model =
 
         GotOAuthToken (Ok (Authenticated user)) ->
             let
-                modelStr =
-                    Encode.encode 0
-                        (Encode.object
-                            [ ( "id", Encode.string user.id )
-                            , ( "name", Encode.string user.name )
-                            , ( "email", Encode.string user.email )
-                            ]
-                        )
-
                 ( m, c ) =
                     addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
             in
             ( m
             , Cmd.batch
                 [ c
-                , Ports.saveAuthToken { token = user.token, model = modelStr }
+                , Ports.saveAuthToken { token = user.token, model = PocketBaseAuth.authUserModelJson user }
                 , Nav.pushUrl model.key (Route.toHref RouteMap)
                 , Api.fetchLocations model.pbBaseUrl (Just user.token)
                 ]
@@ -1457,21 +1407,6 @@ addToast model kind message =
       }
     , Cmd.none
     )
-
-
-getToken : AuthState -> Maybe String
-getToken authState =
-    case authState of
-        Authenticated user ->
-            Just user.token
-
-        NotAuthenticated ->
-            Nothing
-
-
-urlBase : Url -> String
-urlBase url =
-    Url.toString { url | query = Nothing, fragment = Nothing }
 
 
 {-| Second line of a location's map tooltip: its opening hours, formatted.

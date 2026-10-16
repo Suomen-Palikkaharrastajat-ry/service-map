@@ -14,7 +14,7 @@ There is **no TypeScript, no Svelte, no ESLint, no Prettier, and no pnpm** in th
 
 ```
 elm-app/          Elm 0.19 SPA (Vite + vite-plugin-elm + Tailwind CSS 4)
-  src/            Elm source modules (Auth, Page/*, View/*, etc.)
+  src/            Elm source modules (Page/*, View/*, etc.; sign-in lives in the hub's `PocketBaseAuth`)
   tests/          Elm unit tests
   public/         Static assets
   packages/       Symlink to shared Elm packages in vendor/master-builder
@@ -103,7 +103,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
   Cancelled events (`Event.cancelled`, read-only from the `events` collection) are dimmed
   via the `marker-cancelled` class and badged in the detail panel. `addMarkers`
   (`MarkerData`) and `focusMapOnMarker` both carry `cancelled`.
-- OAuth popup + redirect-callback flow.
+- OAuth is the PocketBase popup flow (`authWithOAuth2`, returning to `/api/oauth2-redirect`), opened synchronously in the click by the hub's `pocketbase-auth.js`, which `main.js` wires with the lazy SDK. The `#/callback` route and `getCallbackParams`/`callbackParams` ports are legacy and unused.
 - Uses `RemoteData` for async state.
 - Uses the opening-hours editor from the vendored `osm-opening-hours` package.
 
@@ -178,7 +178,7 @@ Quick rules that always apply in this repo:
 ## Security Considerations
 
 - The backend is PocketBase at `https://data.palikkaharrastajat.fi`. Ensure PocketBase collection rules are correctly configured to prevent unauthorized reads/writes.
-- Authentication is OAuth2/OIDC via PocketBase.
+- Authentication is OAuth2/OIDC via PocketBase popup sign-in.
 - When modifying auth or data-access logic, run `make test` and manually verify the E2E checklist above.
 
 ## Configuration and translations
