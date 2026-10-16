@@ -140,7 +140,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 
 The association's official design guide lives at **<https://logo.palikkaharrastajat.fi/>**.
 
-**Agent CSS reference:** Fetch `https://logo.palikkaharrastajat.fi/brand.css` for the canonical `@theme`, `@utility type-*`, `@font-face`, reduced-motion rule, and shared component classes. Copy into `elm-app/main.css`.
+**Agent CSS reference:** Fetch `https://logo.palikkaharrastajat.fi/brand.css` for the canonical `@theme`, `@utility type-*`, reduced-motion rule, and shared component classes (the Outfit `@font-face` is not there: `main.css` imports `vendor/master-builder/public/fonts/outfit.css`, the only font declaration). Copy into `elm-app/main.css`.
 
 ### Design tokens, typography, logos, WCAG
 
@@ -158,9 +158,12 @@ Quick rules that always apply in this repo:
 - Canonical brand yellow is **`#FAC80A`**. Do not use `#F2CD37` (legacy incorrect value).
 - Use named type classes (`.type-h1`, `.type-body`, …), never ad-hoc `text-xl font-bold`.
 - Logos: `<picture>` with **SVG `<source>` first**, then WebP, then `<img>` PNG fallback.
-- In generated static HTML, always use the self-hosted logo path
-  (`/logo/horizontal-full.png`, etc.) and self-hosted `@font-face` for Outfit
-  (`/fonts/Outfit-VariableFont_wght.ttf`) — **never** load assets from
+- service-map generates no static HTML (`statics/` writes only feeds and GeoJSON);
+  the SPA gets the Outfit font through `elm-app/main.css`, which imports
+  `vendor/master-builder/public/fonts/outfit.css`, and the site-config Vite plugin
+  serves `/fonts/*` from `vendor/master-builder/public/fonts/`. Use the self-hosted
+  logo paths (`/logo/horizontal-full.png`, etc.). Never add font files or an
+  `@font-face` to this repo — **never** load assets from
   `logo.palikkaharrastajat.fi` at runtime.
 
 ### Rules for AI agents
@@ -168,7 +171,7 @@ Quick rules that always apply in this repo:
 1. **Never hard-code hex colours** in Elm views or Haskell HTML generators. Use the Tailwind semantic class names (`bg-brand`, `text-brand`, `bg-brand-yellow`, `border-border-default`, etc.) or the `@theme` CSS variables.
 2. **Use named type classes** (`.type-h1`, `.type-h2`, `.type-h3`, `.type-h4`, `.type-body`, `.type-body-small`, `.type-caption`, `.type-mono`, `.type-overline`) rather than ad-hoc `text-xl font-bold` combinations.
 3. When adding logos to any page, use the `<picture>` pattern with sources in this exact order: **SVG `<source>` first**, then WebP `<source>`, then `<img>` PNG fallback.
-4. Always embed `@font-face` for Outfit pointing to the **self-hosted** TTF (`/fonts/Outfit-VariableFont_wght.ttf`).
+4. The Outfit font comes from the hub (`vendor/master-builder/public/fonts/`, imported by `elm-app/main.css` and served as `/fonts/*` by the site-config Vite plugin). Generated static HTML links `/fonts/outfit.css`; never add font files or an `@font-face` to this repo, and do not load the font from `logo.palikkaharrastajat.fi`.
 5. Check contrast before picking any colour pair against the WCAG rules in [`vendor/master-builder/AGENTS.md`](vendor/master-builder/AGENTS.md).
 6. The canonical brand yellow is **`#FAC80A`** — do not use `#F2CD37`.
 
