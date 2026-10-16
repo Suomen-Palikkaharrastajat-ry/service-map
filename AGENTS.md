@@ -14,7 +14,7 @@ There is **no TypeScript, no Svelte, no ESLint, no Prettier, and no pnpm** in th
 
 ```
 elm-app/          Elm 0.19 SPA (Vite + vite-plugin-elm + Tailwind CSS 4)
-  src/            Elm source modules (Auth, Page/*, View/*, etc.)
+  src/            Elm source modules (Page/*, View/*, etc.; sign-in lives in the hub's `PocketBaseAuth`)
   tests/          Elm unit tests
   public/         Static assets
   packages/       Symlink to shared Elm packages in vendor/master-builder
@@ -93,9 +93,9 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 ## Architecture Notes
 
 ### Elm SPA
-- `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`, `/#/callback`
+- `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`
 - MapLibre GL vector basemap loaded from the external [`service-map-tiles`](https://github.com/Suomen-Palikkaharrastajat-ry/service-map-tiles) service, served from `https://tiles.palikkaharrastajat.fi/`. `main.js` registers the `pmtiles://` protocol and points MapLibre at the published `style.json` (override via `VITE_BASEMAP_STYLE_URL`); no tiles, glyphs, or GeoJSON are hosted here. The form location-picker uses an inline OSM raster style for street-level zoom.
-- Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`, `getCallbackParams`/`callbackParams`.
+- Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`.
 - Map filters are persisted to `localStorage.mapFilters` via `saveFilterState`, whose
   payload is `{ hiddenTags : List String, eventsFilter : String }`. The events filter is
   three-state (`Types.EventFilter`: `"all"` / `"no-cancelled"` / `"none"`), defaulting to
@@ -103,7 +103,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
   Cancelled events (`Event.cancelled`, read-only from the `events` collection) are dimmed
   via the `marker-cancelled` class and badged in the detail panel. `addMarkers`
   (`MarkerData`) and `focusMapOnMarker` both carry `cancelled`.
-- OAuth popup + redirect-callback flow.
+- OAuth is the PocketBase popup flow (`authWithOAuth2`, returning to `/api/oauth2-redirect`), opened synchronously in the click by the hub's `pocketbase-auth.js`, which `main.js` wires with the lazy SDK. The app has no `#/callback` route: such a URL is treated as not found.
 - Uses `RemoteData` for async state.
 - Uses the opening-hours editor from the vendored `osm-opening-hours` package.
 
@@ -141,7 +141,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 
 The association's official design guide lives at **<https://logo.palikkaharrastajat.fi/>**.
 
-**Agent CSS reference:** Fetch `https://logo.palikkaharrastajat.fi/brand.css` for the canonical `@theme`, `@utility type-*`, `@font-face`, reduced-motion rule, and shared component classes. Copy into `elm-app/main.css`.
+**Agent CSS reference:** Fetch `https://logo.palikkaharrastajat.fi/brand.css` for the canonical `@theme`, `@utility type-*`, reduced-motion rule, and shared component classes (the Outfit `@font-face` is not there: `main.css` imports `vendor/master-builder/public/fonts/outfit.css`, the only font declaration). Copy into `elm-app/main.css`.
 
 ### Design tokens, typography, logos, WCAG
 
@@ -159,9 +159,12 @@ Quick rules that always apply in this repo:
 - Canonical brand yellow is **`#FAC80A`**. Do not use `#F2CD37` (legacy incorrect value).
 - Use named type classes (`.type-h1`, `.type-body`, …), never ad-hoc `text-xl font-bold`.
 - Logos: `<picture>` with **SVG `<source>` first**, then WebP, then `<img>` PNG fallback.
-- In generated static HTML, always use the self-hosted logo path
-  (`/logo/horizontal-full.png`, etc.) and self-hosted `@font-face` for Outfit
-  (`/fonts/Outfit-VariableFont_wght.ttf`) — **never** load assets from
+- service-map generates no static HTML (`statics/` writes only feeds and GeoJSON);
+  the SPA gets the Outfit font through `elm-app/main.css`, which imports
+  `vendor/master-builder/public/fonts/outfit.css`, and the site-config Vite plugin
+  serves `/fonts/*` from `vendor/master-builder/public/fonts/`. Use the self-hosted
+  logo paths (`/logo/horizontal-full.png`, etc.). Never add font files or an
+  `@font-face` to this repo — **never** load assets from
   `logo.palikkaharrastajat.fi` at runtime.
 
 ### Rules for AI agents
@@ -169,14 +172,14 @@ Quick rules that always apply in this repo:
 1. **Never hard-code hex colours** in Elm views or Haskell HTML generators. Use the Tailwind semantic class names (`bg-brand`, `text-brand`, `bg-brand-yellow`, `border-border-default`, etc.) or the `@theme` CSS variables.
 2. **Use named type classes** (`.type-h1`, `.type-h2`, `.type-h3`, `.type-h4`, `.type-body`, `.type-body-small`, `.type-caption`, `.type-mono`, `.type-overline`) rather than ad-hoc `text-xl font-bold` combinations.
 3. When adding logos to any page, use the `<picture>` pattern with sources in this exact order: **SVG `<source>` first**, then WebP `<source>`, then `<img>` PNG fallback.
-4. Always embed `@font-face` for Outfit pointing to the **self-hosted** TTF (`/fonts/Outfit-VariableFont_wght.ttf`).
+4. The Outfit font comes from the hub (`vendor/master-builder/public/fonts/`, imported by `elm-app/main.css` and served as `/fonts/*` by the site-config Vite plugin). Generated static HTML links `/fonts/outfit.css`; never add font files or an `@font-face` to this repo, and do not load the font from `logo.palikkaharrastajat.fi`.
 5. Check contrast before picking any colour pair against the WCAG rules in [`vendor/master-builder/AGENTS.md`](vendor/master-builder/AGENTS.md).
 6. The canonical brand yellow is **`#FAC80A`** — do not use `#F2CD37`.
 
 ## Security Considerations
 
 - The backend is PocketBase at `https://data.palikkaharrastajat.fi`. Ensure PocketBase collection rules are correctly configured to prevent unauthorized reads/writes.
-- Authentication is OAuth2/OIDC via PocketBase.
+- Authentication is OAuth2/OIDC via PocketBase popup sign-in.
 - When modifying auth or data-access logic, run `make test` and manually verify the E2E checklist above.
 
 ## Configuration and translations

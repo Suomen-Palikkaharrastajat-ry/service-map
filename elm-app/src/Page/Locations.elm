@@ -13,8 +13,9 @@ import Html.Events as Events
 import I18n exposing (t)
 import Json.Decode as Decode
 import Lang exposing (Lang)
+import PocketBaseAuth exposing (AuthState(..))
 import Route exposing (Route(..), toHref)
-import Types exposing (AuthState(..), Location, Model, Msg)
+import Types exposing (Location, Model, Msg)
 import View.Icons exposing (featherIcon)
 
 

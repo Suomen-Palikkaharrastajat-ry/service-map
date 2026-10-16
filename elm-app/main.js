@@ -1,6 +1,7 @@
 import './main.css'
 import { Elm } from './src/Main.elm'
 import siteConfig from 'virtual:site-config'
+import { getInitAuth, wirePocketBaseAuthPorts, triggerBackgroundAuthRefresh } from './packages/app-toolkit/js/pocketbase-auth.js'
 import { appSettings, pickLang, requestedLang, showLanguage } from './packages/site-config/browser.mjs'
 
 // ── App init ──────────────────────────────────────────────────────────────────
@@ -18,13 +19,6 @@ const pbBaseUrl = import.meta.env.VITE_POCKETBASE_URL || settings.pocketbase_url
 // nothing tile-related is hosted here anymore. Override with
 // VITE_BASEMAP_STYLE_URL for a staging tiles deployment or a locally served copy.
 const basemapStyleUrl = import.meta.env.VITE_BASEMAP_STYLE_URL || settings.basemap_style_url
-
-function readStoredAuth() {
-  return {
-    authToken: localStorage.getItem('pb_auth_token') || null,
-    authModel: localStorage.getItem('pb_auth_model') || null,
-  }
-}
 
 function getMarkerIconHtml(tags) {
   const tag = (tags && tags.length > 0) ? tags[0] : 'other';
@@ -60,27 +54,8 @@ function getMarkerIconHtml(tags) {
   </div>`;
 }
 
-function clearStoredAuth() {
-  localStorage.removeItem('pb_auth_token')
-  localStorage.removeItem('pb_auth_model')
-}
-
-function saveStoredAuth(token, model) {
-  localStorage.setItem('pb_auth_token', token)
-  localStorage.setItem('pb_auth_model', model)
-}
-
-function isInvalidAuthError(err) {
-  return err?.status === 401 || err?.status === 403
-}
-
-function getInitAuth() {
-  const stored = readStoredAuth()
-  if (!stored.authToken || !stored.authModel) {
-    return { authToken: null, authModel: null }
-  }
-  return stored
-}
+// Loaded on demand (sign-in, token refresh) so the SDK is not in the initial bundle.
+const loadPocketBase = () => import('pocketbase').then((m) => m.default)
 
 const initAuth = getInitAuth()
 
@@ -136,31 +111,9 @@ const app = Elm.Main.init({
   flags,
 })
 
-// Trigger background auth refresh
-if (initAuth.authToken) {
-  setTimeout(async () => {
-    try {
-      // Dynamically import PocketBase for background refresh to keep initial bundle small
-      const { default: PB } = await import('pocketbase')
-      const pb = new PB(pbBaseUrl)
-      pb.authStore.save(initAuth.authToken, null)
-      const authData = await pb.collection('users').authRefresh()
-      const refreshedModel = JSON.stringify({
-        id: authData.record.id,
-        name: authData.record.name || '',
-        email: authData.record.email || '',
-      })
-      saveStoredAuth(authData.token, refreshedModel)
-    } catch (err) {
-      if (isInvalidAuthError(err)) {
-        clearStoredAuth()
-        window.location.reload()
-      } else {
-        console.warn('Auth refresh failed during background check:', err)
-      }
-    }
-  }, 0)
-}
+// Refresh a stored token in the background. The PocketBase SDK stays a lazy
+// chunk to keep the initial bundle small.
+triggerBackgroundAuthRefresh(pbBaseUrl, initAuth, { loadPocketBase })
 
 // ── Map Libraries Dynamic Loader ──────────────────────────────────────────────
 let maplibregl, Supercluster, pmtiles;
@@ -199,49 +152,7 @@ app.ports.focusElement.subscribe(function (id) {
 
 // ── Auth ports ────────────────────────────────────────────────────────────────
 
-app.ports.initiateOAuth.subscribe(async (pbBaseUrl) => {
-  try {
-    const { default: PB } = await import('pocketbase')
-    const pb = new PB(pbBaseUrl)
-    
-    const authMethods = await pb.collection('users').listAuthMethods()
-    const provider = authMethods.oauth2.providers.find(p => p.name === 'oidc')
-    if (provider) {
-      sessionStorage.setItem('pb_code_verifier', provider.codeVerifier)
-      sessionStorage.setItem('pb_provider_state', provider.state)
-    }
-
-    const authData = await pb.collection('users').authWithOAuth2({ provider: 'oidc' })
-    app.ports.oauthPopupResult.send({
-      token: authData.token,
-      model: JSON.stringify({
-        id: authData.record.id,
-        name: authData.record.name || '',
-        email: authData.record.email || '',
-      }),
-    })
-  } catch (err) {
-    console.error('OAuth2 login failed:', err)
-    app.ports.oauthPopupResult.send({ token: '', model: '{}' })
-  }
-})
-
-app.ports.getCallbackParams.subscribe(() => {
-  app.ports.callbackParams.send({
-    codeVerifier: sessionStorage.getItem('pb_code_verifier') || '',
-    state: sessionStorage.getItem('pb_provider_state') || '',
-  })
-})
-
-app.ports.saveAuthToken.subscribe(({ token, model }) => {
-  localStorage.setItem('pb_auth_token', token)
-  localStorage.setItem('pb_auth_model', model)
-})
-
-app.ports.clearAuthToken.subscribe(() => {
-  localStorage.removeItem('pb_auth_token')
-  localStorage.removeItem('pb_auth_model')
-})
+wirePocketBaseAuthPorts(app, { loadPocketBase })
 
 if (app.ports.saveFilterState) {
   app.ports.saveFilterState.subscribe((filters) => {

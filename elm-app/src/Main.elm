@@ -4,14 +4,11 @@ module Main exposing (applyFormDate, applyFormField, filterSelectedMarker, isMar
 -}
 
 import Api
-import Auth
 import Browser
 import Browser.Events
 import Browser.Navigation as Nav
 import Component.Layout
-import Component.SkipLink
 import Component.Spinner
-import Component.Toast
 import Date
 import DatePicker
 import DateUtils
@@ -25,7 +22,6 @@ import Html.Keyed
 import Http
 import I18n exposing (MsgKey(..), t)
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Lang exposing (Lang)
 import OpeningHours.Editor
 import OpeningHours.I18n as OHI18n
@@ -36,6 +32,7 @@ import Page.LocationEdit
 import Page.LocationNew
 import Page.Locations
 import Page.Map
+import PocketBaseAuth exposing (AuthState(..), getToken)
 import Ports exposing (MarkerData)
 import RemoteData exposing (RemoteData(..))
 import Route exposing (Route(..), parseUrl)
@@ -44,9 +41,7 @@ import Task
 import Time
 import Types
     exposing
-        ( AuthState(..)
-        , AuthUser
-        , Event
+        ( Event
         , EventFilter(..)
         , Flags
         , FormStatus(..)
@@ -83,7 +78,7 @@ init flags url key =
             parseUrl url
 
         authState =
-            Auth.restoreAuthFromFlags flags.authToken flags.authModel
+            PocketBaseAuth.restoreAuthFromFlags flags.authToken flags.authModel
 
         now =
             Time.millisToPosix flags.now
@@ -237,9 +232,6 @@ initPage lang pbBaseUrl key route authState url now =
                         , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo (t lang LoginRequired)))
                         ]
                     )
-
-        RouteAuthCallback ->
-            ( PageAuthCallback, Ports.getCallbackParams () )
 
         RouteNotFound ->
             ( PageNotFound, Cmd.none )
@@ -620,131 +612,22 @@ update msg model =
             )
 
         OAuthPopupResult data ->
-            if String.isEmpty data.token then
-                let
-                    ( m, c ) =
-                        addToast model Types.ToastError (t model.lang LoginFailed)
-                in
-                ( m, c )
-
-            else
-                case Decode.decodeString Auth.decodeAuthUser data.model of
-                    Ok user ->
-                        let
-                            authedUser =
-                                { user | token = data.token }
-
-                            ( m, c ) =
-                                addToast { model | authState = Authenticated authedUser } Types.ToastSuccess (t model.lang LoginSuccess)
-                        in
-                        ( m
-                        , Cmd.batch
-                            [ c
-                            , Ports.saveAuthToken { token = data.token, model = data.model }
-                            , Api.fetchLocations model.pbBaseUrl (Just data.token)
-                            ]
-                        )
-
-                    Err _ ->
-                        let
-                            ( m, c ) =
-                                addToast model Types.ToastError (t model.lang LoginFailed)
-                        in
-                        ( m, c )
-
-        AuthCallbackReceived codeVerifier providerState ->
-            let
-                queryStr =
-                    model.url.fragment
-                        |> Maybe.withDefault ""
-                        |> String.split "?"
-                        |> List.drop 1
-                        |> List.head
-                        |> Maybe.withDefault ""
-
-                parseParam key =
-                    queryStr
-                        |> String.split "&"
-                        |> List.filterMap
-                            (\pair ->
-                                case String.split "=" pair of
-                                    [ k, v ] ->
-                                        if k == key then
-                                            Just v
-
-                                        else
-                                            Nothing
-
-                                    _ ->
-                                        Nothing
-                            )
-                        |> List.head
-
-                maybeCode =
-                    parseParam "code"
-
-                maybeState =
-                    parseParam "state"
-            in
-            case ( maybeCode, maybeState ) of
-                ( Just code, Just stateParam ) ->
-                    if stateParam /= providerState then
-                        let
-                            ( m, c ) =
-                                addToast model Types.ToastError (t model.lang LoginFailed)
-                        in
-                        ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
-
-                    else
-                        ( model
-                        , Auth.fetchOAuthToken
-                            model.pbBaseUrl
-                            code
-                            codeVerifier
-                            (urlBase model.url ++ "#/callback")
-                            providerState
-                            GotOAuthToken
-                        )
-
-                _ ->
+            case PocketBaseAuth.userFromPopupResult data of
+                Just user ->
                     let
                         ( m, c ) =
-                            addToast model Types.ToastError (t model.lang LoginFailed)
+                            addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
                     in
-                    ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
+                    ( m
+                    , Cmd.batch
+                        [ c
+                        , Ports.saveAuthToken { token = data.token, model = data.model }
+                        , Api.fetchLocations model.pbBaseUrl (Just data.token)
+                        ]
+                    )
 
-        GotOAuthToken (Ok (Authenticated user)) ->
-            let
-                modelStr =
-                    Encode.encode 0
-                        (Encode.object
-                            [ ( "id", Encode.string user.id )
-                            , ( "name", Encode.string user.name )
-                            , ( "email", Encode.string user.email )
-                            ]
-                        )
-
-                ( m, c ) =
-                    addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
-            in
-            ( m
-            , Cmd.batch
-                [ c
-                , Ports.saveAuthToken { token = user.token, model = modelStr }
-                , Nav.pushUrl model.key (Route.toHref RouteMap)
-                , Api.fetchLocations model.pbBaseUrl (Just user.token)
-                ]
-            )
-
-        GotOAuthToken (Ok NotAuthenticated) ->
-            ( model, Cmd.none )
-
-        GotOAuthToken (Err err) ->
-            let
-                ( m, c ) =
-                    addToast model Types.ToastError (Api.httpErrorToString model.lang err)
-            in
-            ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
+                Nothing ->
+                    addToast model Types.ToastError (t model.lang LoginFailed)
 
         -- Forms Shared Messages
         NewFormFieldChanged field val ->
@@ -1485,21 +1368,6 @@ addToast model kind message =
     )
 
 
-getToken : AuthState -> Maybe String
-getToken authState =
-    case authState of
-        Authenticated user ->
-            Just user.token
-
-        NotAuthenticated ->
-            Nothing
-
-
-urlBase : Url -> String
-urlBase url =
-    Url.toString { url | query = Nothing, fragment = Nothing }
-
-
 {-| Second line of a location's map tooltip: its opening hours, formatted.
 
 Shared by `locationToMarker` and the `focusMapOnMarker` command so that hovering
@@ -1681,7 +1549,6 @@ subscriptions model =
             [ Ports.markerClicked MarkerClicked
             , Ports.oauthPopupResult OAuthPopupResult
             , Ports.mapMarkerMoved (\pos -> MapMarkerMoved pos.lat pos.lon)
-            , Ports.callbackParams (\params -> AuthCallbackReceived params.codeVerifier params.state)
             , Ports.kmlParsed LocationKmlParsed
             ]
 
@@ -1790,10 +1657,6 @@ view model =
                         PageLocationEdit id editPage ->
                             div [ class "flex-1 overflow-y-auto w-full" ]
                                 [ Page.LocationEdit.view model.lang editPage ]
-
-                        PageAuthCallback ->
-                            div [ class "flex items-center justify-center flex-1 h-full w-full" ]
-                                [ Component.Spinner.view { size = Component.Spinner.Medium, label = t model.lang I18n.Loading } ]
 
                         PageNotFound ->
                             div [ class "p-8 text-center" ] [ Html.text (t model.lang PageNotFoundText) ]

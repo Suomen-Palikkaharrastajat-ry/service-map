@@ -842,7 +842,7 @@ migrate((app) => {
         "min": "",
         "name": "start_date",
         "presentable": false,
-        "required": true,
+        "required": false,
         "system": false,
         "type": "date"
       },
@@ -853,7 +853,7 @@ migrate((app) => {
         "min": "",
         "name": "end_date",
         "presentable": false,
-        "required": true,
+        "required": false,
         "system": false,
         "type": "date"
       },
@@ -964,7 +964,7 @@ migrate((app) => {
       {
         "hidden": false,
         "id": "select_tags_id",
-        "maxSelect": 10,
+        "maxSelect": 5,
         "name": "tags",
         "presentable": false,
         "required": false,

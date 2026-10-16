@@ -2,12 +2,10 @@ port module Ports exposing
     ( InitMapOptions
     , MarkerData
     , addMarkers
-    , callbackParams
     , clearAuthToken
     , destroyMap
     , focusElement
     , focusMapOnMarker
-    , getCallbackParams
     , initMap
     , initiateOAuth
     , kmlParsed
@@ -99,12 +97,6 @@ port destroyMap : String -> Cmd msg
 
 
 port mapMarkerMoved : ({ lat : Float, lon : Float } -> msg) -> Sub msg
-
-
-port getCallbackParams : () -> Cmd msg
-
-
-port callbackParams : ({ codeVerifier : String, state : String } -> msg) -> Sub msg
 
 
 port parseKml : String -> Cmd msg

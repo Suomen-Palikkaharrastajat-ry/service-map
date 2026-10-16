@@ -49,10 +49,10 @@ suite =
                 \_ ->
                     parse "#/locations/abc123/edit"
                         |> Expect.equal (RouteLocationEdit "abc123")
-            , test "/callback → RouteAuthCallback" <|
+            , test "/callback → RouteNotFound (legacy OAuth redirect)" <|
                 \_ ->
                     parse "#/callback"
-                        |> Expect.equal RouteAuthCallback
+                        |> Expect.equal RouteNotFound
             , test "/nonexistent → RouteNotFound" <|
                 \_ ->
                     parse "#/nonexistent/path"
