@@ -964,7 +964,7 @@ migrate((app) => {
       {
         "hidden": false,
         "id": "select_tags_id",
-        "maxSelect": 10,
+        "maxSelect": 5,
         "name": "tags",
         "presentable": false,
         "required": false,
