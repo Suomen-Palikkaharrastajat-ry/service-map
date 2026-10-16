@@ -93,9 +93,9 @@ All commands are defined in the `Makefile`. Run them from the repo root:
 ## Architecture Notes
 
 ### Elm SPA
-- `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`, `/#/callback`
+- `Browser.application` with hash routing: `/#/`, `/#/locations`, `/#/locations/new`, `/#/locations/:id`, `/#/locations/:id/edit`
 - MapLibre GL vector basemap loaded from the external [`service-map-tiles`](https://github.com/Suomen-Palikkaharrastajat-ry/service-map-tiles) service, served from `https://tiles.palikkaharrastajat.fi/`. `main.js` registers the `pmtiles://` protocol and points MapLibre at the published `style.json` (override via `VITE_BASEMAP_STYLE_URL`); no tiles, glyphs, or GeoJSON are hosted here. The form location-picker uses an inline OSM raster style for street-level zoom.
-- Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`, `getCallbackParams`/`callbackParams`.
+- Ports surface: `initMap`, `addMarkers`, `markerClicked`, `setMapMarker`, `mapMarkerMoved`, `destroyMap`, OAuth ports, `parseKml`/`kmlParsed`.
 - Map filters are persisted to `localStorage.mapFilters` via `saveFilterState`, whose
   payload is `{ hiddenTags : List String, eventsFilter : String }`. The events filter is
   three-state (`Types.EventFilter`: `"all"` / `"no-cancelled"` / `"none"`), defaulting to
@@ -103,7 +103,7 @@ All commands are defined in the `Makefile`. Run them from the repo root:
   Cancelled events (`Event.cancelled`, read-only from the `events` collection) are dimmed
   via the `marker-cancelled` class and badged in the detail panel. `addMarkers`
   (`MarkerData`) and `focusMapOnMarker` both carry `cancelled`.
-- OAuth is the PocketBase popup flow (`authWithOAuth2`, returning to `/api/oauth2-redirect`), opened synchronously in the click by the hub's `pocketbase-auth.js`, which `main.js` wires with the lazy SDK. The `#/callback` route and `getCallbackParams`/`callbackParams` ports are legacy and unused.
+- OAuth is the PocketBase popup flow (`authWithOAuth2`, returning to `/api/oauth2-redirect`), opened synchronously in the click by the hub's `pocketbase-auth.js`, which `main.js` wires with the lazy SDK. The app has no `#/callback` route: such a URL is treated as not found.
 - Uses `RemoteData` for async state.
 - Uses the opening-hours editor from the vendored `osm-opening-hours` package.
 

@@ -8,9 +8,7 @@ import Browser
 import Browser.Events
 import Browser.Navigation as Nav
 import Component.Layout
-import Component.SkipLink
 import Component.Spinner
-import Component.Toast
 import Date
 import DatePicker
 import DateUtils
@@ -233,9 +231,6 @@ initPage lang pbBaseUrl key route authState url now =
                         , Task.perform identity (Task.succeed (Types.AddToast Types.ToastInfo (t lang LoginRequired)))
                         ]
                     )
-
-        RouteAuthCallback ->
-            ( PageAuthCallback, Ports.getCallbackParams () )
 
         RouteNotFound ->
             ( PageNotFound, Cmd.none )
@@ -632,68 +627,6 @@ update msg model =
 
                 Nothing ->
                     addToast model Types.ToastError (t model.lang LoginFailed)
-
-        AuthCallbackReceived codeVerifier providerState ->
-            let
-                query =
-                    PocketBaseAuth.callbackQuery model.url
-
-                maybeCode =
-                    query.code
-
-                maybeState =
-                    query.state
-            in
-            case ( maybeCode, maybeState ) of
-                ( Just code, Just stateParam ) ->
-                    if stateParam /= providerState then
-                        let
-                            ( m, c ) =
-                                addToast model Types.ToastError (t model.lang LoginFailed)
-                        in
-                        ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
-
-                    else
-                        ( model
-                        , PocketBaseAuth.fetchOAuthToken
-                            model.pbBaseUrl
-                            code
-                            codeVerifier
-                            (PocketBaseAuth.callbackRedirectUrl model.url)
-                            providerState
-                            GotOAuthToken
-                        )
-
-                _ ->
-                    let
-                        ( m, c ) =
-                            addToast model Types.ToastError (t model.lang LoginFailed)
-                    in
-                    ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
-
-        GotOAuthToken (Ok (Authenticated user)) ->
-            let
-                ( m, c ) =
-                    addToast { model | authState = Authenticated user } Types.ToastSuccess (t model.lang LoginSuccess)
-            in
-            ( m
-            , Cmd.batch
-                [ c
-                , Ports.saveAuthToken { token = user.token, model = PocketBaseAuth.authUserModelJson user }
-                , Nav.pushUrl model.key (Route.toHref RouteMap)
-                , Api.fetchLocations model.pbBaseUrl (Just user.token)
-                ]
-            )
-
-        GotOAuthToken (Ok NotAuthenticated) ->
-            ( model, Cmd.none )
-
-        GotOAuthToken (Err err) ->
-            let
-                ( m, c ) =
-                    addToast model Types.ToastError (Api.httpErrorToString model.lang err)
-            in
-            ( m, Cmd.batch [ c, Nav.pushUrl model.key (Route.toHref RouteMap) ] )
 
         -- Forms Shared Messages
         NewFormFieldChanged field val ->
@@ -1573,7 +1506,6 @@ subscriptions model =
             [ Ports.markerClicked MarkerClicked
             , Ports.oauthPopupResult OAuthPopupResult
             , Ports.mapMarkerMoved (\pos -> MapMarkerMoved pos.lat pos.lon)
-            , Ports.callbackParams (\params -> AuthCallbackReceived params.codeVerifier params.state)
             , Ports.kmlParsed LocationKmlParsed
             ]
 
@@ -1673,10 +1605,6 @@ view model =
                         PageLocationEdit id editPage ->
                             div [ class "flex-1 overflow-y-auto w-full" ]
                                 [ Page.LocationEdit.view model.lang editPage ]
-
-                        PageAuthCallback ->
-                            div [ class "flex items-center justify-center flex-1 h-full w-full" ]
-                                [ Component.Spinner.view { size = Component.Spinner.Medium, label = t model.lang I18n.Loading } ]
 
                         PageNotFound ->
                             div [ class "p-8 text-center" ] [ Html.text (t model.lang PageNotFoundText) ]

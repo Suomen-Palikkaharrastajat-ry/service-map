@@ -356,7 +356,6 @@ type Page
     | PageLocationNew LocationNewPage
     | PageLocationEdit String LocationEditPage
     | PageLocationDetail String LocationDetailPage
-    | PageAuthCallback
     | PageNotFound
     | PageLoading
 
@@ -449,8 +448,6 @@ type Msg
     | LoginClicked
     | LogOut
     | OAuthPopupResult { token : String, model : String }
-    | AuthCallbackReceived String String
-    | GotOAuthToken (Result Http.Error AuthState)
       -- Menu
     | ToggleMenu
     | CloseMenu

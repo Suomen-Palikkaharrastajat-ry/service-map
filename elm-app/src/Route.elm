@@ -14,7 +14,6 @@ type Route
     | RouteLocationNew
     | RouteLocationDetail String
     | RouteLocationEdit String
-    | RouteAuthCallback
     | RouteNotFound
 
 
@@ -31,8 +30,6 @@ routeParser =
             (Url.Parser.s "locations" </> Url.Parser.string)
         , Url.Parser.map RouteLocations
             (Url.Parser.s "locations")
-        , Url.Parser.map RouteAuthCallback
-            (Url.Parser.s "callback")
         ]
 
 
@@ -87,9 +84,6 @@ toHref route =
 
                 RouteLocationDetail id ->
                     "/locations/" ++ id
-
-                RouteAuthCallback ->
-                    "/callback"
 
                 RouteNotFound ->
                     "/404"
