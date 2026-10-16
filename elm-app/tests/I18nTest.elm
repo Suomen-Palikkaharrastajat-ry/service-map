@@ -4,7 +4,7 @@ module I18nTest exposing (suite)
 -}
 
 import Expect
-import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t)
+import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t, translateTag)
 import Lang
 import Test exposing (Test, describe, test)
 import Types exposing (EventFilter(..), LocationState(..))
@@ -148,6 +148,12 @@ suite =
                 \_ -> t Lang.Fi EventsModalShowOnMap |> String.isEmpty |> Expect.equal False
             , test "A11yEventsModalClose is non-empty" <|
                 \_ -> t Lang.Fi A11yEventsModalClose |> String.isEmpty |> Expect.equal False
+            , test "LocationsModalEmpty is non-empty" <|
+                \_ -> t Lang.Fi LocationsModalEmpty |> String.isEmpty |> Expect.equal False
+            , test "LocationsModalOpen is non-empty" <|
+                \_ -> t Lang.Fi LocationsModalOpen |> String.isEmpty |> Expect.equal False
+            , test "A11yLocationsModalClose is non-empty" <|
+                \_ -> t Lang.Fi A11yLocationsModalClose |> String.isEmpty |> Expect.equal False
             , test "FilterPanelTitle is non-empty" <|
                 \_ -> t Lang.Fi FilterPanelTitle |> String.isEmpty |> Expect.equal False
             , test "FilterGroupLegend is non-empty" <|
@@ -166,6 +172,32 @@ suite =
                 \_ ->
                     eventFilterLabel Lang.Fi NoEvents
                         |> Expect.notEqual (eventFilterLabel Lang.Fi HideCancelled)
+            ]
+        , describe "translateTag"
+            [ test "translates museum in Finnish and English" <|
+                \_ ->
+                    ( translateTag Lang.Fi "museum", translateTag Lang.En "museum" )
+                        |> Expect.equal ( "Museo", "Museum" )
+            , test "translates exhibition in Finnish and English" <|
+                \_ ->
+                    ( translateTag Lang.Fi "exhibition", translateTag Lang.En "exhibition" )
+                        |> Expect.equal ( "Näyttely", "Exhibition" )
+            , test "translates store in Finnish and English" <|
+                \_ ->
+                    ( translateTag Lang.Fi "store", translateTag Lang.En "store" )
+                        |> Expect.equal ( "Kauppa", "Shop" )
+            , test "translates fleamarket in Finnish and English" <|
+                \_ ->
+                    ( translateTag Lang.Fi "fleamarket", translateTag Lang.En "fleamarket" )
+                        |> Expect.equal ( "Kirpputori", "Flea market" )
+            , test "translates other in Finnish and English" <|
+                \_ ->
+                    ( translateTag Lang.Fi "other", translateTag Lang.En "other" )
+                        |> Expect.equal ( "Muu", "Other" )
+            , test "preserves unknown tags" <|
+                \_ ->
+                    translateTag Lang.Fi "custom-tag"
+                        |> Expect.equal "custom-tag"
             ]
         , describe "languages"
             [ test "Finnish and English have their own text" <|

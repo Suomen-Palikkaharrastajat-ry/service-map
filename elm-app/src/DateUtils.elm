@@ -18,7 +18,7 @@ import Lang exposing (Lang)
 {-| Format a location date for display.
 Handles start date, end date, and same-day logic.
 -}
-formatLocationDateDisplay : Lang -> { startDate : Maybe String, endDate : Maybe String } -> Maybe String
+formatLocationDateDisplay : Lang -> { a | startDate : Maybe String, endDate : Maybe String } -> Maybe String
 formatLocationDateDisplay lang { startDate, endDate } =
     case startDate |> Maybe.andThen parseUtcString of
         Nothing ->

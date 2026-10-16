@@ -8,10 +8,10 @@ import Component.Form as Form
 import Component.LoadState as LoadState
 import DateUtils
 import FeatherIcons
-import Html exposing (Html, a, button, div, input, label, p, span, text)
+import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
 import Html.Attributes exposing (attribute, checked, class, for, href, id, property, rel, target, title, type_)
 import Html.Events exposing (onCheck, onClick)
-import I18n exposing (MsgKey(..), eventFilterLabel, t)
+import I18n exposing (MsgKey(..), eventFilterLabel, t, translateTag)
 import Json.Encode as Encode
 import Lang exposing (Lang)
 import OpeningHours.I18n as OHI18n
@@ -39,7 +39,7 @@ view lang model =
             []
         , viewStatusBadge lang model
         , viewToggles lang model
-        , viewEventsModal lang model
+        , viewFilterModal lang model
         , viewPanel lang model
         ]
 
@@ -67,26 +67,6 @@ viewToggles lang model =
 
                 _ ->
                     []
-
-        localizeTag tag =
-            case tag of
-                "exhibition" ->
-                    t lang TagExhibition
-
-                "store" ->
-                    t lang TagStore
-
-                "fleamarket" ->
-                    t lang TagFleamarket
-
-                "museum" ->
-                    t lang TagMuseum
-
-                "other" ->
-                    t lang TagOther
-
-                _ ->
-                    tag
     in
     if List.isEmpty allTags && (model.events == NotAsked || model.events == RemoteData.Loading) then
         text ""
@@ -104,21 +84,50 @@ viewToggles lang model =
                             let
                                 isVisible =
                                     not (List.member tag model.hiddenTags)
+
+                                tagLocations =
+                                    Types.visibleLocationsForTag tag model
+
+                                tagCount =
+                                    List.length tagLocations
+
+                                tagLabel =
+                                    translateTag lang tag
+
+                                tagTitle =
+                                    tagLabel ++ " (" ++ String.fromInt tagCount ++ ")"
                             in
-                            label
-                                [ for ("tag-filter-" ++ tag)
-                                , class "flex items-center gap-2 cursor-pointer type-body-small"
-                                ]
-                                [ input
-                                    [ type_ "checkbox"
-                                    , id ("tag-filter-" ++ tag)
-                                    , checked isVisible
-                                    , onCheck (\chk -> ToggleTagVisibility tag (not chk))
-                                    , class filterCheckboxClass
+                            div [ class "flex items-center justify-between gap-2 type-body-small w-full" ]
+                                [ label
+                                    [ for ("tag-filter-" ++ tag)
+                                    , class "flex items-center gap-2 cursor-pointer type-body-small flex-1 min-w-0"
+                                    , title tagTitle
                                     ]
-                                    []
-                                , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
-                                , text (localizeTag tag)
+                                    [ input
+                                        [ type_ "checkbox"
+                                        , id ("tag-filter-" ++ tag)
+                                        , checked isVisible
+                                        , onCheck (\chk -> ToggleTagVisibility tag (not chk))
+                                        , class filterCheckboxClass
+                                        ]
+                                        []
+                                    , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
+                                    , text tagLabel
+                                    , span [ class "sr-only" ] [ text (" (" ++ String.fromInt tagCount ++ ")") ]
+                                    ]
+                                , if tagCount > 0 then
+                                    button
+                                        [ type_ "button"
+                                        , id ("tag-modal-open-" ++ tag)
+                                        , onClick (ToggleTagModal tag)
+                                        , title (t lang LocationsModalOpen)
+                                        , attribute "aria-label" (t lang LocationsModalOpen ++ ": " ++ tagLabel)
+                                        , class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+                                        ]
+                                        [ featherIcon FeatherIcons.list 14 ]
+
+                                  else
+                                    text ""
                                 ]
                         )
                  )
@@ -148,18 +157,14 @@ viewEventFilterToggle lang model =
         eventCount =
             List.length (Types.visibleEvents model)
 
-        countSuffix =
-            if model.eventFilter == Types.NoEvents then
-                ""
-
-            else
-                " (" ++ String.fromInt eventCount ++ ")"
+        eventTitle =
+            t lang FilterEvents ++ " (" ++ String.fromInt eventCount ++ "): " ++ eventFilterLabel lang model.eventFilter
     in
     div [ class "flex items-center justify-between gap-2 type-body-small w-full" ]
         [ label
             [ for "event-filter-toggle"
             , class "flex items-center gap-2 cursor-pointer type-body-small flex-1 min-w-0"
-            , title (t lang FilterEvents ++ ": " ++ eventFilterLabel lang model.eventFilter)
+            , title eventTitle
             ]
             [ input
                 [ type_ "checkbox"
@@ -172,8 +177,8 @@ viewEventFilterToggle lang model =
                 ]
                 []
             , span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
-            , text (t lang FilterEvents ++ countSuffix)
-            , span [ class "sr-only" ] [ text (": " ++ eventFilterLabel lang model.eventFilter) ]
+            , text (t lang FilterEvents)
+            , span [ class "sr-only" ] [ text (" (" ++ String.fromInt eventCount ++ "): " ++ eventFilterLabel lang model.eventFilter) ]
             ]
         , if eventCount > 0 then
             button
@@ -191,61 +196,91 @@ viewEventFilterToggle lang model =
         ]
 
 
-viewEventsModal : Lang -> Model -> Html Msg
-viewEventsModal lang model =
-    if not model.eventsModalOpen then
-        text ""
+viewFilterModal : Lang -> Model -> Html Msg
+viewFilterModal lang model =
+    case model.filterModal of
+        Nothing ->
+            text ""
 
-    else
-        let
-            evts =
-                Types.upcomingEvents model
-        in
-        div []
-            [ -- Backdrop
-              div
-                [ class "fixed inset-0 z-[1049] bg-black/40"
-                , onClick CloseEventsModal
-                ]
-                []
-            , -- Dialog container
-              div
-                [ class "fixed inset-0 z-[1050] pointer-events-none flex items-center justify-center p-4" ]
-                [ div
-                    [ class "pointer-events-auto bg-bg-page text-text-primary rounded shadow-xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden border border-border-default"
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" (t lang EventsModalTitle)
-                    ]
-                    [ -- Header
-                      div
-                        [ class "flex items-center justify-between p-4 border-b border-border-default bg-bg-surface" ]
-                        [ div [ class "flex items-center gap-2" ]
-                            [ span [ class "text-brand" ] [ featherIcon FeatherIcons.calendar 18 ]
-                            , span [ class "type-h3" ] [ text (t lang EventsModalTitle) ]
-                            ]
-                        , button
-                            [ type_ "button"
-                            , id "events-modal-close"
-                            , onClick CloseEventsModal
-                            , attribute "aria-label" (t lang A11yEventsModalClose)
-                            , class "text-text-subtle hover:text-brand p-1 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
-                            ]
-                            [ featherIcon FeatherIcons.x 20 ]
+        Just Types.EventsModal ->
+            let
+                evts =
+                    Types.upcomingEvents model
+            in
+            renderModalFrame
+                { title = t lang EventsModalTitle
+                , icon = FeatherIcons.calendar
+                , closeAriaLabel = t lang A11yEventsModalClose
+                , content =
+                    if List.isEmpty evts then
+                        [ div [ class "type-body-small text-text-muted py-6 text-center" ]
+                            [ text (t lang EventsModalEmpty) ]
                         ]
-                    , -- Body (Event list)
-                      div [ class "p-4 overflow-y-auto flex flex-col gap-3" ]
-                        (if List.isEmpty evts then
-                            [ div [ class "type-body-small text-text-muted py-6 text-center" ]
-                                [ text (t lang EventsModalEmpty) ]
-                            ]
 
-                         else
-                            List.map (viewModalEventItem lang) evts
-                        )
+                    else
+                        List.map (viewModalEventItem lang) evts
+                }
+
+        Just (Types.TagModal tag) ->
+            let
+                locs =
+                    Types.locationsForTag tag model
+            in
+            renderModalFrame
+                { title = translateTag lang tag
+                , icon = iconForTag tag
+                , closeAriaLabel = t lang A11yLocationsModalClose
+                , content =
+                    if List.isEmpty locs then
+                        [ div [ class "type-body-small text-text-muted py-6 text-center" ]
+                            [ text (t lang LocationsModalEmpty) ]
+                        ]
+
+                    else
+                        List.map (viewModalLocationItem lang) locs
+                }
+
+
+renderModalFrame : { title : String, icon : FeatherIcons.Icon, closeAriaLabel : String, content : List (Html Msg) } -> Html Msg
+renderModalFrame config =
+    div []
+        [ -- Backdrop
+          div
+            [ class "fixed inset-0 z-[1049] bg-black/40"
+            , onClick CloseFilterModal
+            ]
+            []
+        , -- Dialog container
+          div
+            [ class "fixed inset-0 z-[1050] pointer-events-none flex items-center justify-center p-4" ]
+            [ div
+                [ class "pointer-events-auto bg-bg-page text-text-primary rounded shadow-xl max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden border border-border-default"
+                , attribute "role" "dialog"
+                , attribute "aria-modal" "true"
+                , attribute "aria-labelledby" "filter-modal-title"
+                ]
+                [ -- Header
+                  div
+                    [ class "flex items-center justify-between p-4 border-b border-border-default bg-bg-surface" ]
+                    [ div [ class "flex items-center gap-2" ]
+                        [ span [ class "text-brand" ] [ featherIcon config.icon 18 ]
+                        , h2 [ id "filter-modal-title", class "type-h3" ] [ text config.title ]
+                        ]
+                    , button
+                        [ type_ "button"
+                        , id "filter-modal-close"
+                        , onClick CloseFilterModal
+                        , attribute "aria-label" config.closeAriaLabel
+                        , class "text-text-subtle hover:text-brand p-1 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+                        ]
+                        [ featherIcon FeatherIcons.x 20 ]
                     ]
+                , -- Body
+                  div [ class "p-4 overflow-y-auto flex flex-col gap-3" ]
+                    config.content
                 ]
             ]
+        ]
 
 
 viewModalEventItem : Lang -> Types.Event -> Html Msg
@@ -266,9 +301,9 @@ viewModalEventItem lang ev =
     button
         [ type_ "button"
         , class "text-left w-full p-3 rounded border border-border-default hover:border-border-brand hover:bg-bg-surface/50 transition-colors flex flex-col gap-1 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        , onClick (EventModalItemClicked ev.id)
+        , onClick (ModalMarkerClicked ev.id)
         ]
-        [ div [ class "flex items-center justify-between gap-2" ]
+        [ span [ class "flex items-center justify-between gap-2" ]
             [ span
                 [ class
                     (if ev.cancelled then
@@ -285,20 +320,64 @@ viewModalEventItem lang ev =
             text ""
 
           else
-            div [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+            span [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
                 [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
                 , text dateStr
                 ]
         , case ev.location of
             Just loc ->
-                div [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+                span [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
                     [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.mapPin 14 ]
                     , text loc
                     ]
 
             Nothing ->
                 text ""
-        , div [ class "mt-1 flex items-center gap-1 type-caption text-brand font-medium" ]
+        , span [ class "mt-1 flex items-center gap-1 type-caption text-brand font-medium" ]
+            [ text (t lang EventsModalShowOnMap)
+            , featherIcon FeatherIcons.arrowRight 12
+            ]
+        ]
+
+
+viewModalLocationItem : Lang -> Types.Location -> Html Msg
+viewModalLocationItem lang loc =
+    let
+        dateStr =
+            DateUtils.formatLocationDateDisplay lang loc
+                |> Maybe.withDefault ""
+    in
+    button
+        [ type_ "button"
+        , class "text-left w-full p-3 rounded border border-border-default hover:border-border-brand hover:bg-bg-surface/50 transition-colors flex flex-col gap-1 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        , onClick (ModalMarkerClicked loc.id)
+        ]
+        [ span [ class "flex items-center justify-between gap-2" ]
+            [ span [ class "type-body font-bold group-hover:text-brand" ]
+                [ text loc.title ]
+            ]
+        , if String.isEmpty dateStr then
+            text ""
+
+          else
+            span [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+                [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.calendar 14 ]
+                , text dateStr
+                ]
+        , case loc.location of
+            Just place ->
+                if String.isEmpty (String.trim place) then
+                    text ""
+
+                else
+                    span [ class "flex items-center gap-1.5 type-caption text-text-muted" ]
+                        [ span [ class "text-brand flex-shrink-0" ] [ featherIcon FeatherIcons.mapPin 14 ]
+                        , text place
+                        ]
+
+            Nothing ->
+                text ""
+        , span [ class "mt-1 flex items-center gap-1 type-caption text-brand font-medium" ]
             [ text (t lang EventsModalShowOnMap)
             , featherIcon FeatherIcons.arrowRight 12
             ]
@@ -600,25 +679,3 @@ viewField icon value =
         [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon icon 16 ]
         , span [] [ text value ]
         ]
-
-
-translateTag : Lang -> String -> String
-translateTag lang tagStr =
-    case tagStr of
-        "exhibition" ->
-            t lang TagExhibition
-
-        "store" ->
-            t lang TagStore
-
-        "fleamarket" ->
-            t lang TagFleamarket
-
-        "museum" ->
-            t lang TagMuseum
-
-        "other" ->
-            t lang TagOther
-
-        _ ->
-            tagStr

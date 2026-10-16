@@ -1,4 +1,4 @@
-module Main exposing (applyFormDate, applyFormField, filterSelectedMarker, isMarkerVisible, main, nextEventFilter, refreshLocationsOnMutationResult)
+module Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, main, nextEventFilter, refreshLocationsOnMutationResult)
 
 {-| Main application module: routing, state management, and top-level view.
 -}
@@ -126,7 +126,7 @@ init flags url key =
       , selectedMarker = Nothing
       , hiddenTags = flags.hiddenTags
       , eventFilter = Maybe.withDefault HideCancelled (Types.eventFilterFromString flags.eventsFilter)
-      , eventsModalOpen = False
+      , filterModal = Nothing
       , isEmbed = flags.isEmbed
       , platform = flags.platform
       , presentationMode = False
@@ -263,7 +263,7 @@ update msg model =
                     initPage model.lang model.pbBaseUrl model.key newRoute model.authState url model.now
 
                 newModel =
-                    { model | url = url, page = page, menuOpen = False }
+                    { model | url = url, page = page, menuOpen = False, filterModal = Nothing }
 
                 extraCmd =
                     case page of
@@ -384,14 +384,8 @@ update msg model =
         SelectPrevMarker ->
             let
                 allItems =
-                    (case model.locations of
-                        Success locs ->
-                            List.filter (\l -> Types.hasValidCoordinates l.point) locs
-                                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                                |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
-
-                        _ ->
-                            []
+                    (Types.visibleLocations model
+                        |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
                     )
                         ++ (Types.visibleEvents model
                                 |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
@@ -463,14 +457,8 @@ update msg model =
         SelectNextMarker ->
             let
                 allItems =
-                    (case model.locations of
-                        Success locs ->
-                            List.filter (\l -> Types.hasValidCoordinates l.point) locs
-                                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                                |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
-
-                        _ ->
-                            []
+                    (Types.visibleLocations model
+                        |> List.map (\l -> ( l.point.lat, l.point.lon, l.id ))
                     )
                         ++ (Types.visibleEvents model
                                 |> List.map (\e -> ( e.point.lat, e.point.lon, e.id ))
@@ -580,7 +568,7 @@ update msg model =
                 ( model, Cmd.none )
 
         ClosePanel ->
-            ( { model | selectedMarker = Nothing, eventsModalOpen = False }, Ports.restoreMapView () )
+            ( { model | selectedMarker = Nothing, filterModal = Nothing }, Ports.restoreMapView () )
 
         ToggleMenu ->
             if model.menuOpen then
@@ -1222,17 +1210,89 @@ update msg model =
             applyFilterChange { model | eventFilter = nextEventFilter model.eventFilter }
 
         ToggleEventsModal ->
-            if model.eventsModalOpen then
-                ( { model | eventsModalOpen = False }, Ports.focusElement "events-modal-open" )
+            case model.filterModal of
+                Just Types.EventsModal ->
+                    let
+                        focusId =
+                            if List.length (Types.visibleEvents model) > 0 then
+                                "events-modal-open"
+
+                            else
+                                "event-filter-toggle"
+                    in
+                    ( { model | filterModal = Nothing }, Ports.focusElement focusId )
+
+                _ ->
+                    ( { model | filterModal = Just Types.EventsModal }, Ports.focusElement "filter-modal-close" )
+
+        ToggleTagModal tag ->
+            case model.filterModal of
+                Just (Types.TagModal t) ->
+                    if t == tag then
+                        let
+                            focusId =
+                                if List.length (Types.visibleLocationsForTag tag model) > 0 then
+                                    "tag-modal-open-" ++ tag
+
+                                else
+                                    "tag-filter-" ++ tag
+                        in
+                        ( { model | filterModal = Nothing }, Ports.focusElement focusId )
+
+                    else
+                        ( { model | filterModal = Just (Types.TagModal tag) }, Ports.focusElement "filter-modal-close" )
+
+                _ ->
+                    ( { model | filterModal = Just (Types.TagModal tag) }, Ports.focusElement "filter-modal-close" )
+
+        CloseFilterModal ->
+            let
+                restoreFocusCmd =
+                    case model.filterModal of
+                        Just Types.EventsModal ->
+                            if List.length (Types.visibleEvents model) > 0 then
+                                Ports.focusElement "events-modal-open"
+
+                            else
+                                Ports.focusElement "event-filter-toggle"
+
+                        Just (Types.TagModal tag) ->
+                            if List.length (Types.visibleLocationsForTag tag model) > 0 then
+                                Ports.focusElement ("tag-modal-open-" ++ tag)
+
+                            else
+                                Ports.focusElement ("tag-filter-" ++ tag)
+
+                        Nothing ->
+                            Cmd.none
+            in
+            ( { model | filterModal = Nothing }, restoreFocusCmd )
+
+        ModalMarkerClicked markerId ->
+            update (MarkerClicked markerId) { model | filterModal = Nothing }
+
+
+{-| Keeps the open filter dialog only if its category remains visible; otherwise drops it.
+-}
+filterActiveModal : { a | hiddenTags : List String, eventFilter : EventFilter, filterModal : Maybe Types.FilterModal } -> Maybe Types.FilterModal
+filterActiveModal model =
+    case model.filterModal of
+        Just Types.EventsModal ->
+            if model.eventFilter == Types.NoEvents then
+                Nothing
 
             else
-                ( { model | eventsModalOpen = True }, Ports.focusElement "events-modal-close" )
+                model.filterModal
 
-        CloseEventsModal ->
-            ( { model | eventsModalOpen = False }, Ports.focusElement "events-modal-open" )
+        Just (Types.TagModal tag) ->
+            if List.member tag model.hiddenTags then
+                Nothing
 
-        EventModalItemClicked eventId ->
-            update (MarkerClicked eventId) { model | eventsModalOpen = False }
+            else
+                model.filterModal
+
+        Nothing ->
+            Nothing
 
 
 {-| Re-render markers and persist filters after a filter change, dropping (and
@@ -1242,7 +1302,10 @@ applyFilterChange : Model -> ( Model, Cmd Msg )
 applyFilterChange filtered =
     let
         newModel =
-            { filtered | selectedMarker = filterSelectedMarker filtered }
+            { filtered
+                | selectedMarker = filterSelectedMarker filtered
+                , filterModal = filterActiveModal filtered
+            }
 
         restoreCmd =
             if filtered.selectedMarker /= Nothing && newModel.selectedMarker == Nothing then
@@ -1471,15 +1534,8 @@ updateMarkers : Model -> Cmd Msg
 updateMarkers model =
     let
         locMarkers =
-            case model.locations of
-                Success locations ->
-                    locations
-                        |> List.filter (\l -> Types.hasValidCoordinates l.point)
-                        |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
-                        |> List.map (locationToMarker model.lang)
-
-                _ ->
-                    []
+            Types.visibleLocations model
+                |> List.map (locationToMarker model.lang)
 
         evtMarkers =
             Types.visibleEvents model
@@ -1501,13 +1557,13 @@ escapeDecoder =
             )
 
 
-eventsModalEscapeDecoder : Decode.Decoder Msg
-eventsModalEscapeDecoder =
+filterModalEscapeDecoder : Decode.Decoder Msg
+filterModalEscapeDecoder =
     Decode.field "key" Decode.string
         |> Decode.andThen
             (\key ->
                 if key == "Escape" then
-                    Decode.succeed CloseEventsModal
+                    Decode.succeed CloseFilterModal
 
                 else
                     Decode.fail "Not Escape"
@@ -1563,11 +1619,11 @@ subscriptions model =
 
         pageKeySubs =
             case model.page of
-                -- The events dialog is modal: Escape closes it alone, and marker
+                -- The filter dialog is modal: Escape closes it alone, and marker
                 -- navigation stays off behind it.
                 Types.PageMap ->
-                    if model.eventsModalOpen then
-                        [ Browser.Events.onKeyDown eventsModalEscapeDecoder ]
+                    if model.filterModal /= Nothing then
+                        [ Browser.Events.onKeyDown filterModalEscapeDecoder ]
 
                     else if model.selectedMarker /= Nothing then
                         [ Browser.Events.onKeyDown escapeDecoder

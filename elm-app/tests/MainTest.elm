@@ -5,10 +5,10 @@ module MainTest exposing (suite)
 
 import Expect
 import Http
-import Main exposing (applyFormDate, applyFormField, filterSelectedMarker, isMarkerVisible, nextEventFilter, refreshLocationsOnMutationResult)
+import Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, nextEventFilter, refreshLocationsOnMutationResult)
 import RemoteData exposing (RemoteData(..))
 import Test exposing (Test, describe, test)
-import Types exposing (EventFilter(..), LocationState(..), SelectedMarker(..), emptyLocationFormData, upcomingEvents, visibleEvents)
+import Types exposing (EventFilter(..), FilterModal(..), LocationState(..), SelectedMarker(..), emptyLocationFormData, locationsForTag, upcomingEvents, visibleEvents, visibleLocations, visibleLocationsForTag)
 
 
 testLocation : Types.Location
@@ -299,6 +299,143 @@ suite =
                         , eventFilter = AllEvents
                         , events = Success [ liveEvent ]
                         , selectedMarker = Nothing
+                        }
+                        |> Expect.equal Nothing
+            ]
+        , describe "visibleLocations"
+            [ test "drops locations at (0,0)" <|
+                \_ ->
+                    let
+                        unlocatedLoc =
+                            { testLocation | id = "unlocated", point = { lat = 0, lon = 0 } }
+                    in
+                    visibleLocations { hiddenTags = [], locations = Success [ unlocatedLoc, testLocation ] }
+                        |> List.map .id
+                        |> Expect.equal [ "abc123" ]
+            , test "drops locations hidden by any of their tags" <|
+                \_ ->
+                    let
+                        museumStore =
+                            { testLocation | id = "museumStore", tags = [ "museum", "store" ] }
+                    in
+                    visibleLocations { hiddenTags = [ "museum" ], locations = Success [ museumStore ] }
+                        |> Expect.equal []
+            , test "keeps locations whose tags are all visible" <|
+                \_ ->
+                    let
+                        storeLoc =
+                            { testLocation | id = "storeLoc", tags = [ "store" ] }
+                    in
+                    visibleLocations { hiddenTags = [ "museum" ], locations = Success [ storeLoc ] }
+                        |> List.map .id
+                        |> Expect.equal [ "storeLoc" ]
+            , test "returns empty when not loaded" <|
+                \_ ->
+                    visibleLocations { hiddenTags = [], locations = NotAsked }
+                        |> Expect.equal []
+            ]
+        , describe "visibleLocationsForTag"
+            [ test "returns only locations containing the tag" <|
+                \_ ->
+                    let
+                        storeLoc =
+                            { testLocation | id = "store1", tags = [ "store" ] }
+
+                        museumLoc =
+                            { testLocation | id = "museum1", tags = [ "museum" ] }
+                    in
+                    visibleLocationsForTag "store" { hiddenTags = [], locations = Success [ storeLoc, museumLoc ] }
+                        |> List.map .id
+                        |> Expect.equal [ "store1" ]
+            , test "returns empty when tag itself is hidden" <|
+                \_ ->
+                    let
+                        storeLoc =
+                            { testLocation | id = "store1", tags = [ "store" ] }
+                    in
+                    visibleLocationsForTag "store" { hiddenTags = [ "store" ], locations = Success [ storeLoc ] }
+                        |> Expect.equal []
+            , test "returns empty when location has another tag that is hidden" <|
+                \_ ->
+                    let
+                        storeMuseumLoc =
+                            { testLocation | id = "combo", tags = [ "store", "museum" ] }
+                    in
+                    visibleLocationsForTag "store" { hiddenTags = [ "museum" ], locations = Success [ storeMuseumLoc ] }
+                        |> Expect.equal []
+            ]
+        , describe "locationsForTag"
+            [ test "sorts locations by title case-insensitively" <|
+                \_ ->
+                    let
+                        locA =
+                            { testLocation | id = "a", title = "zebra", tags = [ "store" ] }
+
+                        locB =
+                            { testLocation | id = "b", title = "Alpha", tags = [ "store" ] }
+
+                        locC =
+                            { testLocation | id = "c", title = "beta", tags = [ "store" ] }
+                    in
+                    locationsForTag "store" { hiddenTags = [], locations = Success [ locA, locB, locC ] }
+                        |> List.map .id
+                        |> Expect.equal [ "b", "c", "a" ]
+            ]
+        , describe "filterActiveModal"
+            [ test "keeps EventsModal when events are visible" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = []
+                        , eventFilter = AllEvents
+                        , filterModal = Just EventsModal
+                        }
+                        |> Expect.equal (Just EventsModal)
+            , test "keeps EventsModal when eventFilter is HideCancelled" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = []
+                        , eventFilter = HideCancelled
+                        , filterModal = Just EventsModal
+                        }
+                        |> Expect.equal (Just EventsModal)
+            , test "drops EventsModal when eventFilter is NoEvents" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = []
+                        , eventFilter = NoEvents
+                        , filterModal = Just EventsModal
+                        }
+                        |> Expect.equal Nothing
+            , test "keeps TagModal when tag is visible" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = []
+                        , eventFilter = AllEvents
+                        , filterModal = Just (TagModal "store")
+                        }
+                        |> Expect.equal (Just (TagModal "store"))
+            , test "keeps TagModal when hiddenTags contains unrelated tags" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = [ "museum" ]
+                        , eventFilter = AllEvents
+                        , filterModal = Just (TagModal "store")
+                        }
+                        |> Expect.equal (Just (TagModal "store"))
+            , test "drops TagModal when tag is hidden" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = [ "store" ]
+                        , eventFilter = AllEvents
+                        , filterModal = Just (TagModal "store")
+                        }
+                        |> Expect.equal Nothing
+            , test "remains Nothing when no modal was open" <|
+                \_ ->
+                    filterActiveModal
+                        { hiddenTags = []
+                        , eventFilter = AllEvents
+                        , filterModal = Nothing
                         }
                         |> Expect.equal Nothing
             ]

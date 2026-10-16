@@ -1,6 +1,7 @@
 module Types exposing
     ( Event
     , EventFilter(..)
+    , FilterModal(..)
     , Flags
     , FormStatus(..)
     , GeoPoint
@@ -29,10 +30,13 @@ module Types exposing
     , isValidForm
     , locationStateFromString
     , locationStateToString
+    , locationsForTag
     , mapLink
     , mapLinkTarget
     , upcomingEvents
     , visibleEvents
+    , visibleLocations
+    , visibleLocationsForTag
     )
 
 {-| Core types, models, messages, and state representations for Palikkakartta.
@@ -96,6 +100,41 @@ upcomingEvents : { a | eventFilter : EventFilter, events : RemoteData Http.Error
 upcomingEvents model =
     visibleEvents model
         |> List.sortBy .startDate
+
+
+{-| All locations currently visible on the map (located and not hidden by tags).
+-}
+visibleLocations : { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+visibleLocations model =
+    case model.locations of
+        RemoteData.Success locs ->
+            locs
+                |> List.filter (\l -> hasValidCoordinates l.point)
+                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
+
+        _ ->
+            []
+
+
+{-| Locations the current tag filter lets through for a specific tag.
+Returns empty list if the tag itself is hidden.
+-}
+visibleLocationsForTag : String -> { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+visibleLocationsForTag tag model =
+    if List.member tag model.hiddenTags then
+        []
+
+    else
+        visibleLocations model
+            |> List.filter (\l -> List.member tag l.tags)
+
+
+{-| The tag dialog's list: the visible locations for a tag, sorted by title (case-insensitive).
+-}
+locationsForTag : String -> { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+locationsForTag tag model =
+    visibleLocationsForTag tag model
+        |> List.sortBy (\l -> String.toLower l.title)
 
 
 {-| Where a coordinate should link to, given the platform from `Flags`.
@@ -222,6 +261,13 @@ eventFilterToString filter =
 
         NoEvents ->
             "none"
+
+
+{-| Which dialog (if any) is currently open next to the filters.
+-}
+type FilterModal
+    = EventsModal
+    | TagModal String
 
 
 type alias Location =
@@ -410,7 +456,7 @@ type alias Model =
     , selectedMarker : Maybe SelectedMarker
     , hiddenTags : List String
     , eventFilter : EventFilter
-    , eventsModalOpen : Bool
+    , filterModal : Maybe FilterModal
     , isEmbed : Bool
     , platform : String
     , presentationMode : Bool
@@ -527,8 +573,9 @@ type Msg
     | ToggleTagVisibility String Bool
     | CycleEventFilter
     | ToggleEventsModal
-    | CloseEventsModal
-    | EventModalItemClicked String
+    | ToggleTagModal String
+    | CloseFilterModal
+    | ModalMarkerClicked String
       -- KML Import
     | LocationKmlFileSelected File
     | LocationKmlGotContent String

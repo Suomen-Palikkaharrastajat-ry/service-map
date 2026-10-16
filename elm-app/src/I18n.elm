@@ -1,4 +1,4 @@
-module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount, locale, stateLabel, t)
+module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount, locale, stateLabel, t, translateTag)
 
 {-| UI strings per language, keyed by MsgKey, plus state and filter labels.
 -}
@@ -71,6 +71,9 @@ type MsgKey
     | EventsModalOpen
     | EventsModalShowOnMap
     | A11yEventsModalClose
+    | LocationsModalEmpty
+    | LocationsModalOpen
+    | A11yLocationsModalClose
     | FilterPanelTitle
     | FilterGroupLegend
     | EventCancelled
@@ -308,6 +311,15 @@ fi key =
 
         A11yEventsModalClose ->
             "Sulje tapahtumalista"
+
+        LocationsModalEmpty ->
+            "Ei kohteita"
+
+        LocationsModalOpen ->
+            "Näytä kohdelista"
+
+        A11yLocationsModalClose ->
+            "Sulje kohdelista"
 
         FilterPanelTitle ->
             "Suodattimet"
@@ -607,6 +619,15 @@ en key =
         A11yEventsModalClose ->
             "Close event list"
 
+        LocationsModalEmpty ->
+            "No places"
+
+        LocationsModalOpen ->
+            "View place list"
+
+        A11yLocationsModalClose ->
+            "Close place list"
+
         FilterPanelTitle ->
             "Filters"
 
@@ -781,3 +802,27 @@ screen readers.
 contentAttrs : Lang -> List (Html.Attribute msg)
 contentAttrs lang =
     Lang.attributeFor { interface = lang, content = Fi }
+
+
+{-| Localized tag name for display.
+-}
+translateTag : Lang -> String -> String
+translateTag lang tag =
+    case tag of
+        "exhibition" ->
+            t lang TagExhibition
+
+        "store" ->
+            t lang TagStore
+
+        "fleamarket" ->
+            t lang TagFleamarket
+
+        "museum" ->
+            t lang TagMuseum
+
+        "other" ->
+            t lang TagOther
+
+        _ ->
+            tag

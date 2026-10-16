@@ -130,5 +130,9 @@ suite =
                 \_ ->
                     formatLocationDateDisplay Lang.Fi { startDate = Just "2026-05-05T11:00:00.000Z", endDate = Just "2026-05-08T14:00:00.000Z" }
                         |> Expect.equal (Just "ti 5.5. klo 14.00 – pe 8.5. klo 17.00")
+            , test "accepts an extensible record with extra fields" <|
+                \_ ->
+                    formatLocationDateDisplay Lang.Fi { title = "Näyttely", tags = [ "exhibition" ], startDate = Just "2026-05-05T11:00:00.000Z", endDate = Nothing }
+                        |> Expect.equal (Just "ti 5.5. klo 14.00")
             ]
         ]
