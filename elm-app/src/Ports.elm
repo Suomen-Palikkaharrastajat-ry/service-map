@@ -49,6 +49,7 @@ type alias MarkerData =
     , isEvent : Bool
     , tags : List String
     , cancelled : Bool
+    , closed : Bool
     }
 
 
@@ -87,7 +88,7 @@ port saveAuthToken : { token : String, model : String } -> Cmd msg
 port clearAuthToken : () -> Cmd msg
 
 
-port saveFilterState : { hiddenTags : List String, eventsFilter : String } -> Cmd msg
+port saveFilterState : { tagFilters : List { tag : String, filter : String }, eventsFilter : String } -> Cmd msg
 
 
 port setMapMarker : { lat : Float, lon : Float } -> Cmd msg
@@ -105,7 +106,7 @@ port parseKml : String -> Cmd msg
 port kmlParsed : (Json.Value -> msg) -> Sub msg
 
 
-port focusMapOnMarker : { lat : Float, lon : Float, id : String, title : String, date : String, cancelled : Bool } -> Cmd msg
+port focusMapOnMarker : { lat : Float, lon : Float, id : String, title : String, date : String, cancelled : Bool, closed : Bool } -> Cmd msg
 
 
 port restoreMapView : () -> Cmd msg

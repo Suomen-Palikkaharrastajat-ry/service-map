@@ -31,12 +31,29 @@ suite =
             , test "Published round-trip" <|
                 \_ ->
                     Types.Published |> Types.locationStateToString |> Types.locationStateFromString |> Expect.equal (Just Types.Published)
+            , test "Closed round-trip" <|
+                \_ ->
+                    Types.Closed |> Types.locationStateToString |> Types.locationStateFromString |> Expect.equal (Just Types.Closed)
             , test "Deleted round-trip" <|
                 \_ ->
                     Types.Deleted |> Types.locationStateToString |> Types.locationStateFromString |> Expect.equal (Just Types.Deleted)
             , test "unknown string falls back to Draft" <|
                 \_ ->
                     Types.locationStateFromString "nonsense" |> Expect.equal Nothing
+            ]
+        , describe "tagFilterToString and tagFilterFromString"
+            [ test "AllLocations round-trip" <|
+                \_ ->
+                    Types.AllLocations |> Types.tagFilterToString |> Types.tagFilterFromString |> Expect.equal (Just Types.AllLocations)
+            , test "HideClosed round-trip" <|
+                \_ ->
+                    Types.HideClosed |> Types.tagFilterToString |> Types.tagFilterFromString |> Expect.equal (Just Types.HideClosed)
+            , test "NoLocations round-trip" <|
+                \_ ->
+                    Types.NoLocations |> Types.tagFilterToString |> Types.tagFilterFromString |> Expect.equal (Just Types.NoLocations)
+            , test "unknown string gives Nothing" <|
+                \_ ->
+                    Types.tagFilterFromString "nonsense" |> Expect.equal Nothing
             ]
         , describe "eventFilterToString and eventFilterFromString"
             [ test "AllEvents round-trip" <|

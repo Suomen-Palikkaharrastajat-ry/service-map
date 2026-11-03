@@ -4,10 +4,10 @@ module I18nTest exposing (suite)
 -}
 
 import Expect
-import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t, translateTag)
+import I18n exposing (MsgKey(..), eventFilterLabel, stateLabel, t, tagFilterLabel, translateTag)
 import Lang
 import Test exposing (Test, describe, test)
-import Types exposing (EventFilter(..), LocationState(..))
+import Types exposing (EventFilter(..), LocationState(..), TagFilter(..))
 
 
 suite : Test
@@ -18,6 +18,8 @@ suite =
                 \_ -> stateLabel Lang.Fi Draft |> Expect.equal "Luonnos"
             , test "Published → Julkaistu" <|
                 \_ -> stateLabel Lang.Fi Published |> Expect.equal "Julkaistu"
+            , test "Closed → Suljettu" <|
+                \_ -> stateLabel Lang.Fi Closed |> Expect.equal "Suljettu"
             , test "Pending → Odottaa" <|
                 \_ -> stateLabel Lang.Fi Pending |> Expect.equal "Odottaa"
             , test "Deleted → Poistettu" <|
@@ -34,6 +36,8 @@ suite =
                 \_ -> t Lang.Fi StatePending |> String.isEmpty |> Expect.equal False
             , test "StatePublished is non-empty" <|
                 \_ -> t Lang.Fi StatePublished |> String.isEmpty |> Expect.equal False
+            , test "StateClosed is non-empty" <|
+                \_ -> t Lang.Fi StateClosed |> String.isEmpty |> Expect.equal False
             , test "StateDeleted is non-empty" <|
                 \_ -> t Lang.Fi StateDeleted |> String.isEmpty |> Expect.equal False
             , test "FormTitle is non-empty" <|
@@ -138,6 +142,12 @@ suite =
                 \_ -> t Lang.Fi FilterEventsNoCancelled |> String.isEmpty |> Expect.equal False
             , test "FilterEventsNone is non-empty" <|
                 \_ -> t Lang.Fi FilterEventsNone |> String.isEmpty |> Expect.equal False
+            , test "FilterLocationsAll is non-empty" <|
+                \_ -> t Lang.Fi FilterLocationsAll |> String.isEmpty |> Expect.equal False
+            , test "FilterLocationsNoClosed is non-empty" <|
+                \_ -> t Lang.Fi FilterLocationsNoClosed |> String.isEmpty |> Expect.equal False
+            , test "FilterLocationsNone is non-empty" <|
+                \_ -> t Lang.Fi FilterLocationsNone |> String.isEmpty |> Expect.equal False
             , test "EventsModalTitle is non-empty" <|
                 \_ -> t Lang.Fi EventsModalTitle |> String.isEmpty |> Expect.equal False
             , test "EventsModalEmpty is non-empty" <|
@@ -160,6 +170,20 @@ suite =
                 \_ -> t Lang.Fi FilterGroupLegend |> String.isEmpty |> Expect.equal False
             , test "EventCancelled is non-empty" <|
                 \_ -> t Lang.Fi EventCancelled |> String.isEmpty |> Expect.equal False
+            , test "LocationClosed is non-empty" <|
+                \_ -> t Lang.Fi LocationClosed |> String.isEmpty |> Expect.equal False
+            ]
+        , describe "tagFilterLabel"
+            [ test "AllLocations label is non-empty" <|
+                \_ -> tagFilterLabel Lang.Fi AllLocations |> String.isEmpty |> Expect.equal False
+            , test "HideClosed label differs from AllLocations" <|
+                \_ ->
+                    tagFilterLabel Lang.Fi HideClosed
+                        |> Expect.notEqual (tagFilterLabel Lang.Fi AllLocations)
+            , test "NoLocations label differs from HideClosed" <|
+                \_ ->
+                    tagFilterLabel Lang.Fi NoLocations
+                        |> Expect.notEqual (tagFilterLabel Lang.Fi HideClosed)
             ]
         , describe "eventFilterLabel"
             [ test "AllEvents label is non-empty" <|

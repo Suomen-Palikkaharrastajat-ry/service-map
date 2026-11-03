@@ -221,6 +221,11 @@ suite =
                     decodeJson decodeLocation minimalLocationJson
                         |> Result.map .openingHours
                         |> Expect.equal (Ok Nothing)
+            , test "decodes closed state" <|
+                \_ ->
+                    decodeJson decodeLocation """{"id":"closed1","title":"Suljettu kauppa","state":"closed"}"""
+                        |> Result.map .state
+                        |> Expect.equal (Ok Closed)
             ]
         , describe "imageUrl"
             [ test "builds correct URL" <|

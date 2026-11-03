@@ -36,11 +36,28 @@ view lang pbBaseUrl isEmbed platform authState _ detPage =
 
 viewLocationContent : Lang -> String -> Bool -> String -> AuthState -> LocationDetailPage -> Types.Location -> Html Msg
 viewLocationContent lang pbBaseUrl isEmbed platform authState detPage loc =
+    let
+        isClosed =
+            loc.state == Types.Closed
+    in
     div []
         [ div [ class "flex justify-between items-start mb-2" ]
-            [ h1 [ class "type-h1 flex items-center gap-2" ]
+            [ h1 [ class "type-h1 flex items-center gap-2 flex-wrap" ]
                 [ span [ class "text-brand shrink-0" ] [ featherIcon (getMarkerIcon loc) 24 ]
-                , span (I18n.contentAttrs lang) [ text loc.title ]
+                , span
+                    (if isClosed then
+                        class "line-through" :: I18n.contentAttrs lang
+
+                     else
+                        I18n.contentAttrs lang
+                    )
+                    [ text loc.title ]
+                , if isClosed then
+                    span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5" ]
+                        [ text (t lang I18n.LocationClosed) ]
+
+                  else
+                    text ""
                 ]
             , if isAuthenticated authState then
                 div [ class "flex gap-2 ml-4 shrink-0" ]

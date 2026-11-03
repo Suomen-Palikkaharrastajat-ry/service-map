@@ -60,7 +60,8 @@ run = do
     createDirectoryIfMissing True "assets/images"
 
     putStrLn "Downloading images..."
-    imageMap <- ImageFetcher.downloadAllImages locationImageSource locs
+    let publishedLocs = filter (\loc -> PocketBase.locationState loc == "published") locs
+    imageMap <- ImageFetcher.downloadAllImages locationImageSource publishedLocs
 
     let genCtx =
             FeedGen.GeneratorContext
@@ -68,9 +69,9 @@ run = do
                 }
 
     putStrLn "Generating feeds..."
-    rss <- FeedGen.generateRss genCtx locs
-    atom <- FeedGen.generateAtom genCtx locs
-    json <- FeedGen.generateJsonFeed locs
+    rss <- FeedGen.generateRss genCtx publishedLocs
+    atom <- FeedGen.generateAtom genCtx publishedLocs
+    json <- FeedGen.generateJsonFeed publishedLocs
     writeStaticFile "assets/kartta.rss" rss
     writeStaticFile "assets/kartta.atom" atom
     writeStaticFile "assets/kartta.json" json

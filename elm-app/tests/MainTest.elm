@@ -3,12 +3,13 @@ module MainTest exposing (suite)
 {-| Test suite for Main helper functions and update logic.
 -}
 
+import Dict
 import Expect
 import Http
-import Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, nextEventFilter, refreshLocationsOnMutationResult)
+import Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, nextEventFilter, nextTagFilter, refreshLocationsOnMutationResult)
 import RemoteData exposing (RemoteData(..))
 import Test exposing (Test, describe, test)
-import Types exposing (EventFilter(..), FilterModal(..), LocationState(..), SelectedMarker(..), emptyLocationFormData, locationsForTag, upcomingEvents, visibleEvents, visibleLocations, visibleLocationsForTag)
+import Types exposing (EventFilter(..), FilterModal(..), LocationState(..), SelectedMarker(..), TagFilter(..), emptyLocationFormData, locationsForTag, upcomingEvents, visibleEvents, visibleLocations, visibleLocationsForTag)
 
 
 testLocation : Types.Location
@@ -114,6 +115,11 @@ suite =
                     applyFormField "state" "draft" emptyLocationFormData
                         |> .state
                         |> Expect.equal Draft
+            , test "state field with 'closed' sets state to Closed" <|
+                \_ ->
+                    applyFormField "state" "closed" emptyLocationFormData
+                        |> .state
+                        |> Expect.equal Closed
             , test "state field with unrecognised value leaves state unchanged" <|
                 \_ ->
                     applyFormField "state" "bogus" emptyLocationFormData
@@ -178,6 +184,18 @@ suite =
                 \_ ->
                     refreshLocationsOnMutationResult (Err Http.NetworkError) (Success [ testLocation ])
                         |> Expect.equal (Success [ testLocation ])
+            ]
+        , describe "nextTagFilter"
+            [ test "AllLocations cycles to HideClosed" <|
+                \_ -> nextTagFilter AllLocations |> Expect.equal HideClosed
+            , test "HideClosed cycles to NoLocations" <|
+                \_ -> nextTagFilter HideClosed |> Expect.equal NoLocations
+            , test "NoLocations cycles back to AllLocations" <|
+                \_ -> nextTagFilter NoLocations |> Expect.equal AllLocations
+            , test "three cycles return to the starting state" <|
+                \_ ->
+                    nextTagFilter (nextTagFilter (nextTagFilter HideClosed))
+                        |> Expect.equal HideClosed
             ]
         , describe "nextEventFilter"
             [ test "AllEvents cycles to HideCancelled" <|
@@ -246,7 +264,7 @@ suite =
                             { testLocation | tags = [ "museum" ] }
                     in
                     filterSelectedMarker
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = AllEvents
                         , events = NotAsked
                         , selectedMarker = Just (SelectedLocation loc)
@@ -259,16 +277,42 @@ suite =
                             { testLocation | tags = [ "museum" ] }
                     in
                     filterSelectedMarker
-                        { hiddenTags = [ "museum" ]
+                        { tagFilters = Dict.fromList [ ( "museum", NoLocations ) ]
                         , eventFilter = AllEvents
                         , events = NotAsked
                         , selectedMarker = Just (SelectedLocation loc)
                         }
                         |> Expect.equal Nothing
+            , test "drops selected closed location when tag filter is HideClosed" <|
+                \_ ->
+                    let
+                        closedLoc =
+                            { testLocation | tags = [ "store" ], state = Closed }
+                    in
+                    filterSelectedMarker
+                        { tagFilters = Dict.fromList [ ( "store", HideClosed ) ]
+                        , eventFilter = AllEvents
+                        , events = NotAsked
+                        , selectedMarker = Just (SelectedLocation closedLoc)
+                        }
+                        |> Expect.equal Nothing
+            , test "keeps selected closed location when tag filter is AllLocations" <|
+                \_ ->
+                    let
+                        closedLoc =
+                            { testLocation | tags = [ "store" ], state = Closed }
+                    in
+                    filterSelectedMarker
+                        { tagFilters = Dict.fromList [ ( "store", AllLocations ) ]
+                        , eventFilter = AllEvents
+                        , events = NotAsked
+                        , selectedMarker = Just (SelectedLocation closedLoc)
+                        }
+                        |> Expect.equal (Just (SelectedLocation closedLoc))
             , test "keeps selected live event when HideCancelled is active" <|
                 \_ ->
                     filterSelectedMarker
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = HideCancelled
                         , events = Success [ liveEvent, cancelledEvent ]
                         , selectedMarker = Just (SelectedEvent liveEvent)
@@ -277,7 +321,7 @@ suite =
             , test "drops selected cancelled event when HideCancelled is active" <|
                 \_ ->
                     filterSelectedMarker
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = HideCancelled
                         , events = Success [ liveEvent, cancelledEvent ]
                         , selectedMarker = Just (SelectedEvent cancelledEvent)
@@ -286,7 +330,7 @@ suite =
             , test "drops selected event when NoEvents is active" <|
                 \_ ->
                     filterSelectedMarker
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = NoEvents
                         , events = Success [ liveEvent ]
                         , selectedMarker = Just (SelectedEvent liveEvent)
@@ -295,7 +339,7 @@ suite =
             , test "remains Nothing when no marker is selected" <|
                 \_ ->
                     filterSelectedMarker
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = AllEvents
                         , events = Success [ liveEvent ]
                         , selectedMarker = Nothing
@@ -309,7 +353,7 @@ suite =
                         unlocatedLoc =
                             { testLocation | id = "unlocated", point = { lat = 0, lon = 0 } }
                     in
-                    visibleLocations { hiddenTags = [], locations = Success [ unlocatedLoc, testLocation ] }
+                    visibleLocations { tagFilters = Dict.empty, locations = Success [ unlocatedLoc, testLocation ] }
                         |> List.map .id
                         |> Expect.equal [ "abc123" ]
             , test "drops locations hidden by any of their tags" <|
@@ -318,7 +362,7 @@ suite =
                         museumStore =
                             { testLocation | id = "museumStore", tags = [ "museum", "store" ] }
                     in
-                    visibleLocations { hiddenTags = [ "museum" ], locations = Success [ museumStore ] }
+                    visibleLocations { tagFilters = Dict.fromList [ ( "museum", NoLocations ) ], locations = Success [ museumStore ] }
                         |> Expect.equal []
             , test "keeps locations whose tags are all visible" <|
                 \_ ->
@@ -326,12 +370,39 @@ suite =
                         storeLoc =
                             { testLocation | id = "storeLoc", tags = [ "store" ] }
                     in
-                    visibleLocations { hiddenTags = [ "museum" ], locations = Success [ storeLoc ] }
+                    visibleLocations { tagFilters = Dict.fromList [ ( "museum", NoLocations ) ], locations = Success [ storeLoc ] }
                         |> List.map .id
                         |> Expect.equal [ "storeLoc" ]
+            , test "drops closed locations by default (HideClosed)" <|
+                \_ ->
+                    let
+                        openStore =
+                            { testLocation | id = "openStore", tags = [ "store" ], state = Published }
+
+                        closedStore =
+                            { testLocation | id = "closedStore", tags = [ "store" ], state = Closed }
+                    in
+                    visibleLocations { tagFilters = Dict.empty, locations = Success [ openStore, closedStore ] }
+                        |> List.map .id
+                        |> Expect.equal [ "openStore" ]
+            , test "keeps closed locations when tag filter is AllLocations" <|
+                \_ ->
+                    let
+                        openStore =
+                            { testLocation | id = "openStore", tags = [ "store" ], state = Published }
+
+                        closedStore =
+                            { testLocation | id = "closedStore", tags = [ "store" ], state = Closed }
+                    in
+                    visibleLocations
+                        { tagFilters = Dict.fromList [ ( "store", AllLocations ) ]
+                        , locations = Success [ openStore, closedStore ]
+                        }
+                        |> List.map .id
+                        |> Expect.equal [ "openStore", "closedStore" ]
             , test "returns empty when not loaded" <|
                 \_ ->
-                    visibleLocations { hiddenTags = [], locations = NotAsked }
+                    visibleLocations { tagFilters = Dict.empty, locations = NotAsked }
                         |> Expect.equal []
             ]
         , describe "visibleLocationsForTag"
@@ -344,7 +415,7 @@ suite =
                         museumLoc =
                             { testLocation | id = "museum1", tags = [ "museum" ] }
                     in
-                    visibleLocationsForTag "store" { hiddenTags = [], locations = Success [ storeLoc, museumLoc ] }
+                    visibleLocationsForTag "store" { tagFilters = Dict.empty, locations = Success [ storeLoc, museumLoc ] }
                         |> List.map .id
                         |> Expect.equal [ "store1" ]
             , test "returns empty when tag itself is hidden" <|
@@ -353,7 +424,7 @@ suite =
                         storeLoc =
                             { testLocation | id = "store1", tags = [ "store" ] }
                     in
-                    visibleLocationsForTag "store" { hiddenTags = [ "store" ], locations = Success [ storeLoc ] }
+                    visibleLocationsForTag "store" { tagFilters = Dict.fromList [ ( "store", NoLocations ) ], locations = Success [ storeLoc ] }
                         |> Expect.equal []
             , test "returns empty when location has another tag that is hidden" <|
                 \_ ->
@@ -361,8 +432,21 @@ suite =
                         storeMuseumLoc =
                             { testLocation | id = "combo", tags = [ "store", "museum" ] }
                     in
-                    visibleLocationsForTag "store" { hiddenTags = [ "museum" ], locations = Success [ storeMuseumLoc ] }
+                    visibleLocationsForTag "store" { tagFilters = Dict.fromList [ ( "museum", NoLocations ) ], locations = Success [ storeMuseumLoc ] }
                         |> Expect.equal []
+            , test "excludes closed locations when tag is HideClosed and includes them when AllLocations" <|
+                \_ ->
+                    let
+                        openStore =
+                            { testLocation | id = "open1", tags = [ "store" ], state = Published }
+
+                        closedStore =
+                            { testLocation | id = "closed1", tags = [ "store" ], state = Closed }
+                    in
+                    ( visibleLocationsForTag "store" { tagFilters = Dict.empty, locations = Success [ openStore, closedStore ] } |> List.map .id
+                    , visibleLocationsForTag "store" { tagFilters = Dict.fromList [ ( "store", AllLocations ) ], locations = Success [ openStore, closedStore ] } |> List.map .id
+                    )
+                        |> Expect.equal ( [ "open1" ], [ "open1", "closed1" ] )
             ]
         , describe "locationsForTag"
             [ test "sorts locations by title case-insensitively" <|
@@ -377,7 +461,7 @@ suite =
                         locC =
                             { testLocation | id = "c", title = "beta", tags = [ "store" ] }
                     in
-                    locationsForTag "store" { hiddenTags = [], locations = Success [ locA, locB, locC ] }
+                    locationsForTag "store" { tagFilters = Dict.empty, locations = Success [ locA, locB, locC ] }
                         |> List.map .id
                         |> Expect.equal [ "b", "c", "a" ]
             ]
@@ -385,7 +469,7 @@ suite =
             [ test "keeps EventsModal when events are visible" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = AllEvents
                         , filterModal = Just EventsModal
                         }
@@ -393,7 +477,7 @@ suite =
             , test "keeps EventsModal when eventFilter is HideCancelled" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = HideCancelled
                         , filterModal = Just EventsModal
                         }
@@ -401,7 +485,7 @@ suite =
             , test "drops EventsModal when eventFilter is NoEvents" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = NoEvents
                         , filterModal = Just EventsModal
                         }
@@ -409,15 +493,15 @@ suite =
             , test "keeps TagModal when tag is visible" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = AllEvents
                         , filterModal = Just (TagModal "store")
                         }
                         |> Expect.equal (Just (TagModal "store"))
-            , test "keeps TagModal when hiddenTags contains unrelated tags" <|
+            , test "keeps TagModal when unrelated tag is hidden" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = [ "museum" ]
+                        { tagFilters = Dict.fromList [ ( "museum", NoLocations ) ]
                         , eventFilter = AllEvents
                         , filterModal = Just (TagModal "store")
                         }
@@ -425,7 +509,7 @@ suite =
             , test "drops TagModal when tag is hidden" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = [ "store" ]
+                        { tagFilters = Dict.fromList [ ( "store", NoLocations ) ]
                         , eventFilter = AllEvents
                         , filterModal = Just (TagModal "store")
                         }
@@ -433,7 +517,7 @@ suite =
             , test "remains Nothing when no modal was open" <|
                 \_ ->
                     filterActiveModal
-                        { hiddenTags = []
+                        { tagFilters = Dict.empty
                         , eventFilter = AllEvents
                         , filterModal = Nothing
                         }

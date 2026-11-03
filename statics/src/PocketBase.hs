@@ -162,7 +162,7 @@ fetchPublishedLocations = do
                 baseUrl
                     ++ "/api/collections/locations/records"
                     ++ "?filter="
-                    ++ urlEncode "(state=\"published\")"
+                    ++ urlEncode "(state=\"published\" || state=\"closed\")"
                     ++ "&sort=-created"
                     ++ "&perPage=500"
                     ++ "&page="

@@ -127,10 +127,13 @@ buildRssItem ctx loc = do
                 ++ maybeToList imgEncl
                 ++ ["    </item>"]
 
+isPublishedLocation :: PB.Location -> Bool
+isPublishedLocation loc = PB.locationState loc == "published"
+
 generateRss :: GeneratorContext -> [PB.Location] -> IO String
 generateRss ctx locs = do
     now <- getCurrentTime
-    items <- mapM (buildRssItem ctx) locs
+    items <- mapM (buildRssItem ctx) (filter isPublishedLocation locs)
     return $
         unlines
             [ "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
@@ -199,7 +202,7 @@ buildAtomEntry ctx loc = do
 generateAtom :: GeneratorContext -> [PB.Location] -> IO String
 generateAtom ctx locs = do
     now <- getCurrentTime
-    entries <- mapM (buildAtomEntry ctx) locs
+    entries <- mapM (buildAtomEntry ctx) (filter isPublishedLocation locs)
     return $
         unlines
             [ "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
@@ -260,5 +263,5 @@ generateJsonFeed locs =
                                 [ "name" .= SC.author SC.defaultLang
                                 , "url" .= SC.appOrganisationUrl SC.defaultLang
                                 ]
-                        , "items" .= map jsonFeedItem locs
+                        , "items" .= map jsonFeedItem (filter isPublishedLocation locs)
                         ]

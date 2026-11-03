@@ -19,6 +19,7 @@ module Types exposing
     , Msg(..)
     , Page(..)
     , SelectedMarker(..)
+    , TagFilter(..)
     , Toast
     , ToastKind(..)
     , decodeKmlPlacemark
@@ -27,12 +28,16 @@ module Types exposing
     , eventFilterToString
     , fromRemoteData
     , hasValidCoordinates
+    , isLocationVisible
     , isValidForm
     , locationStateFromString
     , locationStateToString
     , locationsForTag
     , mapLink
     , mapLinkTarget
+    , tagFilterFor
+    , tagFilterFromString
+    , tagFilterToString
     , upcomingEvents
     , visibleEvents
     , visibleLocations
@@ -46,6 +51,7 @@ import Browser
 import Browser.Navigation as Nav
 import Component.LoadState as LoadState
 import DatePicker
+import Dict exposing (Dict)
 import File exposing (File)
 import Html exposing (Html)
 import Http
@@ -102,15 +108,39 @@ upcomingEvents model =
         |> List.sortBy .startDate
 
 
-{-| All locations currently visible on the map (located and not hidden by tags).
+isLocationAllowedByTag : Dict String TagFilter -> Location -> String -> Bool
+isLocationAllowedByTag tagFilters loc tag =
+    case tagFilterFor tag tagFilters of
+        NoLocations ->
+            False
+
+        HideClosed ->
+            loc.state /= Closed
+
+        AllLocations ->
+            True
+
+
+{-| Whether a location is visible on the map under the current tag filters.
 -}
-visibleLocations : { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+isLocationVisible : Dict String TagFilter -> Location -> Bool
+isLocationVisible tagFilters loc =
+    hasValidCoordinates loc.point
+        && (if List.isEmpty loc.tags then
+                loc.state /= Closed
+
+            else
+                List.all (isLocationAllowedByTag tagFilters loc) loc.tags
+           )
+
+
+{-| All locations currently visible on the map (located and allowed by their tag filters).
+-}
+visibleLocations : { a | tagFilters : Dict String TagFilter, locations : RemoteData Http.Error (List Location) } -> List Location
 visibleLocations model =
     case model.locations of
         RemoteData.Success locs ->
-            locs
-                |> List.filter (\l -> hasValidCoordinates l.point)
-                |> List.filter (\l -> not (List.any (\tag -> List.member tag model.hiddenTags) l.tags))
+            List.filter (isLocationVisible model.tagFilters) locs
 
         _ ->
             []
@@ -119,9 +149,9 @@ visibleLocations model =
 {-| Locations the current tag filter lets through for a specific tag.
 Returns empty list if the tag itself is hidden.
 -}
-visibleLocationsForTag : String -> { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+visibleLocationsForTag : String -> { a | tagFilters : Dict String TagFilter, locations : RemoteData Http.Error (List Location) } -> List Location
 visibleLocationsForTag tag model =
-    if List.member tag model.hiddenTags then
+    if tagFilterFor tag model.tagFilters == NoLocations then
         []
 
     else
@@ -131,7 +161,7 @@ visibleLocationsForTag tag model =
 
 {-| The tag dialog's list: the visible locations for a tag, sorted by title (case-insensitive).
 -}
-locationsForTag : String -> { a | hiddenTags : List String, locations : RemoteData Http.Error (List Location) } -> List Location
+locationsForTag : String -> { a | tagFilters : Dict String TagFilter, locations : RemoteData Http.Error (List Location) } -> List Location
 locationsForTag tag model =
     visibleLocationsForTag tag model
         |> List.sortBy (\l -> String.toLower l.title)
@@ -188,6 +218,7 @@ type LocationState
     = Draft
     | Pending
     | Published
+    | Closed
     | Deleted
 
 
@@ -202,6 +233,9 @@ locationStateFromString s =
 
         "published" ->
             Just Published
+
+        "closed" ->
+            Just Closed
 
         "deleted" ->
             Just Deleted
@@ -222,8 +256,56 @@ locationStateToString state =
         Published ->
             "published"
 
+        Closed ->
+            "closed"
+
         Deleted ->
             "deleted"
+
+
+{-| Which locations a tag filter shows on the map. `HideClosed` is the default for a new visitor.
+-}
+type TagFilter
+    = AllLocations
+    | HideClosed
+    | NoLocations
+
+
+tagFilterFromString : String -> Maybe TagFilter
+tagFilterFromString s =
+    case s of
+        "all" ->
+            Just AllLocations
+
+        "no-closed" ->
+            Just HideClosed
+
+        "none" ->
+            Just NoLocations
+
+        _ ->
+            Nothing
+
+
+tagFilterToString : TagFilter -> String
+tagFilterToString filter =
+    case filter of
+        AllLocations ->
+            "all"
+
+        HideClosed ->
+            "no-closed"
+
+        NoLocations ->
+            "none"
+
+
+{-| Resolve the active filter for a tag, defaulting to `HideClosed`.
+-}
+tagFilterFor : String -> Dict String TagFilter -> TagFilter
+tagFilterFor tag tagFilters =
+    Dict.get tag tagFilters
+        |> Maybe.withDefault HideClosed
 
 
 {-| Which events the map shows. `HideCancelled` is the default for a new visitor.
@@ -307,7 +389,7 @@ type alias Flags =
     , authToken : Maybe String
     , authModel : Maybe String
     , now : Int
-    , hiddenTags : List String
+    , tagFilters : List { tag : String, filter : String }
     , eventsFilter : String
     , isEmbed : Bool
     , platform : String
@@ -454,7 +536,7 @@ type alias Model =
     , locations : RemoteData Http.Error (List Location)
     , events : RemoteData Http.Error (List Event)
     , selectedMarker : Maybe SelectedMarker
-    , hiddenTags : List String
+    , tagFilters : Dict String TagFilter
     , eventFilter : EventFilter
     , filterModal : Maybe FilterModal
     , isEmbed : Bool
@@ -570,7 +652,7 @@ type Msg
     | DetailGotLocation (Result Http.Error Location)
       -- Maps (via ports)
     | MapMarkerMoved Float Float
-    | ToggleTagVisibility String Bool
+    | CycleTagFilter String
     | CycleEventFilter
     | ToggleEventsModal
     | ToggleTagModal String

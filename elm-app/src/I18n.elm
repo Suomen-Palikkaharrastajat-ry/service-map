@@ -1,4 +1,4 @@
-module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount, locale, stateLabel, t, translateTag)
+module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount, locale, stateLabel, t, tagFilterLabel, translateTag)
 
 {-| UI strings per language, keyed by MsgKey, plus state and filter labels.
 -}
@@ -6,7 +6,7 @@ module I18n exposing (MsgKey(..), contentAttrs, eventFilterLabel, importedCount,
 import Html
 import Lang exposing (Lang(..))
 import Locale exposing (Locale)
-import Types exposing (EventFilter(..), LocationState(..))
+import Types exposing (EventFilter(..), LocationState(..), TagFilter(..))
 
 
 type MsgKey
@@ -15,6 +15,7 @@ type MsgKey
     | StateDraft
     | StatePending
     | StatePublished
+    | StateClosed
     | StateDeleted
     | FormTitle
     | FormLocation
@@ -66,6 +67,9 @@ type MsgKey
     | FilterEventsAll
     | FilterEventsNoCancelled
     | FilterEventsNone
+    | FilterLocationsAll
+    | FilterLocationsNoClosed
+    | FilterLocationsNone
     | EventsModalTitle
     | EventsModalEmpty
     | EventsModalOpen
@@ -77,6 +81,7 @@ type MsgKey
     | FilterPanelTitle
     | FilterGroupLegend
     | EventCancelled
+    | LocationClosed
     | PanelMoreInfo
     | PanelClose
       -- Accessible names for icon-only controls
@@ -143,6 +148,9 @@ fi key =
 
         StatePublished ->
             "Julkaistu"
+
+        StateClosed ->
+            "Suljettu"
 
         StateDeleted ->
             "Poistettu"
@@ -297,6 +305,15 @@ fi key =
         FilterEventsNone ->
             "piilotettu"
 
+        FilterLocationsAll ->
+            "kaikki"
+
+        FilterLocationsNoClosed ->
+            "ei suljettuja"
+
+        FilterLocationsNone ->
+            "piilotettu"
+
         EventsModalTitle ->
             "Tulevat tapahtumat"
 
@@ -329,6 +346,9 @@ fi key =
 
         EventCancelled ->
             "PERUTTU"
+
+        LocationClosed ->
+            "SULJETTU"
 
         PanelMoreInfo ->
             "Lisätietoja"
@@ -450,6 +470,9 @@ en key =
 
         StatePublished ->
             "Published"
+
+        StateClosed ->
+            "Closed"
 
         StateDeleted ->
             "Deleted"
@@ -604,6 +627,15 @@ en key =
         FilterEventsNone ->
             "hidden"
 
+        FilterLocationsAll ->
+            "all"
+
+        FilterLocationsNoClosed ->
+            "no closed"
+
+        FilterLocationsNone ->
+            "hidden"
+
         EventsModalTitle ->
             "Upcoming events"
 
@@ -636,6 +668,9 @@ en key =
 
         EventCancelled ->
             "CANCELLED"
+
+        LocationClosed ->
+            "CLOSED"
 
         PanelMoreInfo ->
             "More information"
@@ -753,6 +788,19 @@ eventFilterLabel lang filter =
             t lang FilterEventsNone
 
 
+tagFilterLabel : Lang -> TagFilter -> String
+tagFilterLabel lang filter =
+    case filter of
+        AllLocations ->
+            t lang FilterLocationsAll
+
+        HideClosed ->
+            t lang FilterLocationsNoClosed
+
+        NoLocations ->
+            t lang FilterLocationsNone
+
+
 stateLabel : Lang -> LocationState -> String
 stateLabel lang state =
     case state of
@@ -764,6 +812,9 @@ stateLabel lang state =
 
         Published ->
             t lang StatePublished
+
+        Closed ->
+            t lang StateClosed
 
         Deleted ->
             t lang StateDeleted

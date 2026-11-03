@@ -894,6 +894,7 @@ migrate((app) => {
         "values": [
           "pending",
           "published",
+          "closed",
           "draft",
           "deleted"
         ]
@@ -1015,12 +1016,12 @@ migrate((app) => {
     ],
     "id": "pbc_1687431684",
     "indexes": [],
-    "listRule": "// Allow everyone to read published locations\n(state = \"published\") || (created_by.id = @request.auth.id)",
+    "listRule": "// Allow everyone to read published and closed locations\n(state = \"published\" || state = \"closed\") || (created_by.id = @request.auth.id)",
     "name": "locations",
     "system": false,
     "type": "base",
     "updateRule": "@request.auth.id != \"\"",
-    "viewRule": "// Allow everyone to read published locations\n(state = \"published\") || (created_by.id = @request.auth.id)"
+    "viewRule": "// Allow everyone to read published and closed locations\n(state = \"published\" || state = \"closed\") || (created_by.id = @request.auth.id)"
   }
 ];
 

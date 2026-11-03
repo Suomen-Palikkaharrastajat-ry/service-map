@@ -86,22 +86,43 @@ view lang model locPage =
 viewLocationCard : Lang -> String -> AuthState -> Location -> Html Msg
 viewLocationCard lang platform authState loc =
     let
+        isClosed =
+            loc.state == Types.Closed
+
         opacityClass =
             if loc.state == Types.Published then
                 ""
 
             else
                 " opacity-50"
+
+        titleClass =
+            if isClosed then
+                "hover:underline line-through"
+
+            else
+                "hover:underline"
+
+        closedBadge =
+            if isClosed then
+                span [ class "type-overline text-text-on-dark bg-brand rounded px-1.5 py-0.5" ]
+                    [ text (t lang I18n.LocationClosed) ]
+
+            else
+                text ""
     in
     div [ class ("border rounded p-3 hover:bg-bg-subtle" ++ opacityClass) ]
         [ div [ class "flex items-start justify-between gap-4" ]
             [ div []
-                [ h3 [ class "type-h4" ]
-                    [ a
-                        [ href (toHref (RouteLocationDetail loc.id))
-                        , class "hover:underline"
+                [ div [ class "flex items-center gap-2 flex-wrap" ]
+                    [ h3 [ class "type-h4" ]
+                        [ a
+                            [ href (toHref (RouteLocationDetail loc.id))
+                            , class titleClass
+                            ]
+                            [ span (I18n.contentAttrs lang) [ text loc.title ] ]
                         ]
-                        [ span (I18n.contentAttrs lang) [ text loc.title ] ]
+                    , closedBadge
                     ]
                 , case loc.location of
                     Just addr ->

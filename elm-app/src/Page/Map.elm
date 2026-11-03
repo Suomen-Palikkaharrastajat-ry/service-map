@@ -10,8 +10,8 @@ import DateUtils
 import FeatherIcons
 import Html exposing (Html, a, button, div, h2, input, label, p, span, text)
 import Html.Attributes exposing (attribute, checked, class, for, href, id, property, rel, target, title, type_)
-import Html.Events exposing (onCheck, onClick)
-import I18n exposing (MsgKey(..), eventFilterLabel, t, translateTag)
+import Html.Events exposing (onClick)
+import I18n exposing (MsgKey(..), eventFilterLabel, t, tagFilterLabel, translateTag)
 import Json.Encode as Encode
 import Lang exposing (Lang)
 import OpeningHours.I18n as OHI18n
@@ -78,62 +78,81 @@ viewToggles lang model =
             }
             [ MapOverlay.filterGroup
                 { legend = t lang FilterGroupLegend }
-                ((allTags
-                    |> List.map
-                        (\tag ->
-                            let
-                                isVisible =
-                                    not (List.member tag model.hiddenTags)
-
-                                tagLocations =
-                                    Types.visibleLocationsForTag tag model
-
-                                tagCount =
-                                    List.length tagLocations
-
-                                tagLabel =
-                                    translateTag lang tag
-
-                                tagTitle =
-                                    tagLabel ++ " (" ++ String.fromInt tagCount ++ ")"
-                            in
-                            div [ class "flex items-center justify-between gap-2 type-body-small w-full" ]
-                                [ label
-                                    [ for ("tag-filter-" ++ tag)
-                                    , class "flex items-center gap-2 cursor-pointer type-body-small flex-1 min-w-0"
-                                    , title tagTitle
-                                    ]
-                                    [ input
-                                        [ type_ "checkbox"
-                                        , id ("tag-filter-" ++ tag)
-                                        , checked isVisible
-                                        , onCheck (\chk -> ToggleTagVisibility tag (not chk))
-                                        , class filterCheckboxClass
-                                        ]
-                                        []
-                                    , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
-                                    , text tagLabel
-                                    , span [ class "sr-only" ] [ text (" (" ++ String.fromInt tagCount ++ ")") ]
-                                    ]
-                                , if tagCount > 0 then
-                                    button
-                                        [ type_ "button"
-                                        , id ("tag-modal-open-" ++ tag)
-                                        , onClick (ToggleTagModal tag)
-                                        , title (t lang LocationsModalOpen)
-                                        , attribute "aria-label" (t lang LocationsModalOpen ++ ": " ++ tagLabel)
-                                        , class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
-                                        ]
-                                        [ featherIcon FeatherIcons.list 14 ]
-
-                                  else
-                                    text ""
-                                ]
-                        )
-                 )
+                (List.map (viewTagFilterToggle lang model) allTags
                     ++ [ viewEventFilterToggle lang model ]
                 )
             ]
+
+
+{-| Tri-state tag filter: checked (all) → indeterminate (no closed) → unchecked
+(none). Mirrors `viewEventFilterToggle`.
+-}
+viewTagFilterToggle : Lang -> Model -> String -> Html Msg
+viewTagFilterToggle lang model tag =
+    let
+        tagFilter =
+            Types.tagFilterFor tag model.tagFilters
+
+        ariaChecked =
+            case tagFilter of
+                Types.AllLocations ->
+                    "true"
+
+                Types.HideClosed ->
+                    "mixed"
+
+                Types.NoLocations ->
+                    "false"
+
+        tagLocations =
+            Types.visibleLocationsForTag tag model
+
+        tagCount =
+            List.length tagLocations
+
+        tagLabel =
+            translateTag lang tag
+
+        filterLabel =
+            tagFilterLabel lang tagFilter
+
+        tagTitle =
+            tagLabel ++ " (" ++ String.fromInt tagCount ++ "): " ++ filterLabel
+    in
+    div [ class "flex items-center justify-between gap-2 type-body-small w-full" ]
+        [ label
+            [ for ("tag-filter-" ++ tag)
+            , class "flex items-center gap-2 cursor-pointer type-body-small flex-1 min-w-0"
+            , title tagTitle
+            ]
+            [ input
+                [ type_ "checkbox"
+                , id ("tag-filter-" ++ tag)
+                , checked (tagFilter == Types.AllLocations)
+                , property "indeterminate" (Encode.bool (tagFilter == Types.HideClosed))
+                , attribute "aria-checked" ariaChecked
+                , onClick (CycleTagFilter tag)
+                , class filterCheckboxClass
+                ]
+                []
+            , span [ class "text-brand flex-shrink-0" ] [ featherIcon (iconForTag tag) 14 ]
+            , text tagLabel
+            , span [ class "sr-only" ] [ text (" (" ++ String.fromInt tagCount ++ "): " ++ filterLabel) ]
+            ]
+        , if tagCount > 0 then
+            button
+                [ type_ "button"
+                , id ("tag-modal-open-" ++ tag)
+                , onClick (ToggleTagModal tag)
+                , title (t lang LocationsModalOpen)
+                , attribute "aria-label" (t lang LocationsModalOpen ++ ": " ++ tagLabel)
+                , class "text-text-subtle hover:text-brand p-1 cursor-pointer flex-shrink-0 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+                ]
+                [ featherIcon FeatherIcons.list 14 ]
+
+          else
+            text ""
+        ]
 
 
 {-| Tri-state events filter: checked (all) → indeterminate (no cancelled) → unchecked
@@ -346,6 +365,17 @@ viewModalLocationItem lang loc =
         dateStr =
             DateUtils.formatLocationDateDisplay lang loc
                 |> Maybe.withDefault ""
+
+        isClosed =
+            loc.state == Types.Closed
+
+        closedBadge =
+            if isClosed then
+                span [ class "type-overline text-text-on-dark bg-brand rounded px-1.5 py-0.5" ]
+                    [ text (t lang LocationClosed) ]
+
+            else
+                text ""
     in
     button
         [ type_ "button"
@@ -353,8 +383,17 @@ viewModalLocationItem lang loc =
         , onClick (ModalMarkerClicked loc.id)
         ]
         [ span [ class "flex items-center justify-between gap-2" ]
-            [ span [ class "type-body font-bold group-hover:text-brand" ]
+            [ span
+                [ class
+                    (if isClosed then
+                        "type-body font-bold group-hover:text-brand line-through"
+
+                     else
+                        "type-body font-bold group-hover:text-brand"
+                    )
+                ]
                 [ text loc.title ]
+            , closedBadge
             ]
         , if String.isEmpty dateStr then
             text ""
@@ -439,6 +478,16 @@ viewLocationPanel lang model loc =
 
             else
                 []
+
+        closedBadge =
+            if loc.state == Types.Closed then
+                div [ class "location-closed-indicator mb-2" ]
+                    [ span [ class "type-overline text-text-on-dark bg-brand rounded px-2 py-0.5" ]
+                        [ text (t lang LocationClosed) ]
+                    ]
+
+            else
+                text ""
     in
     MapOverlay.detailPanelWithHeaderActions
         { isOpen = True
@@ -447,7 +496,8 @@ viewLocationPanel lang model loc =
         , title = loc.title
         , headerActions = headerActions
         }
-        [ case loc.startDate of
+        [ closedBadge
+        , case loc.startDate of
             Just _ ->
                 case DateUtils.formatLocationDateDisplay lang { startDate = loc.startDate, endDate = loc.endDate } of
                     Just dateStr ->

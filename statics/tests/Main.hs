@@ -123,6 +123,30 @@ multilineLocationJson =
 multilineLocation :: PB.Location
 multilineLocation = decodeLocation multilineLocationJson
 
+closedLocationJson :: BLC.ByteString
+closedLocationJson =
+    BLC.pack $
+        concat
+            [ "{\"id\":\"closed01\","
+            , "\"title\":\"Suljettu Palikkapuoti\","
+            , "\"description\":\"Lopettanut toimintansa\","
+            , "\"start_date\":null,"
+            , "\"end_date\":null,"
+            , "\"url\":\"\","
+            , "\"location\":\"Tampere\","
+            , "\"state\":\"closed\","
+            , "\"image\":\"\","
+            , "\"image_description\":\"\","
+            , "\"point\":{\"lat\":61.4978,\"lon\":23.7610},"
+            , "\"tags\":[\"store\"],"
+            , "\"opening_hours\":\"\","
+            , "\"created\":\"2026-01-01T00:00:00.000Z\","
+            , "\"updated\":\"2026-01-02T00:00:00.000Z\"}"
+            ]
+
+closedLocation :: PB.Location
+closedLocation = decodeLocation closedLocationJson
+
 cancelledEventJson :: BLC.ByteString
 cancelledEventJson =
     BLC.pack $
@@ -245,6 +269,8 @@ pocketBaseTests =
         PB.eventCancelled cancelledEvent @?= True
     , testCase "missing event cancelled defaults to False" $
         PB.eventCancelled plainEvent @?= False
+    , testCase "decodes closed location state" $
+        PB.locationState closedLocation @?= "closed"
     ]
 
 -- ---------------------------------------------------------------------------
@@ -267,16 +293,16 @@ dateUtilsTests =
     , testCase "isDst false in January 2026" $
         DU.isDst winterTime @?= False
     , testCase "isDst false just before 2026 DST start" $
-        let t = UTCTime (fromGregorian 2026 3 29) (secondsToDiffTime (3599))
+        let t = UTCTime (fromGregorian 2026 3 29) (secondsToDiffTime 3599)
          in DU.isDst t @?= False
     , testCase "isDst true at 2026 DST start (01:00 UTC)" $
-        let t = UTCTime (fromGregorian 2026 3 29) (secondsToDiffTime (3600))
+        let t = UTCTime (fromGregorian 2026 3 29) (secondsToDiffTime 3600)
          in DU.isDst t @?= True
     , testCase "isDst true just before 2026 DST end" $
-        let t = UTCTime (fromGregorian 2026 10 25) (secondsToDiffTime (3599))
+        let t = UTCTime (fromGregorian 2026 10 25) (secondsToDiffTime 3599)
          in DU.isDst t @?= True
     , testCase "isDst false at 2026 DST end (01:00 UTC)" $
-        let t = UTCTime (fromGregorian 2026 10 25) (secondsToDiffTime (3600))
+        let t = UTCTime (fromGregorian 2026 10 25) (secondsToDiffTime 3600)
          in DU.isDst t @?= False
     , testCase "formatDate gives D.M." $
         DU.formatDate timedZoned @?= "5.5."
@@ -352,6 +378,10 @@ geoJsonTests =
         assertBool
             "no raw newline inside the JSON string"
             (not ("First line\nSecond" `isInfixOf` geo))
+    , testCase "closed location included in GeoJSON with state closed" $ do
+        geo <- GeoJsonGen.generateGeoJson [closedLocation] []
+        assertBool "closed01 in output" ("closed01" `isInfixOf` geo)
+        assertBool "state closed" ("\"state\":\"closed\"" `isInfixOf` geo)
     ]
 
 -- ---------------------------------------------------------------------------
@@ -434,4 +464,16 @@ feedGenTests =
     , testCase "JSON Feed item has location id" $ do
         jf <- FeedGen.generateJsonFeed [timedLocation]
         assertBool "abc123" ("abc123" `isInfixOf` jf)
+    , testCase "RSS excludes closed locations" $ do
+        rss <- FeedGen.generateRss emptyCtx [timedLocation, closedLocation]
+        assertBool "published included" ("abc123" `isInfixOf` rss)
+        assertBool "closed excluded" (not ("closed01" `isInfixOf` rss))
+    , testCase "Atom excludes closed locations" $ do
+        atom <- FeedGen.generateAtom emptyCtx [timedLocation, closedLocation]
+        assertBool "published included" ("abc123" `isInfixOf` atom)
+        assertBool "closed excluded" (not ("closed01" `isInfixOf` atom))
+    , testCase "JSON Feed excludes closed locations" $ do
+        jf <- FeedGen.generateJsonFeed [timedLocation, closedLocation]
+        assertBool "published included" ("abc123" `isInfixOf` jf)
+        assertBool "closed excluded" (not ("closed01" `isInfixOf` jf))
     ]

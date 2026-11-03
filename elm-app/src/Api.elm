@@ -36,7 +36,7 @@ fetchLocations pbBaseUrl maybeToken =
                 Nothing ->
                     baseUrl
                         ++ "&filter="
-                        ++ Url.percentEncode "(state=\"published\")"
+                        ++ Url.percentEncode "(state=\"published\" || state=\"closed\")"
 
         headers =
             case maybeToken of

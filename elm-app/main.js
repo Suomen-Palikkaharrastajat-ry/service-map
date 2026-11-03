@@ -59,7 +59,7 @@ const loadPocketBase = () => import('pocketbase').then((m) => m.default)
 
 const initAuth = getInitAuth()
 
-let initialFilters = { hiddenTags: [], eventsFilter: 'no-cancelled' }
+let initialFilters = { tagFilters: [], eventsFilter: 'no-cancelled' }
 try {
   const storedFilters = localStorage.getItem('mapFilters')
   if (storedFilters) {
@@ -73,6 +73,25 @@ try {
 // "events shown" becomes 'no-cancelled' rather than 'all'.
 if (initialFilters && initialFilters.eventsFilter === undefined && 'eventsHidden' in initialFilters) {
   initialFilters.eventsFilter = initialFilters.eventsHidden ? 'none' : 'no-cancelled'
+}
+
+function normalizeTagFilters(raw) {
+  if (!raw) return []
+  if (Array.isArray(raw.tagFilters)) {
+    return raw.tagFilters.filter((e) => e && typeof e.tag === 'string' && typeof e.filter === 'string')
+  }
+  if (raw.tagFilters && typeof raw.tagFilters === 'object') {
+    return Object.entries(raw.tagFilters)
+      .filter(([tag, filter]) => typeof tag === 'string' && typeof filter === 'string')
+      .map(([tag, filter]) => ({ tag, filter }))
+  }
+  // Migrate legacy hiddenTags array: hidden tags become 'none'; other tags default to 'no-closed'.
+  if (Array.isArray(raw.hiddenTags)) {
+    return raw.hiddenTags
+      .filter((tag) => typeof tag === 'string')
+      .map((tag) => ({ tag, filter: 'none' }))
+  }
+  return []
 }
 
 /**
@@ -98,7 +117,7 @@ const flags = {
   authModel: initAuth.authModel,
   now: Date.now(),
   pbBaseUrl,
-  hiddenTags: initialFilters.hiddenTags || [],
+  tagFilters: normalizeTagFilters(initialFilters),
   eventsFilter: initialFilters.eventsFilter || 'no-cancelled',
   isEmbed: window.location.pathname.endsWith('embed.html'),
   platform: detectPlatform(),
@@ -169,6 +188,9 @@ const maps = {}
 
 /** Cancelled-event label. Keep in sync with `EventCancelled` in elm-app/src/I18n.elm. */
 const cancelledLabel = strings.cancelled
+
+/** Closed-location label. Keep in sync with `LocationClosed` in elm-app/src/I18n.elm. */
+const closedLabel = strings.closed
 
 /** Accessible name for a cluster pin. */
 const clusterLabel = (count) => strings.cluster.replace('{count}', String(count))
@@ -309,10 +331,11 @@ function bindPopupPaneOpener(mapObj) {
   })
 }
 
-/** Popup title markup; cancelled events get the label and a struck-through title. */
-function popupTitleHtml(title, cancelled) {
-  const inner = cancelled ? `<s>${title}</s>` : title;
-  const prefix = cancelled ? `${cancelledLabel} ` : '';
+/** Popup title markup; cancelled events and closed places get a label and a struck-through title. */
+function popupTitleHtml(title, cancelled, closed) {
+  const isInactive = cancelled || closed;
+  const inner = isInactive ? `<s>${title}</s>` : title;
+  const prefix = cancelled ? `${cancelledLabel} ` : (closed ? `${closedLabel} ` : '');
   return `<div style="font-family: inherit; font-size: 0.875rem; font-weight: 500;">${prefix}${inner}</div>`;
 }
 
@@ -324,8 +347,8 @@ function popupTitleHtml(title, cancelled) {
  * `subtitle` is whatever Elm decided belongs under the title: a location's
  * opening hours, or an event's date.
  */
-function markerPopupHtml(title, subtitle, cancelled, markerId) {
-  let html = popupTitleHtml(title, cancelled);
+function markerPopupHtml(title, subtitle, cancelled, markerId, closed = false) {
+  let html = popupTitleHtml(title, cancelled, closed);
   if (subtitle) {
     html += `<div style="font-family: inherit; font-size: 0.75rem; color: #6B7280; margin-top: 2px; white-space: pre-wrap;">${subtitle}</div>`;
   }
@@ -359,6 +382,7 @@ function makeMarkerButton(el, label, onActivate) {
 function markerAriaLabel(m) {
   const parts = [];
   if (m.cancelled) parts.push(cancelledLabel);
+  if (m.closed) parts.push(closedLabel);
   parts.push(m.title);
   if (m.date) parts.push(m.date);
   return parts.join(', ');
@@ -485,6 +509,7 @@ function renderClusters(mapObj) {
               `;
             } else {
               leafEl = document.createElement('div');
+              if (m.closed) leafEl.className = 'marker-closed marker-cancelled';
               leafEl.style.cursor = 'pointer';
               leafEl.style.marginLeft = `${offsetX}px`;
               leafEl.style.marginTop = `${offsetY}px`;
@@ -498,7 +523,7 @@ function renderClusters(mapObj) {
               .setLngLat(coords)
               .addTo(mapObj.map);
               
-            const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id);
+            const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id, m.closed);
 
             // Spiderfied leaves are transient, so they are never auto-opened —
             // but a tap-opened one still needs a way out on touch devices.
@@ -555,12 +580,13 @@ function renderClusters(mapObj) {
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         } else {
           el = document.createElement('div');
+          if (m.closed) el.className = 'marker-closed marker-cancelled';
           el.style.cursor = 'pointer';
           el.innerHTML = getMarkerIconHtml(m.tags);
           marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(coords);
         }
 
-        const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id);
+        const popupHtml = markerPopupHtml(m.title, m.date, m.cancelled, m.id, m.closed);
 
         // closeButton: these tooltips can open by themselves from AUTO_POPUP_ZOOM
         // up, so there has to be a way to get rid of one without moving the map.
@@ -770,7 +796,7 @@ app.ports.destroyMap.subscribe((containerId) => {
 let savedMapState = null;
 
 if (app.ports.focusMapOnMarker) {
-  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date, cancelled }) => {
+  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date, cancelled, closed }) => {
     await ensureMapLibs();
     const mapObj = maps['map'];
     if (mapObj && mapObj.map) {
@@ -817,7 +843,7 @@ if (app.ports.focusMapOnMarker) {
         // The marker is inside a cluster or not rendered yet, so there is no
         // tooltip to reuse. Stand in with an identical one until there is.
         const standIn = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
-          .setHTML(markerPopupHtml(title, date, cancelled, id))
+          .setHTML(markerPopupHtml(title, date, cancelled, id, closed))
           .setLngLat([lon, lat])
           .addTo(mapObj.map);
         standIn.on('close', () => {

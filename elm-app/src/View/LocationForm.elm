@@ -274,6 +274,7 @@ viewStateSelect lang currentState toMsg =
             [ { value = locationStateToString Draft, label = stateLabel lang Draft }
             , { value = locationStateToString Pending, label = stateLabel lang Pending }
             , { value = locationStateToString Published, label = stateLabel lang Published }
+            , { value = locationStateToString Closed, label = stateLabel lang Closed }
             ]
         , selected = locationStateToString currentState
         , onSelect = toMsg

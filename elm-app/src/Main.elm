@@ -1,4 +1,4 @@
-module Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, main, nextEventFilter, refreshLocationsOnMutationResult)
+module Main exposing (applyFormDate, applyFormField, filterActiveModal, filterSelectedMarker, isMarkerVisible, main, nextEventFilter, nextTagFilter, refreshLocationsOnMutationResult)
 
 {-| Main application module: routing, state management, and top-level view.
 -}
@@ -12,6 +12,7 @@ import Component.Spinner
 import Date
 import DatePicker
 import DateUtils
+import Dict exposing (Dict)
 import FeatherIcons
 import File
 import FinnishDatePicker
@@ -50,6 +51,7 @@ import Types
         , Model
         , Msg(..)
         , Page(..)
+        , TagFilter(..)
         , emptyLocationFormData
         )
 import Url exposing (Url)
@@ -114,6 +116,15 @@ init flags url key =
 
                 _ ->
                     Cmd.none
+
+        tagFilters =
+            flags.tagFilters
+                |> List.filterMap
+                    (\entry ->
+                        Types.tagFilterFromString entry.filter
+                            |> Maybe.map (\f -> ( entry.tag, f ))
+                    )
+                |> Dict.fromList
     in
     ( { pbBaseUrl = flags.pbBaseUrl
       , key = key
@@ -124,7 +135,7 @@ init flags url key =
       , locations = RemoteData.Loading
       , events = RemoteData.Loading
       , selectedMarker = Nothing
-      , hiddenTags = flags.hiddenTags
+      , tagFilters = tagFilters
       , eventFilter = Maybe.withDefault HideCancelled (Types.eventFilterFromString flags.eventsFilter)
       , filterModal = Nothing
       , isEmbed = flags.isEmbed
@@ -362,7 +373,7 @@ update msg model =
                     case selected of
                         Just (Types.SelectedLocation l) ->
                             Cmd.batch
-                                [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle model.lang l, cancelled = False }
+                                [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle model.lang l, cancelled = False, closed = l.state == Types.Closed }
                                 , Ports.focusElement "map-detail-close"
                                 ]
 
@@ -372,7 +383,7 @@ update msg model =
                                     Maybe.withDefault "" (DateUtils.formatEventDateDisplay model.lang e)
                             in
                             Cmd.batch
-                                [ Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled }
+                                [ Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled, closed = False }
                                 , Ports.focusElement "map-detail-close"
                                 ]
 
@@ -1195,16 +1206,15 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        ToggleTagVisibility tag isHidden ->
+        CycleTagFilter tag ->
             let
-                newHiddenTags =
-                    if isHidden then
-                        tag :: List.filter (\t -> t /= tag) model.hiddenTags
+                currentFilter =
+                    Types.tagFilterFor tag model.tagFilters
 
-                    else
-                        List.filter (\t -> t /= tag) model.hiddenTags
+                newTagFilters =
+                    Dict.insert tag (nextTagFilter currentFilter) model.tagFilters
             in
-            applyFilterChange { model | hiddenTags = newHiddenTags }
+            applyFilterChange { model | tagFilters = newTagFilters }
 
         CycleEventFilter ->
             applyFilterChange { model | eventFilter = nextEventFilter model.eventFilter }
@@ -1274,7 +1284,7 @@ update msg model =
 
 {-| Keeps the open filter dialog only if its category remains visible; otherwise drops it.
 -}
-filterActiveModal : { a | hiddenTags : List String, eventFilter : EventFilter, filterModal : Maybe Types.FilterModal } -> Maybe Types.FilterModal
+filterActiveModal : { a | tagFilters : Dict String TagFilter, eventFilter : EventFilter, filterModal : Maybe Types.FilterModal } -> Maybe Types.FilterModal
 filterActiveModal model =
     case model.filterModal of
         Just Types.EventsModal ->
@@ -1285,7 +1295,7 @@ filterActiveModal model =
                 model.filterModal
 
         Just (Types.TagModal tag) ->
-            if List.member tag model.hiddenTags then
+            if Types.tagFilterFor tag model.tagFilters == Types.NoLocations then
                 Nothing
 
             else
@@ -1320,7 +1330,10 @@ applyFilterChange filtered =
 saveFilters : Model -> Cmd Msg
 saveFilters model =
     Ports.saveFilterState
-        { hiddenTags = model.hiddenTags
+        { tagFilters =
+            model.tagFilters
+                |> Dict.toList
+                |> List.map (\( tag, filter ) -> { tag = tag, filter = Types.tagFilterToString filter })
         , eventsFilter = Types.eventFilterToString model.eventFilter
         }
 
@@ -1472,6 +1485,7 @@ locationToMarker lang loc =
     , isEvent = False
     , tags = loc.tags
     , cancelled = False
+    , closed = loc.state == Types.Closed
     }
 
 
@@ -1485,16 +1499,17 @@ eventToMarker lang ev =
     , isEvent = True
     , tags = []
     , cancelled = ev.cancelled
+    , closed = False
     }
 
 
 {-| Whether a selected marker is still visible under current tag and event filters.
 -}
-isMarkerVisible : { a | hiddenTags : List String, eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> Types.SelectedMarker -> Bool
+isMarkerVisible : { a | tagFilters : Dict String TagFilter, eventFilter : EventFilter, events : RemoteData Http.Error (List Event) } -> Types.SelectedMarker -> Bool
 isMarkerVisible model marker =
     case marker of
         Types.SelectedLocation loc ->
-            not (List.any (\tag -> List.member tag model.hiddenTags) loc.tags)
+            Types.isLocationVisible model.tagFilters loc
 
         Types.SelectedEvent ev ->
             List.any (\e -> e.id == ev.id) (Types.visibleEvents model)
@@ -1502,7 +1517,7 @@ isMarkerVisible model marker =
 
 {-| Keeps the selected marker only if it remains visible; otherwise drops it.
 -}
-filterSelectedMarker : { a | hiddenTags : List String, eventFilter : EventFilter, events : RemoteData Http.Error (List Event), selectedMarker : Maybe Types.SelectedMarker } -> Maybe Types.SelectedMarker
+filterSelectedMarker : { a | tagFilters : Dict String TagFilter, eventFilter : EventFilter, events : RemoteData Http.Error (List Event), selectedMarker : Maybe Types.SelectedMarker } -> Maybe Types.SelectedMarker
 filterSelectedMarker model =
     model.selectedMarker
         |> Maybe.andThen
@@ -1513,6 +1528,21 @@ filterSelectedMarker model =
                 else
                     Nothing
             )
+
+
+{-| Cycle order of the tri-state tag filter control.
+-}
+nextTagFilter : TagFilter -> TagFilter
+nextTagFilter filter =
+    case filter of
+        AllLocations ->
+            HideClosed
+
+        HideClosed ->
+            NoLocations
+
+        NoLocations ->
+            AllLocations
 
 
 {-| Cycle order of the tri-state events filter control.

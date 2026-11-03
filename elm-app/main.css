@@ -68,11 +68,12 @@ button:not([disabled]) {
   @apply inline-block px-4 py-2 bg-brand text-white rounded hover:opacity-90 type-body-small;
 }
 
-.marker-cancelled {
+.marker-cancelled,
+.marker-closed {
   opacity: 0.55;
 }
 
-#map-detail-panel:has(.event-cancelled-indicator) h2 {
+#map-detail-panel:has(.event-cancelled-indicator, .location-closed-indicator) h2 {
   text-decoration-line: line-through;
 }
 
