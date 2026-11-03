@@ -57,34 +57,8 @@ author En = "Suomen Palikkaharrastajat ry"
 
 -- | Month names, January first.
 monthNames :: Lang -> [String]
-monthNames Fi =
-    [ "Tammikuu"
-    , "Helmikuu"
-    , "Maaliskuu"
-    , "Huhtikuu"
-    , "Toukokuu"
-    , "Kes\228\&kuu"
-    , "Hein\228\&kuu"
-    , "Elokuu"
-    , "Syyskuu"
-    , "Lokakuu"
-    , "Marraskuu"
-    , "Joulukuu"
-    ]
-monthNames En =
-    [ "January"
-    , "February"
-    , "March"
-    , "April"
-    , "May"
-    , "June"
-    , "July"
-    , "August"
-    , "September"
-    , "October"
-    , "November"
-    , "December"
-    ]
+monthNames Fi = ["Tammikuu", "Helmikuu", "Maaliskuu", "Huhtikuu", "Toukokuu", "Kes\228\&kuu", "Hein\228\&kuu", "Elokuu", "Syyskuu", "Lokakuu", "Marraskuu", "Joulukuu"]
+monthNames En = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 -- | Weekday abbreviations, Monday first.
 weekdayAbbrs :: Lang -> [String]
