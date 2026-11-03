@@ -60,7 +60,7 @@ run = do
     createDirectoryIfMissing True "assets/images"
 
     putStrLn "Downloading images..."
-    let publishedLocs = filter (\loc -> PocketBase.locationState loc == "published") locs
+    let publishedLocs = filter FeedGen.isPublishedLocation locs
     imageMap <- ImageFetcher.downloadAllImages locationImageSource publishedLocs
 
     let genCtx =

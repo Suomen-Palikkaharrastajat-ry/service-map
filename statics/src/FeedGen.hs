@@ -3,6 +3,7 @@ module FeedGen (
     generateRss,
     generateAtom,
     generateJsonFeed,
+    isPublishedLocation,
 ) where
 
 import qualified Config
