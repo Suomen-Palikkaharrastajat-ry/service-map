@@ -185,7 +185,7 @@ viewGeocodeSection lang msgs form mapStyle =
                     { latField | required = True }
                     { value = form.lat
                     , onInput = msgs.onFieldChanged "lat"
-                    , inputType = Form.Number { step = "0.000001" }
+                    , inputType = Form.Number { step = "any" }
                     , placeholder = Nothing
                     }
                 ]
@@ -198,7 +198,7 @@ viewGeocodeSection lang msgs form mapStyle =
                     { lonField | required = True }
                     { value = form.lon
                     , onInput = msgs.onFieldChanged "lon"
-                    , inputType = Form.Number { step = "0.000001" }
+                    , inputType = Form.Number { step = "any" }
                     , placeholder = Nothing
                     }
                 ]

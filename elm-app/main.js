@@ -732,6 +732,10 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
     }
 
     maps[containerId] = { map, marker, pointMarkers: {}, pendingMarkers: null }
+    if (containerId === 'map' && pendingFocusMarker) {
+      applyFocusMapOnMarker(maps[containerId], pendingFocusMarker)
+      pendingFocusMarker = null
+    }
   })
 })
 
@@ -750,13 +754,17 @@ app.ports.addMarkers.subscribe(async (markerList) => {
     setTimeout(() => {
       if (maps['map']) {
         applyMarkers(maps['map'], markerList)
-        fitMapToBounds(maps['map'].map, markerList)
+        if (!maps['map'].forcedPopupKey && !pendingFocusMarker) {
+          fitMapToBounds(maps['map'].map, markerList)
+        }
       }
     }, 100)
     return
   }
   applyMarkers(mapObj, markerList)
-  fitMapToBounds(mapObj.map, markerList)
+  if (!mapObj.forcedPopupKey && !pendingFocusMarker) {
+    fitMapToBounds(mapObj.map, markerList)
+  }
 })
 
 function fitMapToBounds(map, markerList) {
@@ -802,67 +810,71 @@ app.ports.destroyMap.subscribe((containerId) => {
 })
 
 let savedMapState = null;
+let pendingFocusMarker = null;
+
+function applyFocusMapOnMarker(mapObj, { lat, lon, id, title, date, cancelled, closed }) {
+  if (!mapObj || !mapObj.map) return;
+
+  if (!savedMapState) {
+    savedMapState = {
+      zoom: mapObj.map.getZoom(),
+      center: mapObj.map.getCenter()
+    };
+  }
+
+  const isFinland = lat >= 59.5 && lat <= 70.2 && lon >= 19.0 && lon <= 32.0;
+  const idealZoom = isFinland ? 13 : 12;
+  const maxZ = mapObj.map.getMaxZoom();
+  const targetZ = maxZ ? Math.min(idealZoom, maxZ) : idealZoom;
+  const isMobile = window.innerWidth <= 640;
+  const padding = isMobile
+    ? { bottom: Math.round(window.innerHeight * 0.35), top: 0, left: 0, right: 0 }
+    : { right: 352, top: 0, left: 0, bottom: 0 };
+
+  mapObj.map.flyTo({
+    center: [lon, lat],
+    zoom: Math.max(targetZ, mapObj.map.getZoom()),
+    speed: 1.2,
+    padding: padding
+  });
+
+  if (mapObj.activePopup) {
+    closePopupSilently(mapObj.activePopup);
+    mapObj.activePopup = null;
+  }
+
+  const popupKey = String(id);
+  mapObj.dismissedPopups = mapObj.dismissedPopups || new Set();
+  mapObj.dismissedPopups.delete(popupKey);
+  mapObj.forcedPopupKey = popupKey;
+
+  const marker = (mapObj.pointMarkers || {})[`marker_${id}`];
+  if (marker && marker.__popup) {
+    if (!marker.__popup.isOpen()) {
+      marker.__popup.setLngLat(marker.getLngLat()).addTo(mapObj.map);
+    }
+  } else {
+    const standIn = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
+      .setHTML(markerPopupHtml(title, date, cancelled, id, closed))
+      .setLngLat([lon, lat])
+      .addTo(mapObj.map);
+    standIn.on('close', () => {
+      if (standIn.__silentClose) return;
+      mapObj.dismissedPopups.add(popupKey);
+      mapObj.forcedPopupKey = null;
+    });
+    mapObj.activePopup = standIn;
+  }
+}
 
 if (app.ports.focusMapOnMarker) {
-  app.ports.focusMapOnMarker.subscribe(async ({ lat, lon, id, title, date, cancelled, closed }) => {
+  app.ports.focusMapOnMarker.subscribe(async (payload) => {
     await ensureMapLibs();
     const mapObj = maps['map'];
     if (mapObj && mapObj.map) {
-      if (!savedMapState) {
-        savedMapState = {
-          zoom: mapObj.map.getZoom(),
-          center: mapObj.map.getCenter()
-        };
-      }
-      
-      const isFinland = lat >= 59.5 && lat <= 70.2 && lon >= 19.0 && lon <= 32.0;
-      const idealZoom = isFinland ? 13 : 12;
-      const maxZ = mapObj.map.getMaxZoom();
-      const targetZ = maxZ ? Math.min(idealZoom, maxZ) : idealZoom;
-      const paddingRight = window.innerWidth > 500 ? 352 : 0;
-      
-      mapObj.map.flyTo({
-        center: [lon, lat],
-        zoom: Math.max(targetZ, mapObj.map.getZoom()), // zoom in if we are further out, but don't zoom out if we are already zoomed in
-        speed: 1.2,
-        padding: { right: paddingRight }
-      });
-      
-      if (mapObj.activePopup) {
-        closePopupSilently(mapObj.activePopup);
-        mapObj.activePopup = null;
-      }
-
-      // Opening the info pane must show the marker's own tooltip, not a second
-      // one beside it. `forcedPopupKey` keeps that tooltip open below the
-      // auto-open zoom too, and syncAutoPopups hands over to it as soon as the
-      // marker is rendered individually.
-      const popupKey = String(id);
-      mapObj.dismissedPopups = mapObj.dismissedPopups || new Set();
-      mapObj.dismissedPopups.delete(popupKey);
-      mapObj.forcedPopupKey = popupKey;
-
-      const marker = (mapObj.pointMarkers || {})[`marker_${id}`];
-      if (marker && marker.__popup) {
-        if (!marker.__popup.isOpen()) {
-          marker.__popup.setLngLat(marker.getLngLat()).addTo(mapObj.map);
-        }
-      } else {
-        // The marker is inside a cluster or not rendered yet, so there is no
-        // tooltip to reuse. Stand in with an identical one until there is.
-        const standIn = new maplibregl.Popup({ offset: 25, closeButton: true, closeOnClick: false })
-          .setHTML(markerPopupHtml(title, date, cancelled, id, closed))
-          .setLngLat([lon, lat])
-          .addTo(mapObj.map);
-        standIn.on('close', () => {
-          if (standIn.__silentClose) return;
-          // Dismissing it should not make the marker's own tooltip take its
-          // place once the marker appears.
-          mapObj.dismissedPopups.add(popupKey);
-          mapObj.forcedPopupKey = null;
-        });
-        mapObj.activePopup = standIn;
-      }
+      applyFocusMapOnMarker(mapObj, payload);
+    } else {
+      pendingFocusMarker = payload;
     }
   });
 }
@@ -871,19 +883,41 @@ if (app.ports.restoreMapView) {
   app.ports.restoreMapView.subscribe(async () => {
     await ensureMapLibs();
     const mapObj = maps['map'];
-    if (mapObj && mapObj.map && savedMapState) {
-      mapObj.map.flyTo({
-        center: savedMapState.center,
-        zoom: savedMapState.zoom,
-        speed: 1.2,
-        padding: { right: 0 }
-      });
+    if (mapObj && mapObj.map) {
+      if (savedMapState) {
+        mapObj.map.flyTo({
+          center: savedMapState.center,
+          zoom: savedMapState.zoom,
+          speed: 1.2,
+          padding: { right: 0 }
+        });
+        savedMapState = null;
+      } else {
+        const markers = Object.values(mapObj.pointMarkers || {}).map(m => m.getLngLat());
+        if (markers.length > 0) {
+          const bounds = new maplibregl.LngLatBounds();
+          markers.forEach(ll => bounds.extend(ll));
+          mapObj.map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
+        } else {
+          mapObj.map.flyTo({ center: [26.0, 65.0], zoom: 5, speed: 1.2, padding: { right: 0 } });
+        }
+      }
       if (mapObj.activePopup) {
         mapObj.activePopup.remove();
         mapObj.activePopup = null;
       }
       mapObj.forcedPopupKey = null;
-      savedMapState = null;
+    }
+  });
+}
+
+if (app.ports.copyToClipboard) {
+  app.ports.copyToClipboard.subscribe((text) => {
+    const fullUrl = text.startsWith('#')
+      ? window.location.origin + window.location.pathname + text
+      : text;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(fullUrl).catch(() => {});
     }
   });
 }

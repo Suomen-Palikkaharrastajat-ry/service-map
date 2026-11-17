@@ -75,11 +75,11 @@ view config =
         { site = config.site
         , strings = strings
         , attributes = config.attributes
-        , home = { href = toHref RouteMap, onClick = Nothing }
+        , home = { href = toHref (RouteMap Nothing), onClick = Nothing }
         , links =
             if showNavigation then
                 [ { label = t lang NavHome
-                  , href = toHref RouteMap
+                  , href = toHref (RouteMap Nothing)
                   , mobileOnly = False
                   , isActive = isMapPage
                   }

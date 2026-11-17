@@ -125,6 +125,14 @@ init flags url key =
                             |> Maybe.map (\f -> ( entry.tag, f ))
                     )
                 |> Dict.fromList
+
+        pendingSel =
+            case initialRoute of
+                Route.RouteMap maybeSel ->
+                    maybeSel
+
+                _ ->
+                    Nothing
     in
     ( { pbBaseUrl = flags.pbBaseUrl
       , key = key
@@ -147,6 +155,7 @@ init flags url key =
       , site = site
       , lang = lang
       , calendarUrl = Result.withDefault "" calendarUrl
+      , pendingSelection = pendingSel
       }
     , Cmd.batch
         [ Ports.setDocumentLang (Lang.toString lang)
@@ -172,7 +181,7 @@ init flags url key =
 initPage : Lang -> String -> Nav.Key -> Route -> AuthState -> Url -> Time.Posix -> ( Page, Cmd Msg )
 initPage lang pbBaseUrl key route authState url now =
     case route of
-        RouteMap ->
+        RouteMap _ ->
             ( PageMap
             , Ports.initMap
                 { containerId = "map"
@@ -256,37 +265,68 @@ update msg model =
                 newRoute =
                     parseUrl url
 
-                mapCleanupCmd =
-                    case model.page of
-                        PageLocationNew _ ->
-                            Ports.destroyMap "create-map"
+                ( nextPendingSelection, isPageMapToMap ) =
+                    case ( model.page, newRoute ) of
+                        ( PageMap, RouteMap maybeSel ) ->
+                            ( maybeSel, True )
 
-                        PageLocationEdit _ _ ->
-                            Ports.destroyMap "edit-map"
-
-                        PageMap ->
-                            Ports.destroyMap "map"
+                        ( _, RouteMap maybeSel ) ->
+                            ( maybeSel, False )
 
                         _ ->
-                            Cmd.none
-
-                ( page, cmd ) =
-                    initPage model.lang model.pbBaseUrl model.key newRoute model.authState url model.now
-
-                newModel =
-                    { model | url = url, page = page, menuOpen = False, filterModal = Nothing }
-
-                extraCmd =
-                    case page of
-                        PageMap ->
-                            updateMarkers newModel
-
-                        _ ->
-                            Cmd.none
+                            ( Nothing, False )
             in
-            ( newModel
-            , Cmd.batch [ mapCleanupCmd, cmd, extraCmd, menuClosedCmd model ]
-            )
+            if isPageMapToMap then
+                let
+                    model1 =
+                        { model | url = url, menuOpen = False, filterModal = Nothing, pendingSelection = nextPendingSelection }
+                in
+                case nextPendingSelection of
+                    Just _ ->
+                        let
+                            ( model2, cmd2 ) =
+                                resolvePendingSelection model1
+                        in
+                        ( model2, Cmd.batch [ cmd2, menuClosedCmd model ] )
+
+                    Nothing ->
+                        ( { model1 | selectedMarker = Nothing }
+                        , Cmd.batch [ Ports.restoreMapView (), menuClosedCmd model ]
+                        )
+
+            else
+                let
+                    mapCleanupCmd =
+                        case model.page of
+                            PageLocationNew _ ->
+                                Ports.destroyMap "create-map"
+
+                            PageLocationEdit _ _ ->
+                                Ports.destroyMap "edit-map"
+
+                            PageMap ->
+                                Ports.destroyMap "map"
+
+                            _ ->
+                                Cmd.none
+
+                    ( page, cmd ) =
+                        initPage model.lang model.pbBaseUrl model.key newRoute model.authState url model.now
+
+                    newModel =
+                        { model | url = url, page = page, menuOpen = False, filterModal = Nothing, pendingSelection = nextPendingSelection }
+
+                    extraCmd =
+                        case page of
+                            PageMap ->
+                                updateMarkers newModel
+
+                            _ ->
+                                Cmd.none
+                in
+                ( newModel
+                , Cmd.batch [ mapCleanupCmd, cmd, extraCmd, menuClosedCmd model ]
+                )
 
         LinkClicked urlRequest ->
             case urlRequest of
@@ -312,8 +352,11 @@ update msg model =
             let
                 newModel =
                     { model | locations = Success data.locations, events = Success data.events }
+
+                ( modelWithSelection, selectionCmd ) =
+                    resolvePendingSelection newModel
             in
-            ( newModel, updateMarkers newModel )
+            ( modelWithSelection, Cmd.batch [ updateMarkers modelWithSelection, selectionCmd ] )
 
         GeoJsonLoaded (Err err) ->
             ( { model | locations = Failure err, events = Failure err }, Cmd.none )
@@ -322,8 +365,11 @@ update msg model =
             let
                 newModel =
                     { model | locations = Success locations }
+
+                ( modelWithSelection, selectionCmd ) =
+                    resolvePendingSelection newModel
             in
-            ( newModel, updateMarkers newModel )
+            ( modelWithSelection, Cmd.batch [ updateMarkers modelWithSelection, selectionCmd ] )
 
         LocationsLoaded (Err err) ->
             ( { model | locations = Failure err }, Cmd.none )
@@ -332,8 +378,11 @@ update msg model =
             let
                 newModel =
                     { model | events = Success events }
+
+                ( modelWithSelection, selectionCmd ) =
+                    resolvePendingSelection newModel
             in
-            ( newModel, updateMarkers newModel )
+            ( modelWithSelection, Cmd.batch [ updateMarkers modelWithSelection, selectionCmd ] )
 
         EventsLoaded (Err err) ->
             ( { model | events = Failure err }, Cmd.none )
@@ -375,6 +424,7 @@ update msg model =
                             Cmd.batch
                                 [ Ports.focusMapOnMarker { lat = l.point.lat, lon = l.point.lon, id = l.id, title = l.title, date = locationTooltipSubtitle model.lang l, cancelled = False, closed = l.state == Types.Closed }
                                 , Ports.focusElement "map-detail-close"
+                                , Nav.replaceUrl model.key (Route.toHref (Route.RouteMap (Just (Route.SelectLocation l.id))))
                                 ]
 
                         Just (Types.SelectedEvent e) ->
@@ -385,6 +435,7 @@ update msg model =
                             Cmd.batch
                                 [ Ports.focusMapOnMarker { lat = e.point.lat, lon = e.point.lon, id = e.id, title = e.title, date = dateStr, cancelled = e.cancelled, closed = False }
                                 , Ports.focusElement "map-detail-close"
+                                , Nav.replaceUrl model.key (Route.toHref (Route.RouteMap (Just (Route.SelectEvent e.id))))
                                 ]
 
                         Nothing ->
@@ -579,7 +630,37 @@ update msg model =
                 ( model, Cmd.none )
 
         ClosePanel ->
-            ( { model | selectedMarker = Nothing, filterModal = Nothing }, Ports.restoreMapView () )
+            ( { model | selectedMarker = Nothing, filterModal = Nothing }
+            , Cmd.batch
+                [ Ports.restoreMapView ()
+                , Nav.replaceUrl model.key (Route.toHref (Route.RouteMap Nothing))
+                ]
+            )
+
+        ShareMarkerClicked ->
+            case model.selectedMarker of
+                Just (Types.SelectedLocation l) ->
+                    let
+                        href =
+                            Route.toHref (Route.RouteMap (Just (Route.SelectLocation l.id)))
+
+                        ( m, toastCmd ) =
+                            addToast model Types.ToastInfo (t model.lang ShareLinkCopied)
+                    in
+                    ( m, Cmd.batch [ toastCmd, Ports.copyToClipboard href ] )
+
+                Just (Types.SelectedEvent e) ->
+                    let
+                        href =
+                            Route.toHref (Route.RouteMap (Just (Route.SelectEvent e.id)))
+
+                        ( m, toastCmd ) =
+                            addToast model Types.ToastInfo (t model.lang ShareLinkCopied)
+                    in
+                    ( m, Cmd.batch [ toastCmd, Ports.copyToClipboard href ] )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         ToggleMenu ->
             if model.menuOpen then
@@ -605,7 +686,7 @@ update msg model =
             , Cmd.batch
                 [ menuClosedCmd model
                 , Ports.clearAuthToken ()
-                , Nav.pushUrl model.key (Route.toHref RouteMap)
+                , Nav.pushUrl model.key (Route.toHref (RouteMap Nothing))
                 , Api.fetchGeoJson
                 ]
             )
@@ -726,7 +807,7 @@ update msg model =
                 Ok (Just pt) ->
                     let
                         ( model1, _ ) =
-                            updateNewForm model (\form -> { form | lat = String.fromFloat pt.lat, lon = String.fromFloat pt.lon })
+                            updateNewForm model (\form -> { form | lat = formatCoordinate pt.lat, lon = formatCoordinate pt.lon })
                     in
                     ( model1, Ports.setMapMarker { lat = pt.lat, lon = pt.lon } )
 
@@ -945,7 +1026,7 @@ update msg model =
                 Ok (Just pt) ->
                     let
                         ( model1, _ ) =
-                            updateEditForm model (\form -> { form | lat = String.fromFloat pt.lat, lon = String.fromFloat pt.lon })
+                            updateEditForm model (\form -> { form | lat = formatCoordinate pt.lat, lon = formatCoordinate pt.lon })
                     in
                     ( model1, Ports.setMapMarker { lat = pt.lat, lon = pt.lon } )
 
@@ -1156,10 +1237,10 @@ update msg model =
         MapMarkerMoved lat lon ->
             let
                 latStr =
-                    String.fromFloat lat
+                    formatCoordinate lat
 
                 lonStr =
-                    String.fromFloat lon
+                    formatCoordinate lon
             in
             case model.page of
                 PageLocationNew _ ->
@@ -1626,6 +1707,178 @@ ctrlEnterDecoder msg =
                 else
                     Decode.fail "Not Ctrl+Enter"
             )
+
+
+formatCoordinate : Float -> String
+formatCoordinate val =
+    let
+        factor =
+            1000000.0
+
+        rounded =
+            toFloat (round (val * factor)) / factor
+    in
+    String.fromFloat rounded
+
+
+resolvePendingSelection : Model -> ( Model, Cmd Msg )
+resolvePendingSelection model =
+    case model.pendingSelection of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just (Route.SelectLocation locId) ->
+            case model.locations of
+                Success locs ->
+                    case List.filter (\l -> l.id == locId) locs |> List.head of
+                        Just loc ->
+                            let
+                                relaxedTagFilters =
+                                    if loc.state == Types.Closed then
+                                        List.foldl
+                                            (\tag acc ->
+                                                if Types.tagFilterFor tag acc == Types.HideClosed then
+                                                    Dict.insert tag Types.AllLocations acc
+
+                                                else
+                                                    acc
+                                            )
+                                            model.tagFilters
+                                            loc.tags
+
+                                    else
+                                        model.tagFilters
+
+                                model1 =
+                                    { model
+                                        | pendingSelection = Nothing
+                                        , selectedMarker = Just (Types.SelectedLocation loc)
+                                        , tagFilters = relaxedTagFilters
+                                    }
+
+                                focusCmd =
+                                    Ports.focusMapOnMarker
+                                        { lat = loc.point.lat
+                                        , lon = loc.point.lon
+                                        , id = loc.id
+                                        , title = loc.title
+                                        , date = locationTooltipSubtitle model.lang loc
+                                        , cancelled = False
+                                        , closed = loc.state == Types.Closed
+                                        }
+
+                                extraCmd =
+                                    if relaxedTagFilters /= model.tagFilters then
+                                        Cmd.batch
+                                            [ updateMarkers model1
+                                            , saveFilters model1
+                                            ]
+
+                                    else
+                                        Cmd.none
+                            in
+                            ( model1
+                            , Cmd.batch
+                                [ focusCmd
+                                , Ports.focusElement "map-detail-close"
+                                , extraCmd
+                                ]
+                            )
+
+                        Nothing ->
+                            let
+                                ( model1, toastCmd ) =
+                                    addToast { model | pendingSelection = Nothing } Types.ToastInfo (t model.lang ItemNotFound)
+                            in
+                            ( model1
+                            , Cmd.batch
+                                [ toastCmd
+                                , Nav.replaceUrl model.key (Route.toHref (Route.RouteMap Nothing))
+                                ]
+                            )
+
+                Failure _ ->
+                    ( { model | pendingSelection = Nothing }, Nav.replaceUrl model.key (Route.toHref (Route.RouteMap Nothing)) )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        Just (Route.SelectEvent evId) ->
+            case model.events of
+                Success evts ->
+                    case List.filter (\e -> e.id == evId) evts |> List.head of
+                        Just ev ->
+                            let
+                                relaxedEventFilter =
+                                    if ev.cancelled && model.eventFilter == Types.HideCancelled then
+                                        Types.AllEvents
+
+                                    else if model.eventFilter == Types.NoEvents then
+                                        if ev.cancelled then
+                                            Types.AllEvents
+
+                                        else
+                                            Types.HideCancelled
+
+                                    else
+                                        model.eventFilter
+
+                                model1 =
+                                    { model
+                                        | pendingSelection = Nothing
+                                        , selectedMarker = Just (Types.SelectedEvent ev)
+                                        , eventFilter = relaxedEventFilter
+                                    }
+
+                                dateStr =
+                                    Maybe.withDefault "" (DateUtils.formatEventDateDisplay model.lang ev)
+
+                                focusCmd =
+                                    Ports.focusMapOnMarker
+                                        { lat = ev.point.lat
+                                        , lon = ev.point.lon
+                                        , id = ev.id
+                                        , title = ev.title
+                                        , date = dateStr
+                                        , cancelled = ev.cancelled
+                                        , closed = False
+                                        }
+
+                                extraCmd =
+                                    if relaxedEventFilter /= model.eventFilter then
+                                        Cmd.batch
+                                            [ updateMarkers model1
+                                            , saveFilters model1
+                                            ]
+
+                                    else
+                                        Cmd.none
+                            in
+                            ( model1
+                            , Cmd.batch
+                                [ focusCmd
+                                , Ports.focusElement "map-detail-close"
+                                , extraCmd
+                                ]
+                            )
+
+                        Nothing ->
+                            let
+                                ( model1, toastCmd ) =
+                                    addToast { model | pendingSelection = Nothing } Types.ToastInfo (t model.lang ItemNotFound)
+                            in
+                            ( model1
+                            , Cmd.batch
+                                [ toastCmd
+                                , Nav.replaceUrl model.key (Route.toHref (Route.RouteMap Nothing))
+                                ]
+                            )
+
+                Failure _ ->
+                    ( { model | pendingSelection = Nothing }, Nav.replaceUrl model.key (Route.toHref (Route.RouteMap Nothing)) )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg

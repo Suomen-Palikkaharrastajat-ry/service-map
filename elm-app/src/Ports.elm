@@ -3,6 +3,7 @@ port module Ports exposing
     , MarkerData
     , addMarkers
     , clearAuthToken
+    , copyToClipboard
     , destroyMap
     , focusElement
     , focusMapOnMarker
@@ -110,6 +111,11 @@ port focusMapOnMarker : { lat : Float, lon : Float, id : String, title : String,
 
 
 port restoreMapView : () -> Cmd msg
+
+
+{-| Copy a string to the user's clipboard.
+-}
+port copyToClipboard : String -> Cmd msg
 
 
 {-| Writes a problem the visitor cannot act on (unreadable configuration) to

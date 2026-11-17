@@ -87,6 +87,9 @@ type MsgKey
       -- Accessible names for icon-only controls
     | A11yPanelClose
     | A11yPanelEdit
+    | A11yShareLink
+    | ShareLinkCopied
+    | ItemNotFound
     | A11yPrevMarker
     | A11yNextMarker
     | A11yOpenInOsm
@@ -361,6 +364,15 @@ fi key =
 
         A11yPanelEdit ->
             "Muokkaa kohdetta"
+
+        A11yShareLink ->
+            "Kopioi linkki leikepöydälle"
+
+        ShareLinkCopied ->
+            "Linkki kopioitu leikepöydälle"
+
+        ItemNotFound ->
+            "Kohdetta tai tapahtumaa ei löytynyt"
 
         A11yPrevMarker ->
             "Edellinen kohde"
@@ -683,6 +695,15 @@ en key =
 
         A11yPanelEdit ->
             "Edit place"
+
+        A11yShareLink ->
+            "Copy link to clipboard"
+
+        ShareLinkCopied ->
+            "Link copied to clipboard"
+
+        ItemNotFound ->
+            "Location or event not found"
 
         A11yPrevMarker ->
             "Previous place"

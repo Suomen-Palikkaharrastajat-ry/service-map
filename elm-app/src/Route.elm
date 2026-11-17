@@ -1,4 +1,4 @@
-module Route exposing (Route(..), parseUrl, toHref)
+module Route exposing (MapSelection(..), Route(..), parseUrl, toHref)
 
 {-| Application hash-based routing definitions and URL parser/generator.
 -}
@@ -8,8 +8,13 @@ import Url.Parser exposing ((</>), (<?>), Parser)
 import Url.Parser.Query as Query
 
 
+type MapSelection
+    = SelectLocation String
+    | SelectEvent String
+
+
 type Route
-    = RouteMap
+    = RouteMap (Maybe MapSelection)
     | RouteLocations
     | RouteLocationNew
     | RouteLocationDetail String
@@ -17,11 +22,31 @@ type Route
     | RouteNotFound
 
 
+mapQueryParser : Query.Parser (Maybe MapSelection)
+mapQueryParser =
+    Query.map2
+        (\loc ev ->
+            case ( loc, ev ) of
+                ( Just l, _ ) ->
+                    Just (SelectLocation l)
+
+                ( Nothing, Just e ) ->
+                    Just (SelectEvent e)
+
+                ( Nothing, Nothing ) ->
+                    Nothing
+        )
+        (Query.string "location")
+        (Query.string "event")
+
+
 routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.oneOf
         [ Url.Parser.map RouteMap
-            Url.Parser.top
+            (Url.Parser.top <?> mapQueryParser)
+        , Url.Parser.map (\id -> RouteMap (Just (SelectEvent id)))
+            (Url.Parser.s "events" </> Url.Parser.string)
         , Url.Parser.map RouteLocationNew
             (Url.Parser.s "locations" </> Url.Parser.s "new")
         , Url.Parser.map RouteLocationEdit
@@ -45,7 +70,7 @@ parseUrl url =
         fragment =
             Maybe.withDefault "/" url.fragment
 
-        ( path, query ) =
+        ( rawPath, query ) =
             case String.split "?" fragment of
                 p :: q :: _ ->
                     ( p, Just q )
@@ -55,6 +80,13 @@ parseUrl url =
 
                 [] ->
                     ( "/", Nothing )
+
+        path =
+            if rawPath == "" then
+                "/"
+
+            else
+                rawPath
 
         pseudoUrl =
             { url | path = path, fragment = Nothing, query = query }
@@ -70,8 +102,16 @@ toHref : Route -> String
 toHref route =
     "#"
         ++ (case route of
-                RouteMap ->
-                    "/"
+                RouteMap maybeSelection ->
+                    case maybeSelection of
+                        Just (SelectLocation id) ->
+                            "/?location=" ++ id
+
+                        Just (SelectEvent id) ->
+                            "/?event=" ++ id
+
+                        Nothing ->
+                            "/"
 
                 RouteLocations ->
                     "/locations"

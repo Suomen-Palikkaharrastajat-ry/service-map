@@ -466,18 +466,28 @@ viewPanel lang model =
 viewLocationPanel : Lang -> Model -> Location -> Html Msg
 viewLocationPanel lang model loc =
     let
-        headerActions =
-            if PocketBaseAuth.isAuthenticated model.authState then
-                [ a
-                    [ href (Route.toHref (Route.RouteLocationEdit loc.id))
-                    , attribute "aria-label" (t lang A11yPanelEdit)
-                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
-                    ]
-                    [ featherIcon FeatherIcons.edit2 20 ]
+        shareAction =
+            button
+                [ onClick ShareMarkerClicked
+                , attribute "aria-label" (t lang A11yShareLink)
+                , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer bg-transparent border-0 p-0"
                 ]
+                [ featherIcon FeatherIcons.share2 20 ]
 
-            else
-                []
+        headerActions =
+            shareAction
+                :: (if PocketBaseAuth.isAuthenticated model.authState then
+                        [ a
+                            [ href (Route.toHref (Route.RouteLocationEdit loc.id))
+                            , attribute "aria-label" (t lang A11yPanelEdit)
+                            , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
+                            ]
+                            [ featherIcon FeatherIcons.edit2 20 ]
+                        ]
+
+                    else
+                        []
+                   )
 
         closedBadge =
             if loc.state == Types.Closed then
@@ -532,12 +542,23 @@ viewLocationPanel lang model loc =
                     mapUrl =
                         Types.mapLink model.platform loc.point loc.title
                 in
-                div [ class "flex items-start gap-2 type-caption text-text-muted" ]
-                    [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                    , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), rel "noopener noreferrer", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
-                        [ text address
-                        , featherIcon FeatherIcons.externalLink 12
+                div [ class "flex items-start gap-1.5 type-caption text-text-muted" ]
+                    [ span [ class "flex-shrink-0 mt-2 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
+                    , a
+                        [ href mapUrl
+                        , target (Types.mapLinkTarget model.platform "_blank")
+                        , rel "noopener noreferrer"
+                        , class "hover:underline text-text-primary mt-1.5 flex-1"
                         ]
+                        [ text address ]
+                    , a
+                        [ href mapUrl
+                        , target (Types.mapLinkTarget model.platform "_blank")
+                        , rel "noopener noreferrer"
+                        , attribute "aria-label" (t lang A11yOpenInOsm)
+                        , class "w-8 h-8 inline-flex items-center justify-center text-text-subtle hover:text-brand flex-shrink-0 cursor-pointer"
+                        ]
+                        [ featherIcon FeatherIcons.externalLink 24 ]
                     ]
 
             Nothing ->
@@ -615,20 +636,30 @@ eventEditUrl calendarUrl id =
 viewEventPanel : Lang -> Model -> Types.Event -> Html Msg
 viewEventPanel lang model ev =
     let
-        headerActions =
-            if PocketBaseAuth.isAuthenticated model.authState then
-                [ a
-                    [ href (eventEditUrl model.calendarUrl ev.id)
-                    , target "_blank"
-                    , rel "noopener noreferrer"
-                    , attribute "aria-label" (t lang A11yPanelEdit)
-                    , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
-                    ]
-                    [ featherIcon FeatherIcons.edit2 20 ]
+        shareAction =
+            button
+                [ onClick ShareMarkerClicked
+                , attribute "aria-label" (t lang A11yShareLink)
+                , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer bg-transparent border-0 p-0"
                 ]
+                [ featherIcon FeatherIcons.share2 20 ]
 
-            else
-                []
+        headerActions =
+            shareAction
+                :: (if PocketBaseAuth.isAuthenticated model.authState then
+                        [ a
+                            [ href (eventEditUrl model.calendarUrl ev.id)
+                            , target "_blank"
+                            , rel "noopener noreferrer"
+                            , attribute "aria-label" (t lang A11yPanelEdit)
+                            , class "text-text-subtle hover:text-brand mt-0.5 flex-shrink-0 cursor-pointer"
+                            ]
+                            [ featherIcon FeatherIcons.edit2 20 ]
+                        ]
+
+                    else
+                        []
+                   )
 
         cancelledBadge =
             if ev.cancelled then
@@ -660,12 +691,23 @@ viewEventPanel lang model ev =
                     mapUrl =
                         Types.mapLink model.platform ev.point ev.title
                 in
-                div [ class "flex items-start gap-2 type-caption text-text-muted" ]
-                    [ span [ class "flex-shrink-0 mt-0.5 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
-                    , a [ href mapUrl, target (Types.mapLinkTarget model.platform "_blank"), rel "noopener noreferrer", class "hover:underline text-text-primary inline-flex items-center gap-1" ]
-                        [ text address
-                        , featherIcon FeatherIcons.externalLink 12
+                div [ class "flex items-start gap-1.5 type-caption text-text-muted" ]
+                    [ span [ class "flex-shrink-0 mt-2 text-brand" ] [ featherIcon FeatherIcons.mapPin 16 ]
+                    , a
+                        [ href mapUrl
+                        , target (Types.mapLinkTarget model.platform "_blank")
+                        , rel "noopener noreferrer"
+                        , class "hover:underline text-text-primary mt-1.5 flex-1"
                         ]
+                        [ text address ]
+                    , a
+                        [ href mapUrl
+                        , target (Types.mapLinkTarget model.platform "_blank")
+                        , rel "noopener noreferrer"
+                        , attribute "aria-label" (t lang A11yOpenInOsm)
+                        , class "w-8 h-8 inline-flex items-center justify-center text-text-subtle hover:text-brand flex-shrink-0 cursor-pointer"
+                        ]
+                        [ featherIcon FeatherIcons.externalLink 24 ]
                     ]
 
             Nothing ->

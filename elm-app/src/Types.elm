@@ -548,6 +548,7 @@ type alias Model =
     , site : SiteSettings
     , lang : Lang
     , calendarUrl : String
+    , pendingSelection : Maybe Route.MapSelection
     }
 
 
@@ -600,6 +601,7 @@ type Msg
     | EventsLoaded (Result Http.Error (List Event))
     | GeoJsonLoaded (Result Http.Error { locations : List Location, events : List Event })
     | MarkerClicked String
+    | ShareMarkerClicked
     | SelectPrevMarker
     | SelectNextMarker
     | TogglePresentationMode

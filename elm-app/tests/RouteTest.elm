@@ -4,7 +4,7 @@ module RouteTest exposing (suite)
 -}
 
 import Expect
-import Route exposing (Route(..), parseUrl, toHref)
+import Route exposing (MapSelection(..), Route(..), parseUrl, toHref)
 import Test exposing (Test, describe, test)
 import Url
 
@@ -25,14 +25,26 @@ suite : Test
 suite =
     describe "Route"
         [ describe "parseUrl"
-            [ test "root → RouteMap" <|
+            [ test "root → RouteMap Nothing" <|
                 \_ ->
                     parse "#/"
-                        |> Expect.equal RouteMap
-            , test "with querystring → RouteMap" <|
+                        |> Expect.equal (RouteMap Nothing)
+            , test "with querystring → RouteMap Nothing" <|
                 \_ ->
                     parse "#/?foo=bar"
-                        |> Expect.equal RouteMap
+                        |> Expect.equal (RouteMap Nothing)
+            , test "/#/?event=123 → RouteMap (Just (SelectEvent 123))" <|
+                \_ ->
+                    parse "#/?event=123"
+                        |> Expect.equal (RouteMap (Just (SelectEvent "123")))
+            , test "/#/?location=456 → RouteMap (Just (SelectLocation 456))" <|
+                \_ ->
+                    parse "#/?location=456"
+                        |> Expect.equal (RouteMap (Just (SelectLocation "456")))
+            , test "/events/123 → RouteMap (Just (SelectEvent 123))" <|
+                \_ ->
+                    parse "#/events/123"
+                        |> Expect.equal (RouteMap (Just (SelectEvent "123")))
             , test "/locations → RouteLocations" <|
                 \_ ->
                     parse "#/locations"
@@ -59,8 +71,12 @@ suite =
                         |> Expect.equal RouteNotFound
             ]
         , describe "toHref"
-            [ test "RouteMap" <|
-                \_ -> toHref RouteMap |> Expect.equal "#/"
+            [ test "RouteMap Nothing" <|
+                \_ -> toHref (RouteMap Nothing) |> Expect.equal "#/"
+            , test "RouteMap (SelectEvent)" <|
+                \_ -> toHref (RouteMap (Just (SelectEvent "123"))) |> Expect.equal "#/?event=123"
+            , test "RouteMap (SelectLocation)" <|
+                \_ -> toHref (RouteMap (Just (SelectLocation "456"))) |> Expect.equal "#/?location=456"
             , test "RouteLocations" <|
                 \_ -> toHref RouteLocations |> Expect.equal "#/locations"
             , test "RouteLocationNew" <|
