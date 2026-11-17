@@ -647,14 +647,19 @@ function renderClusters(mapObj) {
 
 // ── Map ports (MapLibre) ───────────────────────────────────────────────────────
 
+// OpenStreetMap raster tile URL for the form location-picker.
+// Per OSM Foundation Tile Usage Policy, use the standard tile.openstreetmap.org
+// domain and allow switching via VITE_OSM_TILE_URL without software updates.
+const osmTileUrl = import.meta.env.VITE_OSM_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+
 const osmStyle = {
   version: 8,
   sources: {
     osm: {
       type: "raster",
-      tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [osmTileUrl],
       tileSize: 256,
-      attribution: "&copy; OpenStreetMap Contributors",
+      attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">&copy; OpenStreetMap contributors</a>',
       maxzoom: 19
     }
   },
@@ -682,11 +687,14 @@ app.ports.initMap.subscribe(async ({ containerId, lat, lon, zoom, markerLat, mar
       center: [lon, lat],
       zoom: zoom,
       style: styleJson,
-      // Compact so it collapses to an ⓘ button on small (375px) viewports.
+      // Attribution control: visible on desktop screens (>640px) and
+      // collapses to an ⓘ button on narrow screens (<=640px) per OSM
+      // Attribution Guidelines ("Do not hide attribution beneath UI, behind
+      // toggles, or off-screen").
       // Credits come from each style source's `attribution` field: the vector
       // basemap's baked-in © Maanmittauslaitos / © OpenMapTiles © OpenStreetMap
       // contributors / Natural Earth, and the raster `osm` picker style's own.
-      attributionControl: { compact: true },
+      attributionControl: true,
       locale: {
         'NavigationControl.ZoomIn': strings.zoom_in,
         'NavigationControl.ZoomOut': strings.zoom_out,

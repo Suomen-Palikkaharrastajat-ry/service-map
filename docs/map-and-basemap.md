@@ -33,13 +33,20 @@ hosts any tiles, glyphs, or GeoJSON — it just points MapLibre at that style.
 - The precise location-picker in the create/edit forms still uses an inline
   OpenStreetMap **raster** style (`osm`) for street-level zoom; that is
   unrelated to the vector basemap above.
+- **`VITE_OSM_TILE_URL`** (in `elm-app/main.js`): the raster tile URL template for
+  the `osm` location-picker style. Defaults to `https://tile.openstreetmap.org/{z}/{x}/{y}.png`
+  per OpenStreetMap Foundation Tile Usage Policy; override it to point at an
+  alternate or self-hosted tile server without code changes.
 
 ### Attribution
 Data credits are displayed by maplibre-gl's built-in `AttributionControl`,
-configured `{ compact: true }` in `main.js` so it collapses to an ⓘ button on
-small viewports. The credits themselves are not hard-coded here — they come from
+configured (`attributionControl: true` in `main.js`) so it remains visible on
+desktop screens and collapses to an ⓘ button on narrow screens (≤ 640 px),
+conforming to the OpenStreetMap Attribution Guidelines ("Do not hide attribution
+beneath UI, behind toggles, or off-screen"). The credits themselves come from
 each style source's `attribution` field: the vector basemap's baked-in
 `© Maanmittauslaitos`, `© OpenMapTiles © OpenStreetMap contributors` and
 `Natural Earth` (from the remote `style.json`), and the raster `osm` picker
-style's own `© OpenStreetMap Contributors`. Licenses for the underlying data and
+style's own hyperlinked `© OpenStreetMap contributors` linking to
+`https://www.openstreetmap.org/copyright`. Licenses for the underlying data and
 glyph fonts live in the `service-map-tiles` repo (`NOTICE.md` + `licenses/`).
