@@ -290,8 +290,16 @@ update msg model =
                         ( model2, Cmd.batch [ cmd2, menuClosedCmd model ] )
 
                     Nothing ->
+                        let
+                            restoreCmd =
+                                if model.selectedMarker /= Nothing then
+                                    Ports.restoreMapView ()
+
+                                else
+                                    Cmd.none
+                        in
                         ( { model1 | selectedMarker = Nothing }
-                        , Cmd.batch [ Ports.restoreMapView (), menuClosedCmd model ]
+                        , Cmd.batch [ restoreCmd, menuClosedCmd model ]
                         )
 
             else
@@ -1694,6 +1702,19 @@ escapeToLocationsDecoder =
             )
 
 
+escapeToMapDecoder : Decode.Decoder Msg
+escapeToMapDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed (NavigateTo (RouteMap Nothing))
+
+                else
+                    Decode.fail "Not Escape"
+            )
+
+
 ctrlEnterDecoder : Msg -> Decode.Decoder Msg
 ctrlEnterDecoder msg =
     Decode.map2 (\key ctrl -> { key = key, ctrl = ctrl })
@@ -1915,6 +1936,9 @@ subscriptions model =
 
                     else
                         []
+
+                Types.PageLocationDetail _ _ ->
+                    [ Browser.Events.onKeyDown escapeToMapDecoder ]
 
                 Types.PageLocationNew _ ->
                     [ Browser.Events.onKeyDown escapeToLocationsDecoder

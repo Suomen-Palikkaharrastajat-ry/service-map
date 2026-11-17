@@ -747,7 +747,10 @@ if (app.ports.setMapStyle) {
   })
 }
 
+let allMapMarkers = []
+
 app.ports.addMarkers.subscribe(async (markerList) => {
+  allMapMarkers = markerList || []
   await ensureMapLibs()
   const mapObj = maps['map']
   if (!mapObj || !mapObj.map) {
@@ -807,6 +810,10 @@ app.ports.destroyMap.subscribe((containerId) => {
     maps[containerId].map.remove()
     delete maps[containerId]
   }
+  if (containerId === 'map') {
+    savedMapState = null
+    pendingFocusMarker = null
+  }
 })
 
 let savedMapState = null;
@@ -816,10 +823,13 @@ function applyFocusMapOnMarker(mapObj, { lat, lon, id, title, date, cancelled, c
   if (!mapObj || !mapObj.map) return;
 
   if (!savedMapState) {
-    savedMapState = {
-      zoom: mapObj.map.getZoom(),
-      center: mapObj.map.getCenter()
-    };
+    const currentZoom = typeof mapObj.map.getZoom === 'function' ? mapObj.map.getZoom() : 0;
+    if (currentZoom < 10) {
+      savedMapState = {
+        zoom: currentZoom,
+        center: mapObj.map.getCenter()
+      };
+    }
   }
 
   const isFinland = lat >= 59.5 && lat <= 70.2 && lon >= 19.0 && lon <= 32.0;
@@ -892,15 +902,10 @@ if (app.ports.restoreMapView) {
           padding: { right: 0 }
         });
         savedMapState = null;
+      } else if (allMapMarkers.length > 0) {
+        fitMapToBounds(mapObj.map, allMapMarkers);
       } else {
-        const markers = Object.values(mapObj.pointMarkers || {}).map(m => m.getLngLat());
-        if (markers.length > 0) {
-          const bounds = new maplibregl.LngLatBounds();
-          markers.forEach(ll => bounds.extend(ll));
-          mapObj.map.fitBounds(bounds, { padding: 50, maxZoom: 12 });
-        } else {
-          mapObj.map.flyTo({ center: [26.0, 65.0], zoom: 5, speed: 1.2, padding: { right: 0 } });
-        }
+        mapObj.map.flyTo({ center: [26.0, 65.0], zoom: 5, speed: 1.2, padding: { right: 0 } });
       }
       if (mapObj.activePopup) {
         mapObj.activePopup.remove();
