@@ -77,6 +77,12 @@ button:not([disabled]) {
   text-decoration-line: line-through;
 }
 
+/* Toast notification region must float above map overlays, detail panels and modals */
+div[role="region"]:has([aria-live="polite"]),
+div[role="region"].fixed.z-50 {
+  z-index: 2000 !important;
+}
+
 .maplibregl-marker:focus, [tabindex="0"]:focus {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;

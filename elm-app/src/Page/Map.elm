@@ -558,7 +558,7 @@ viewLocationPanel lang model loc =
                         , attribute "aria-label" (t lang A11yOpenInOsm)
                         , class "w-8 h-8 inline-flex items-center justify-center text-text-subtle hover:text-brand flex-shrink-0 cursor-pointer"
                         ]
-                        [ featherIcon FeatherIcons.externalLink 24 ]
+                        [ featherIcon FeatherIcons.externalLink 18 ]
                     ]
 
             Nothing ->
@@ -707,7 +707,7 @@ viewEventPanel lang model ev =
                         , attribute "aria-label" (t lang A11yOpenInOsm)
                         , class "w-8 h-8 inline-flex items-center justify-center text-text-subtle hover:text-brand flex-shrink-0 cursor-pointer"
                         ]
-                        [ featherIcon FeatherIcons.externalLink 24 ]
+                        [ featherIcon FeatherIcons.externalLink 18 ]
                     ]
 
             Nothing ->
